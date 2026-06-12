@@ -1,0 +1,16 @@
+# Secrets & environment
+.env*
+.vercel
+probe_client/probe_state.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+venv/
+probe_client/venv/
+.venv/
+
+# OS / editor
+.DS_Store
+*.swp

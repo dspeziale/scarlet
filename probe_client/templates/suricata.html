@@ -1,0 +1,205 @@
+{% extends "layout.html" %}
+
+{% block title %}Suricata IDS{% endblock %}
+{% block content_header %}{{ t('hdr.suricata') }}{% endblock %}
+
+{% block content %}
+<style>
+    .term {
+        background:#0b0e14; color:#c8e1ff; font-family:'JetBrains Mono','Courier New',monospace;
+        font-size:12.5px; line-height:1.5; border-radius:.6rem; padding:1rem;
+        height:430px; overflow-y:auto; white-space:pre-wrap; word-break:break-word;
+        border:1px solid rgba(255,255,255,.08);
+    }
+    .term .ln-alert { color:#ff6b81; }
+    .term .ln-info  { color:#7ee787; }
+    .term .ln-flow  { color:#79c0ff; }
+    .led-lg { width:.9rem; height:.9rem; border-radius:50%; display:inline-block; }
+</style>
+
+<div class="row g-4">
+    <!-- Control panel -->
+    <div class="col-lg-5">
+        <div class="card shadow-sm border-0" style="border-radius:1rem; overflow:hidden;">
+            <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+                <h5 class="card-title m-0"><i class="fas fa-shield-halved me-2"></i> {{ t('ids.control') }}</h5>
+                <span id="suri-state-badge" class="badge bg-secondary">Unknown</span>
+            </div>
+            <div class="card-body">
+                <div id="suri-install-warn" class="alert alert-warning d-none py-2 small">
+                    <i class="fas fa-triangle-exclamation me-1"></i> Suricata is not installed on this probe host.
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">{{ t('ids.interface') }}</label>
+                    <div class="input-group">
+                        <select class="form-select" id="iface-select"><option>Loading interfaces…</option></select>
+                        <button class="btn btn-outline-secondary" id="btn-refresh-iface" title="Refresh interfaces"><i class="fas fa-rotate"></i></button>
+                    </div>
+                    <div class="form-text">Select the network interface Suricata should monitor.</div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button class="btn btn-success flex-fill" id="btn-suri-start"><i class="fas fa-play me-1"></i> {{ t('ids.start') }}</button>
+                    <button class="btn btn-danger flex-fill" id="btn-suri-stop"><i class="fas fa-stop me-1"></i> {{ t('ids.stop') }}</button>
+                </div>
+
+                <hr>
+                <div class="row text-center g-2">
+                    <div class="col-6"><div class="border rounded py-2">
+                        <div class="fw-bold"><span class="led-lg bg-secondary me-1" id="run-dot"></span><span id="run-text">Stopped</span></div>
+                        <small class="text-muted">{{ t('ids.engine') }}</small>
+                    </div></div>
+                    <div class="col-6"><div class="border rounded py-2">
+                        <div class="fw-bold" id="iface-active">—</div>
+                        <small class="text-muted">{{ t('lbl.interface') }}</small>
+                    </div></div>
+                </div>
+                <div class="text-muted small mt-2" id="suri-meta"></div>
+                <div id="suri-result" class="alert d-none mt-3 py-2 small"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Live terminal -->
+    <div class="col-lg-7">
+        <div class="card shadow-sm border-0" style="border-radius:1rem; overflow:hidden;">
+            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                <h5 class="card-title m-0"><i class="fas fa-terminal me-2"></i> {{ t('ids.feed') }}</h5>
+                <div>
+                    <span class="badge bg-info" id="feed-count">0 lines</span>
+                    <button class="btn btn-sm btn-outline-light ms-1" id="btn-clear-term"><i class="fas fa-eraser"></i></button>
+                </div>
+            </div>
+            <div class="card-body p-2 bg-black">
+                <div class="term" id="suri-term"><span class="text-muted">Waiting for Suricata events… alerts are mirrored to the {{ brand }} Command Center.</span></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const sel = document.getElementById('iface-select');
+const term = document.getElementById('suri-term');
+const stateBadge = document.getElementById('suri-state-badge');
+const runDot = document.getElementById('run-dot');
+const runText = document.getElementById('run-text');
+const ifaceActive = document.getElementById('iface-active');
+const meta = document.getElementById('suri-meta');
+const installWarn = document.getElementById('suri-install-warn');
+const feedCount = document.getElementById('feed-count');
+let autoScroll = true;
+
+function showResult(msg, ok) {
+    const box = document.getElementById('suri-result');
+    box.className = 'alert mt-3 py-2 small ' + (ok ? 'alert-success' : 'alert-danger');
+    box.innerHTML = msg;
+    box.classList.remove('d-none');
+}
+
+async function loadInterfaces() {
+    sel.innerHTML = '<option>Loading…</option>';
+    try {
+        const r = await fetch('/api/network/interfaces');
+        const d = await r.json();
+        sel.innerHTML = '';
+        (d.interfaces || []).forEach(i => {
+            const opt = document.createElement('option');
+            opt.value = i.name;
+            const addr = i.addresses && i.addresses.length ? ' · ' + i.addresses[0] : '';
+            opt.textContent = `${i.name}${addr} ${i.is_up ? '🟢' : '⚪'}`;
+            sel.appendChild(opt);
+        });
+        if (!sel.options.length) sel.innerHTML = '<option value="">No interfaces found</option>';
+    } catch (e) {
+        sel.innerHTML = '<option value="">Failed to load interfaces</option>';
+    }
+}
+
+function renderStatus(s) {
+    if (!s) return;
+    installWarn.classList.toggle('d-none', s.installed !== false);
+    if (s.running) {
+        stateBadge.className = 'badge bg-success';
+        stateBadge.textContent = 'Running';
+        runDot.className = 'led-lg me-1';
+        runDot.style.background = '#2ecc71';
+        runDot.style.boxShadow = '0 0 8px #2ecc71';
+        runText.textContent = 'Running';
+        ifaceActive.textContent = s.interface || '—';
+        meta.innerHTML = `PID <code>${s.pid}</code> · started ${s.started_at ? new Date(s.started_at).toLocaleString() : '—'}`;
+    } else {
+        stateBadge.className = 'badge bg-secondary';
+        stateBadge.textContent = s.installed === false ? 'Not Installed' : 'Stopped';
+        runDot.className = 'led-lg bg-secondary me-1';
+        runDot.style.boxShadow = 'none';
+        runText.textContent = 'Stopped';
+        ifaceActive.textContent = '—';
+        meta.innerHTML = s.error ? `<span class="text-danger">${s.error}</span>` : '';
+    }
+}
+
+function renderLogs(logs) {
+    feedCount.textContent = `${logs.length} lines`;
+    if (!logs.length) return;
+    term.innerHTML = logs.map(l => {
+        let cls = '';
+        if (l.includes('ALERT')) cls = 'ln-alert';
+        else if (l.includes('started') || l.includes('stopped') || l.includes('STATS')) cls = 'ln-info';
+        else if (/\b(FLOW|HTTP|DNS|TLS)\b/.test(l)) cls = 'ln-flow';
+        const safe = l.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+        return `<span class="${cls}">${safe}</span>`;
+    }).join('\n');
+    if (autoScroll) term.scrollTop = term.scrollHeight;
+}
+
+async function pollSuricata() {
+    try {
+        const r = await fetch('/api/suricata/logs');
+        const d = await r.json();
+        renderStatus(d.status);
+        renderLogs(d.logs || []);
+    } catch (e) {}
+}
+
+document.getElementById('btn-suri-start').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    const fd = new FormData();
+    fd.append('interface', sel.value);
+    try {
+        const r = await fetch('/api/suricata/start', { method:'POST', body: fd });
+        const d = await r.json();
+        showResult(d.message, d.ok);
+        renderStatus(d.status);
+    } catch (e) { showResult('Failed to start Suricata.', false); }
+    btn.disabled = false;
+    pollSuricata();
+});
+
+document.getElementById('btn-suri-stop').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    try {
+        const r = await fetch('/api/suricata/stop', { method:'POST' });
+        const d = await r.json();
+        showResult(d.message, d.ok);
+        renderStatus(d.status);
+    } catch (e) { showResult('Failed to stop Suricata.', false); }
+    btn.disabled = false;
+    pollSuricata();
+});
+
+document.getElementById('btn-refresh-iface').addEventListener('click', loadInterfaces);
+document.getElementById('btn-clear-term').addEventListener('click', () => { term.innerHTML = ''; });
+term.addEventListener('scroll', () => {
+    autoScroll = (term.scrollTop + term.clientHeight >= term.scrollHeight - 20);
+});
+
+loadInterfaces();
+pollSuricata();
+setInterval(pollSuricata, 3000);
+</script>
+{% endblock %}

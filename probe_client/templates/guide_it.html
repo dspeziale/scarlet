@@ -1,0 +1,52 @@
+<section class="guide-section mb-4">
+    <h4>1. Cos'è questa sonda?</h4>
+    <p class="mt-3">Questa è una <strong>sonda {{ brand }}</strong> — un agente locale che monitora la rete in cui è installato e riporta in modo sicuro al Command Center {{ brand }} centrale. Una volta accoppiata viene pilotata da remoto dal server, ma puoi gestirla anche da questa interfaccia locale.</p>
+    <p>Il <strong>LED</strong> in alto mostra il collegamento al server: <span class="badge bg-success">verde</span> = online, <span class="badge bg-secondary">grigio/rosso</span> = irraggiungibile o non accoppiata. Usa il menu a bandierine per cambiare lingua e i controlli per tema / dimensione carattere.</p>
+</section>
+
+<section class="guide-section mb-4">
+    <h4>2. Accoppiamento (Dashboard)</h4>
+    <div class="card guide-card"><div class="card-body">
+        <div class="step"><div class="n">1</div><div>Nella <strong>Dashboard</strong>, inserisci un nome sonda e, opzionalmente, posizione e contatti.</div></div>
+        <div class="step"><div class="n">2</div><div>Inserisci il <strong>Nome Tenant</strong> e il <strong>Codice Licenza</strong> forniti dal tuo amministratore.</div></div>
+        <div class="step"><div class="n">3</div><div>Clicca <strong>Connetti al Server</strong>. Viene eseguito un handshake cifrato X25519/AES-GCM e la sonda diventa <span class="badge bg-success">Accoppiata e Protetta</span>.</div></div>
+        <div class="step"><div class="n">4</div><div>Da quel momento la sonda scansiona la rete automaticamente ogni 30 minuti e accetta comandi dal server.</div></div>
+    </div></div>
+    <p class="text-muted small mt-2"><i class="fas fa-triangle-exclamation me-1"></i> Il <strong>Ripristino di Fabbrica</strong> (Zona Pericolosa) cancella tutte le chiavi locali e l'accoppiamento — servirà un nuovo Codice Licenza per riconnettersi.</p>
+</section>
+
+<section class="guide-section mb-4">
+    <h4>3. Scanner di Rete</h4>
+    <p class="mt-3">In <strong>Scanner di Rete</strong> puoi impostare la subnet di destinazione (CIDR, es. <code>192.168.1.0/24</code>; lascia vuoto per il rilevamento automatico), forzare una scansione immediata e seguire i log di debug live. I dispositivi rilevati (IP, MAC, OS, porte aperte) sono cifrati e inviati agli Asset di Rete del server.</p>
+</section>
+
+<section class="guide-section mb-4">
+    <h4>4. Wireless (WiFi / BLE)</h4>
+    <p class="mt-3">La pagina <strong>Wireless</strong> scansiona gli access point WiFi vicini (SSID, canale, segnale, sicurezza) e i dispositivi BLE (nome, indirizzo). I risultati sono mostrati localmente e inoltrati al server. Il WiFi richiede un'interfaccia wireless; il BLE richiede un adattatore Bluetooth accessibile al container.</p>
+</section>
+
+<section class="guide-section mb-4">
+    <h4>5. Suricata IDS</h4>
+    <div class="card guide-card"><div class="card-body">
+        <div class="step"><div class="n">1</div><div>Scegli un'<strong>interfaccia di cattura</strong> (o lascia che il server scelga "auto").</div></div>
+        <div class="step"><div class="n">2</div><div>Clicca <strong>Avvia</strong>. La sonda scarica il ruleset attivo dal server e lancia Suricata.</div></div>
+        <div class="step"><div class="n">3</div><div>Il <strong>Feed Pacchetti / Eventi Live</strong> mostra flussi, DNS, TLS e alert in tempo reale; gli alert sono inviati al Monitor Minacce del server.</div></div>
+    </div></div>
+    <p class="text-muted small mt-2">Quali categorie di regole sono attive viene deciso centralmente sul server (pagina Regole IDS).</p>
+</section>
+
+<section class="guide-section mb-4">
+    <h4>6. Controllo remoto</h4>
+    <p class="mt-3">Tutto ciò che vedi qui può essere pilotato anche dalla <strong>Console Sonda</strong> del server: scansioni, avvio/arresto Suricata, configurazione, recupero log, cattura pacchetti, riavvio, self-update e ripristino di fabbrica. I comandi sensibili sono firmati crittograficamente.</p>
+</section>
+
+<section class="guide-section mb-4">
+    <h4>7. Risoluzione Problemi</h4>
+    <ul>
+        <li><strong>LED rosso / "Server Irraggiungibile"</strong> — verifica la connettività di rete verso l'URL del server configurato per il container.</li>
+        <li><strong>Suricata non parte</strong> — assicurati che il pacchetto sia installato e che il container abbia <code>NET_ADMIN/NET_RAW</code>; controlla il feed per l'errore.</li>
+        <li><strong>Nessun dispositivo BLE</strong> — il container necessita dell'accesso Bluetooth (privileged + D-Bus host, come nel compose incluso).</li>
+    </ul>
+</section>
+
+<p class="text-muted small text-center mt-4">{{ brand }} Probe · v1.4.8 · © 2026 DS Consulting</p>

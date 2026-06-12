@@ -1,0 +1,43 @@
+{% extends "admin/layout.html" %}
+
+{% block page_title %}{{ t('hdr.audit') }}{% endblock %}
+{% block content_header %}{{ t('hdr.audit') }}{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm border-0" style="border-radius:1rem; overflow:hidden;">
+    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+        <h3 class="card-title m-0"><i class="fas fa-clipboard-list me-2"></i> {{ t('hdr.audit') }}</h3>
+        <span class="badge bg-secondary">{{ logs|length }}</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover table-sm align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>{{ t('audit.time') }}</th>
+                        <th>{{ t('audit.actor') }}</th>
+                        <th>{{ t('audit.action') }}</th>
+                        <th>{{ t('audit.detail') }}</th>
+                        <th>IP</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for l in logs %}
+                    <tr>
+                        <td class="text-nowrap"><small>{{ l.ts.strftime('%Y-%m-%d %H:%M:%S') if l.ts else '—' }}</small></td>
+                        <td><small>{{ l.actor or '—' }}</small> {% if l.role %}<span class="badge bg-body-secondary text-body border">{{ l.role }}</span>{% endif %}</td>
+                        <td><span class="badge bg-{{ l.action_color }}">{{ l.action }}</span></td>
+                        <td><small class="text-muted">{{ l.detail or '' }}</small></td>
+                        <td><small class="font-monospace text-muted">{{ l.ip or '—' }}</small></td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="5" class="text-center text-muted py-5"><i class="fas fa-clipboard-list fa-2x mb-2 opacity-25 d-block"></i>{{ t('audit.empty') }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}<script>scarletAutoRefresh(20);</script>{% endblock %}

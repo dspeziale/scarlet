@@ -1,0 +1,353 @@
+{% extends "admin/layout.html" %}
+
+{% block page_title %}Network Assets{% endblock %}
+{% block content_header %}{{ t('hdr.assets') }}{% endblock %}
+
+{% block content %}
+<style>
+    .stat-pill { border:none; border-radius:.9rem; box-shadow:0 4px 14px rgba(0,0,0,.1); }
+    .stat-pill .v { font-size:1.8rem; font-weight:700; line-height:1; }
+    .stat-pill .l { font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; opacity:.7; }
+</style>
+
+<!-- Summary -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4 col-6">
+        <div class="card stat-pill"><div class="card-body d-flex justify-content-between align-items-center">
+            <div><div class="v">{{ summary.total }}</div><div class="l">Discovered Assets</div></div>
+            <i class="fas fa-network-wired fa-2x text-primary opacity-50"></i>
+        </div></div>
+    </div>
+    <div class="col-md-4 col-6">
+        <div class="card stat-pill"><div class="card-body d-flex justify-content-between align-items-center">
+            <div><div class="v text-secondary">{{ summary.services }}</div><div class="l">Open Services</div></div>
+            <i class="fas fa-plug fa-2x text-secondary opacity-50"></i>
+        </div></div>
+    </div>
+    <div class="col-md-4 col-6">
+        <div class="card stat-pill"><div class="card-body d-flex justify-content-between align-items-center">
+            <div><div class="v text-danger">{{ summary.vulnerable }}</div><div class="l">Vulnerable Assets</div></div>
+            <i class="fas fa-shield-virus fa-2x text-danger opacity-50"></i>
+        </div></div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0" style="border-radius:1rem; overflow:hidden;">
+    <div class="card-header bg-dark text-white">
+        <h3 class="card-title m-0"><i class="fas fa-server me-2"></i> {{ t('assets.title') }}</h3>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th><i class="fas fa-satellite-dish text-muted"></i> {{ t('assets.scanned_by') }}</th>
+                        <th>{{ t('assets.ip') }}</th>
+                        <th>{{ t('assets.mac') }}</th>
+                        <th>{{ t('assets.os_host') }}</th>
+                        <th>{{ t('assets.snmp') }}</th>
+                        <th>{{ t('assets.ports') }}</th>
+                        <th class="text-end">{{ t('lbl.actions') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for device in devices %}
+                    <tr>
+                        <td>
+                            <span class="badge bg-info text-dark d-block text-truncate" title="{{ device.probe.probe_name if device.probe else 'Unknown' }}">
+                                {{ device.probe.probe_name if device.probe else 'Unknown' }}
+                            </span>
+                            <small class="text-muted d-block mt-1">{{ device.last_seen.strftime('%Y-%m-%d %H:%M') }}</small>
+                        </td>
+                        <td><strong>{{ device.ip_address }}</strong></td>
+                        <td><small class="font-monospace text-muted">{{ device.mac_address or 'N/A' }}</small></td>
+                        <td>
+                            {{ device.os_info or 'Unknown OS' }}<br>
+                            <small class="text-muted">{{ device.hostname or '' }}</small>
+                        </td>
+                        <td>
+                            <small class="text-muted">{{ device.snmp_sys_descr[:50] + '...' if device.snmp_sys_descr and device.snmp_sys_descr|length > 50 else device.snmp_sys_descr or 'N/A' }}</small>
+                        </td>
+                        <td>
+                            <div class="d-flex flex-wrap gap-1">
+                            {% for srv in device.services %}
+                                <span class="badge bg-secondary" title="{{ srv.service_name }} {{ srv.service_version }}">{{ srv.port }}/{{ srv.protocol }}</span>
+                            {% else %}
+                                <span class="text-muted small">{{ t('assets.none') }}</span>
+                            {% endfor %}
+                            </div>
+                        </td>
+                        <td class="text-end">
+                            <form action="{{ url_for('admin.trigger_device_scan', device_id=device.id) }}" method="POST" class="d-inline">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Start Vulnerability Scan">
+                                    <i class="fas fa-shield-virus"></i> Scan
+                                </button>
+                            </form>
+                            {% if device.vulnerabilities %}
+                            <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#vulnModal{{ device.id }}">
+                                <i class="fas fa-exclamation-triangle"></i> Vulns
+                            </button>
+
+                            <!-- Vuln Modal -->
+                            <div class="modal fade text-start" id="vulnModal{{ device.id }}" tabindex="-1" aria-hidden="true">
+                                <div class="modal-dialog modal-xl">
+                                    <div class="modal-content">
+                                        <div class="modal-header bg-danger text-white">
+                                            <h5 class="modal-title"><i class="fas fa-shield-virus"></i> Vulnerability Report for {{ device.ip_address }}</h5>
+                                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body p-0">
+                                            <ul class="nav nav-tabs bg-light pt-2 px-2" id="vulnTab{{ device.id }}" role="tablist">
+                                                <li class="nav-item" role="presentation">
+                                                    <button class="nav-link active text-dark fw-bold" id="raw-tab-{{ device.id }}" data-bs-toggle="tab" data-bs-target="#raw-{{ device.id }}" type="button" role="tab"><i class="fas fa-table me-1"></i> Vulnerability Data</button>
+                                                </li>
+                                                <li class="nav-item" role="presentation">
+                                                    <button class="nav-link text-primary fw-bold" id="ai-tab-{{ device.id }}" data-bs-toggle="tab" data-bs-target="#ai-{{ device.id }}" type="button" role="tab"><i class="fas fa-robot me-1"></i> AI Analysis</button>
+                                                </li>
+                                                <li class="nav-item" role="presentation">
+                                                    <button class="nav-link text-danger fw-bold" id="cve-tab-{{ device.id }}" data-bs-toggle="tab" data-bs-target="#cve-{{ device.id }}" type="button" role="tab" onclick="loadCves('{{ device.id }}')"><i class="fas fa-bug me-1"></i> CVE Intelligence</button>
+                                                </li>
+                                            </ul>
+                                            <div class="tab-content" id="vulnTabContent{{ device.id }}">
+                                                <div class="tab-pane fade show active p-3" id="raw-{{ device.id }}" role="tabpanel">
+                                                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                                                        <table class="table table-striped table-bordered table-sm">
+                                                            <thead class="table-dark">
+                                                                <tr>
+                                                                    <th>Port / Service</th>
+                                                                    <th>Script Name</th>
+                                                                    <th>Output Details</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                {% if device.vulnerabilities is mapping %}
+                                                                    {% for port, scripts in device.vulnerabilities.items() %}
+                                                                        {% if scripts is mapping %}
+                                                                            {% for script_name, output in scripts.items() %}
+                                                                                <tr>
+                                                                                    <td><span class="badge bg-secondary">{{ port }}</span></td>
+                                                                                    <td><span class="badge bg-danger">{{ script_name }}</span></td>
+                                                                                    <td style="white-space: pre-wrap; font-size: 0.85rem;">{{ output }}</td>
+                                                                                </tr>
+                                                                            {% endfor %}
+                                                                        {% elif port == 'error' or port == 'message' %}
+                                                                            <tr>
+                                                                                <td colspan="3" class="text-center text-muted"><strong>{{ port | title }}:</strong> {{ scripts }}</td>
+                                                                            </tr>
+                                                                        {% else %}
+                                                                            <tr>
+                                                                                <td><span class="badge bg-secondary">{{ port }}</span></td>
+                                                                                <td colspan="2" style="white-space: pre-wrap; font-size: 0.85rem;">{{ scripts }}</td>
+                                                                            </tr>
+                                                                        {% endif %}
+                                                                    {% endfor %}
+                                                                {% else %}
+                                                                    <tr>
+                                                                        <td colspan="3"><pre class="mb-0">{{ device.vulnerabilities }}</pre></td>
+                                                                    </tr>
+                                                                {% endif %}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                                <div class="tab-pane fade p-3" id="ai-{{ device.id }}" role="tabpanel">
+                                                    <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                                                        <h5 class="m-0 text-primary"><i class="fas fa-magic me-1"></i> Groq AI Security Report</h5>
+                                                        <button class="btn btn-sm btn-primary" onclick="analyzeVulns('{{ device.id }}')">
+                                                            <i class="fas fa-bolt me-1"></i> Generate Analysis
+                                                        </button>
+                                                    </div>
+                                                    <div id="ai-loading-{{ device.id }}" class="text-center py-5 d-none">
+                                                        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
+                                                        <p class="mt-3 text-muted">Groq is analyzing the vulnerabilities. Please wait...</p>
+                                                    </div>
+                                                    <div id="ai-error-{{ device.id }}" class="alert alert-danger d-none"></div>
+                                                    <div id="ai-result-{{ device.id }}" class="markdown-body p-2" style="max-height: 400px; overflow-y: auto;">
+                                                        <div class="text-center text-muted py-5">
+                                                            <i class="fas fa-robot fa-3x mb-3 text-secondary opacity-50"></i>
+                                                            <p>Click "Generate Analysis" to get an AI-powered executive summary and remediation steps.</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="tab-pane fade p-3" id="cve-{{ device.id }}" role="tabpanel">
+                                                    <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                                                        <h5 class="m-0 text-danger"><i class="fas fa-shield-alt me-1"></i> CVE Intelligence Database</h5>
+                                                    </div>
+                                                    <script type="application/json" id="raw-json-{{ device.id }}">
+                                                        {{ device.vulnerabilities | tojson if device.vulnerabilities is mapping else device.vulnerabilities }}
+                                                    </script>
+                                                    <div id="cve-container-{{ device.id }}" style="max-height: 400px; overflow-y: auto;">
+                                                        <div class="text-center text-muted py-5">
+                                                            <div class="spinner-border text-danger mb-3" role="status"></div>
+                                                            <p>Scanning vulnerabilities for CVE codes...</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer bg-light">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-5">
+                            <i class="fas fa-search fa-2x mb-2 opacity-25 d-block"></i>
+                            No devices discovered yet. Ensure a probe is paired and scanning the network.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+function analyzeVulns(deviceId) {
+    const btn = event.currentTarget;
+    const loadingDiv = document.getElementById('ai-loading-' + deviceId);
+    const resultDiv = document.getElementById('ai-result-' + deviceId);
+    const errorDiv = document.getElementById('ai-error-' + deviceId);
+
+    btn.disabled = true;
+    loadingDiv.classList.remove('d-none');
+    resultDiv.classList.add('d-none');
+    errorDiv.classList.add('d-none');
+
+    fetch(`/admin/device/analyze_vulns/${deviceId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin'
+    })
+    .then(response => {
+        if (!response.ok && response.status === 401) {
+            throw new Error("Unauthorized: Please log in again.");
+        }
+        return response.json().then(data => ({status: response.status, body: data}));
+    })
+    .then(res => {
+        btn.disabled = false;
+        loadingDiv.classList.add('d-none');
+        if (res.status === 200 && res.body.markdown) {
+            resultDiv.innerHTML = marked.parse(res.body.markdown);
+            resultDiv.classList.remove('d-none');
+        } else {
+            errorDiv.innerText = res.body.error || 'An unexpected error occurred.';
+            errorDiv.classList.remove('d-none');
+            resultDiv.classList.remove('d-none');
+        }
+    })
+    .catch(error => {
+        console.error("Fetch Error:", error);
+        btn.disabled = false;
+        loadingDiv.classList.add('d-none');
+        errorDiv.innerText = error.message.includes('Unexpected token') ? 'Server returned invalid response (maybe you need to log in again).' : (error.message || 'Network error or server unreachable. Please try again.');
+        errorDiv.classList.remove('d-none');
+        resultDiv.classList.remove('d-none');
+    });
+}
+
+function loadCves(deviceId) {
+    const container = document.getElementById('cve-container-' + deviceId);
+    if (container.getAttribute('data-loaded') === 'true') return;
+
+    const rawJsonInput = document.getElementById('raw-json-' + deviceId);
+    if (!rawJsonInput || !rawJsonInput.textContent) {
+        container.innerHTML = '<div class="alert alert-warning">No raw vulnerability data found.</div>';
+        return;
+    }
+
+    const rawText = rawJsonInput.textContent;
+    const cveRegex = /CVE-\d{4}-\d+/gi;
+    const matches = rawText.match(cveRegex);
+
+    if (!matches || matches.length === 0) {
+        container.innerHTML = '<div class="alert alert-info"><i class="fas fa-check-circle me-2"></i> No specific CVE codes were found in the vulnerability scan output.</div>';
+        container.setAttribute('data-loaded', 'true');
+        return;
+    }
+
+    const uniqueCves = [...new Set(matches)].map(cve => cve.toUpperCase());
+    container.innerHTML = `<div class="mb-3 text-muted">Found <strong>${uniqueCves.length}</strong> unique CVEs. Fetching intelligence data...</div>`;
+
+    let html = '<div class="accordion" id="cveAccordion-' + deviceId + '">';
+    uniqueCves.forEach((cve) => {
+        html += `
+        <div class="accordion-item mb-2 border rounded" id="card-${deviceId}-${cve}">
+            <h2 class="accordion-header" id="heading-${deviceId}-${cve}">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-${deviceId}-${cve}">
+                    <span class="spinner-border spinner-border-sm me-2 text-primary" role="status" id="spinner-${deviceId}-${cve}"></span>
+                    <strong>${cve}</strong>
+                    <span class="badge bg-secondary ms-2" id="badge-${deviceId}-${cve}">Loading...</span>
+                </button>
+            </h2>
+            <div id="collapse-${deviceId}-${cve}" class="accordion-collapse collapse" data-bs-parent="#cveAccordion-${deviceId}">
+                <div class="accordion-body" id="body-${deviceId}-${cve}">
+                    <p class="text-muted placeholder-glow"><span class="placeholder col-12"></span><span class="placeholder col-8"></span></p>
+                </div>
+            </div>
+        </div>`;
+    });
+    html += '</div>';
+
+    container.innerHTML += html;
+    container.setAttribute('data-loaded', 'true');
+
+    const fetchCveSequentially = async () => {
+        for (const cve of uniqueCves) {
+            try {
+                const response = await fetch(`/admin/cve/fetch/${cve}`);
+                const data = await response.json();
+
+                const spinner = document.getElementById(`spinner-${deviceId}-${cve}`);
+                const badge = document.getElementById(`badge-${deviceId}-${cve}`);
+                const body = document.getElementById(`body-${deviceId}-${cve}`);
+
+                if (spinner) spinner.classList.add('d-none');
+
+                if (response.ok) {
+                    badge.className = `badge bg-${data.badge_color} ms-2`;
+                    badge.innerText = `CVSS: ${data.cvss_score || 'N/A'} | ${data.severity}`;
+                    body.innerHTML = `
+                        ${data.stale ? `<div class="alert alert-warning py-2 mb-2"><i class="fas fa-exclamation-triangle me-1"></i> ${data.note || 'Dati non aggiornati.'}</div>` : ''}
+                        <p>${data.description}</p>
+                        <div class="mt-2">
+                            <a href="https://nvd.nist.gov/vuln/detail/${data.id}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fas fa-external-link-alt me-1"></i> View on NVD</a>
+                            ${data.cached ? '<span class="badge bg-light text-dark border ms-2"><i class="fas fa-database me-1"></i> Loaded from Cache</span>' : ''}
+                            ${data.stale ? '<span class="badge bg-warning text-dark ms-2"><i class="fas fa-clock me-1"></i> Dati non aggiornati</span>' : ''}
+                            ${data.refreshed ? '<span class="badge bg-success ms-2"><i class="fas fa-sync me-1"></i> Aggiornato dal NIST</span>' : ''}
+                        </div>
+                    `;
+                } else {
+                    badge.className = 'badge bg-secondary ms-2';
+                    badge.innerText = 'Error';
+                    body.innerHTML = `<div class="alert alert-danger m-0 py-2">${data.error || 'Failed to fetch CVE data'}</div>`;
+                }
+            } catch (err) {
+                const spinner = document.getElementById(`spinner-${deviceId}-${cve}`);
+                const badge = document.getElementById(`badge-${deviceId}-${cve}`);
+                if (spinner) spinner.classList.add('d-none');
+                if (badge) {
+                    badge.className = 'badge bg-secondary ms-2';
+                    badge.innerText = 'Network Error';
+                }
+            }
+            await new Promise(r => setTimeout(r, 1000));
+        }
+    };
+
+    fetchCveSequentially();
+}
+
+scarletAutoRefresh(15);
+</script>
+{% endblock %}

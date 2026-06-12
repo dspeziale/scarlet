@@ -1,0 +1,190 @@
+<div class="row">
+    <div class="col-lg-3 d-none d-lg-block">
+        <div class="guide-toc">
+            <div class="card guide-card">
+                <div class="card-header bg-dark text-white py-2"><i class="fas fa-list me-1"></i> Indice</div>
+                <div class="list-group list-group-flush">
+                    <a class="list-group-item list-group-item-action" href="#overview">1. Panoramica</a>
+                    <a class="list-group-item list-group-item-action" href="#start">2. Primi Passi</a>
+                    <a class="list-group-item list-group-item-action" href="#probe">3. Distribuire &amp; Accoppiare una Sonda</a>
+                    <a class="list-group-item list-group-item-action" href="#dashboard">4. Dashboard &amp; Tenant</a>
+                    <a class="list-group-item list-group-item-action" href="#fleet">5. Flotta &amp; Controllo Remoto</a>
+                    <a class="list-group-item list-group-item-action" href="#assets">6. Asset di Rete &amp; Vulnerabilità</a>
+                    <a class="list-group-item list-group-item-action" href="#ids">7. Suricata IDS &amp; Regole</a>
+                    <a class="list-group-item list-group-item-action" href="#threats">8. Monitor &amp; Threat Intelligence</a>
+                    <a class="list-group-item list-group-item-action" href="#wireless">9. Wireless (WiFi/BLE)</a>
+                    <a class="list-group-item list-group-item-action" href="#notify">10. Notifiche &amp; Report</a>
+                    <a class="list-group-item list-group-item-action" href="#billing">11. Fatturazione</a>
+                    <a class="list-group-item list-group-item-action" href="#settings">12. Impostazioni</a>
+                    <a class="list-group-item list-group-item-action" href="#security">13. Modello di Sicurezza</a>
+                    <a class="list-group-item list-group-item-action" href="#faq">14. Risoluzione Problemi</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-9">
+        <section id="overview" class="guide-section mb-5">
+            <h3>1. Panoramica</h3>
+            <p class="mt-3"><strong>{{ brand }}</strong> è una piattaforma multi-tenant di monitoraggio di rete e sicurezza. Leggere <strong>sonde</strong> installate nelle reti dei clienti rilevano asset, eseguono scansioni di vulnerabilità, rilevamento intrusioni (Suricata) e scansioni wireless (WiFi/BLE). Tutto viene riportato a questo <strong>Command Center</strong> centrale tramite un canale cifrato end-to-end.</p>
+            <div class="card guide-card"><div class="card-body">
+                <h6 class="text-uppercase text-muted fw-bold" style="font-size:.78rem;">Come è composto</h6>
+                <ul class="mb-0">
+                    <li><strong>Server (questa app)</strong> — gira serverless (Vercel) su database PostgreSQL. Gestisce tenant, sonde, dati e comandi remoti.</li>
+                    <li><strong>Sonda</strong> — un agente containerizzato nella rete del cliente. Si accoppia con un Codice Licenza, poi è pilotabile interamente dal server.</li>
+                    <li><strong>Cifratura</strong> — scambio chiavi X25519 + AES-256-GCM per tutti i dati sonda⇄server.</li>
+                </ul>
+            </div></div>
+        </section>
+
+        <section id="start" class="guide-section mb-5">
+            <h3>2. Primi Passi</h3>
+            <p class="mt-3">L'accesso avviene con <strong>email + password</strong>. Esistono due ruoli:</p>
+            <ul>
+                <li><strong>Superadmin</strong> — vede e gestisce tutto su tutti i tenant, più le pagine di Sistema (Impostazioni, Regole IDS, Stato Sistema).</li>
+                <li><strong>Tenant admin</strong> — vede solo sonde, asset e minacce del proprio tenant.</li>
+            </ul>
+            <div class="card guide-card"><div class="card-body">
+                <h6 class="fw-bold">Configurazione iniziale (superadmin)</h6>
+                <div class="step"><div class="n">1</div><div>Vai su <strong>Tenant &amp; Licenze</strong> → crea un <strong>Tenant</strong> (il cliente).</div></div>
+                <div class="step"><div class="n">2</div><div>Genera uno o più <strong>Codici Licenza</strong> per quel tenant (uno per sonda).</div></div>
+                <div class="step"><div class="n">3</div><div>Opzionalmente crea un utente <strong>Tenant Admin</strong> (email + password) per il cliente.</div></div>
+            </div></div>
+        </section>
+
+        <section id="probe" class="guide-section mb-5">
+            <h3>3. Distribuire &amp; Accoppiare una Sonda</h3>
+            <div class="card guide-card"><div class="card-body">
+                <div class="step"><div class="n">1</div><div>Avvia il container della sonda su una macchina nella rete di destinazione (<span class="cmd-tag">docker compose up -d</span>). Espone una UI locale sulla porta <kbd>5001</kbd>.</div></div>
+                <div class="step"><div class="n">2</div><div>Apri la UI della sonda → <strong>Dashboard</strong> → compila il modulo di registrazione: nome sonda, posizione/contatti opzionali, <strong>Nome Tenant</strong> e <strong>Codice Licenza</strong>.</div></div>
+                <div class="step"><div class="n">3</div><div>Clicca <strong>Connetti</strong>. La sonda esegue l'handshake cifrato e diventa <span class="badge bg-success">Accoppiata</span>. Il <strong>LED</strong> verde in alto conferma che è online con il server.</div></div>
+                <div class="step"><div class="n">4</div><div>La sonda compare ora nella <strong>Flotta Sonde</strong> sul server e inizia la scansione automatica della rete ogni 30 min.</div></div>
+            </div></div>
+            <p class="mt-2 text-muted small"><i class="fas fa-info-circle me-1"></i> Per WiFi/BLE e Suricata il container della sonda necessita di privilegi di rete/Bluetooth (forniti nel <span class="cmd-tag">docker-compose.yml</span> incluso).</p>
+        </section>
+
+        <section id="dashboard" class="guide-section mb-5">
+            <h3>4. Dashboard &amp; Contesto Tenant</h3>
+            <p class="mt-3">La <strong>Dashboard</strong> mostra KPI live (sonde online, asset, servizi aperti, asset vulnerabili, dati acquisiti) e una mappa geografica delle sonde.</p>
+            <div class="card guide-card"><div class="card-body">
+                <i class="fas fa-building text-danger me-1"></i> <strong>Selettore tenant attivo</strong> (barra superiore, superadmin): scegli un tenant per limitare <em>ogni</em> pagina ad esso, oppure "Tutti i Tenant". I tenant admin sono sempre limitati al proprio tenant, mostrato come badge rosso.
+            </div></div>
+        </section>
+
+        <section id="fleet" class="guide-section mb-5">
+            <h3>5. Flotta Sonde &amp; Controllo Remoto</h3>
+            <p class="mt-3">La <strong>Flotta Sonde</strong> elenca ogni sonda con stato, raggiungibilità, numero di asset, stato IDS e un avvio/arresto rapido di Suricata. Clicca il pulsante <i class="fas fa-terminal"></i> <strong>Console</strong> per pilotare completamente una sonda.</p>
+            <div class="card guide-card"><div class="card-body">
+                <h6 class="fw-bold">Console Sonda — comandi disponibili</h6>
+                <div class="row">
+                    <div class="col-md-6"><ul class="mb-0">
+                        <li><span class="cmd-tag">scan_network</span> — rilevamento completo della rete</li>
+                        <li><span class="cmd-tag">vuln_scan</span> — scansione vulnerabilità di un IP</li>
+                        <li><span class="cmd-tag">scan_wifi</span> / <span class="cmd-tag">scan_ble</span> — scansioni wireless</li>
+                        <li><span class="cmd-tag">suricata_start/stop</span> — controllo IDS</li>
+                        <li><span class="cmd-tag">suricata_reload_rules</span> — risincronizza regole</li>
+                    </ul></div>
+                    <div class="col-md-6"><ul class="mb-0">
+                        <li><span class="cmd-tag">set_scan_config</span> — imposta la subnet</li>
+                        <li><span class="cmd-tag">get_logs</span> / <span class="cmd-tag">get_status</span> — diagnostica</li>
+                        <li><span class="cmd-tag">capture_pcap</span> — cattura N pacchetti</li>
+                        <li><span class="cmd-tag">self_update</span> / <span class="cmd-tag">restart_agent</span></li>
+                        <li><span class="cmd-tag">factory_reset</span> — azzera accoppiamento (firmato)</li>
+                    </ul></div>
+                </div>
+            </div></div>
+            <p class="mt-2">I comandi vengono accodati e prelevati in pochi secondi (l'heartbeat accelera quando ci sono comandi in attesa). La <strong>timeline dei comandi</strong> mostra stato ed esito di ognuno. I comandi sensibili sono firmati crittograficamente. Usa i pulsanti di flotta nella pagina <strong>Wireless</strong> per comandare tutte le sonde insieme.</p>
+        </section>
+
+        <section id="assets" class="guide-section mb-5">
+            <h3>6. Asset di Rete &amp; Vulnerabilità</h3>
+            <p class="mt-3">La pagina <strong>Asset di Rete</strong> elenca ogni dispositivo rilevato: IP, MAC, OS, hostname, SNMP, porte/servizi aperti.</p>
+            <ul>
+                <li><strong>Scansiona</strong> — esegue una scansione vulnerabilità Nmap (<span class="cmd-tag">--script vuln</span>) su quel dispositivo.</li>
+                <li><strong>Vulns</strong> → finestra con tre schede:
+                    <ul>
+                        <li><em>Dati Vulnerabilità</em> — output grezzo della scansione.</li>
+                        <li><em>Analisi AI</em> — report di sicurezza generato da Groq (richiede una chiave Groq nelle Impostazioni).</li>
+                        <li><em>CVE Intelligence</em> — arricchimento NVD live per ogni CVE, con cache auto-aggiornante.</li>
+                    </ul>
+                </li>
+            </ul>
+        </section>
+
+        <section id="ids" class="guide-section mb-5">
+            <h3>7. Suricata IDS &amp; Regole</h3>
+            <p class="mt-3">Avvia/ferma Suricata per ogni sonda dalla Flotta o dalla Console (l'interfaccia "auto" seleziona la migliore NIC fisica). Gli alert vengono inviati al Monitor Minacce.</p>
+            <div class="card guide-card"><div class="card-body">
+                <h6 class="fw-bold"><i class="fas fa-list-check me-1"></i> Regole IDS (superadmin)</h6>
+                <div class="step"><div class="n">1</div><div><strong>Scarica &amp; Prepara</strong> un ruleset da un URL (default: Emerging Threats Open). Supporta <span class="cmd-tag">.rules</span> e <span class="cmd-tag">.tar.gz</span>.</div></div>
+                <div class="step"><div class="n">2</div><div>Scegli un <strong>Template di Detection</strong> (Malware &amp; C2, Network Recon, Web Attacks, Exploit, Policy, o Full Coverage) per abilitare istantaneamente le categorie corrispondenti.</div></div>
+                <div class="step"><div class="n">3</div><div>Affina le <strong>Categorie di Regole Attive</strong> con le checkbox. Le sonde scaricano <em>solo</em> il sottoinsieme attivo al successivo avvio di Suricata.</div></div>
+            </div></div>
+        </section>
+
+        <section id="threats" class="guide-section mb-5">
+            <h3>8. Monitor Minacce &amp; Threat Intelligence</h3>
+            <ul class="mt-3">
+                <li><strong>Monitor Minacce</strong> — un feed terminale live degli eventi IDS (alert, flussi, DNS, TLS) trasmessi dalla flotta.</li>
+                <li><strong>Threat Intelligence</strong> — analisi aggregate: top signature, top IP sorgente/destinazione, distribuzione severità, più un <strong>Briefing AI delle Minacce</strong> (Groq) che interpreta la telemetria in intelligence azionabile.</li>
+            </ul>
+        </section>
+
+        <section id="wireless" class="guide-section mb-5">
+            <h3>9. Wireless (WiFi / BLE)</h3>
+            <p class="mt-3">La pagina <strong>Wireless</strong> mostra gli access point WiFi rilevati (SSID, canale, segnale, sicurezza) e i dispositivi BLE (nome, indirizzo). Avvia scansioni sull'intera flotta con i pulsanti <strong>Scansiona WiFi / Scansiona BLE</strong>, o per singola sonda dalla Console. I risultati sono deduplicati e memorizzati come il discovery dei nodi. Le sonde possono anche scansionare localmente dalla propria pagina <strong>Wireless</strong>.</p>
+        </section>
+
+        <section id="notify" class="guide-section mb-5">
+            <h3>10. Notifiche &amp; Report</h3>
+            <ul class="mt-3">
+                <li><strong>Telegram &amp; Gmail</strong> — configura un token bot e un indirizzo Gmail + App Password in <strong>Impostazioni → Notifiche</strong>, poi usa i pulsanti di test.</li>
+                <li><strong>Report PDF</strong> — dalla <strong>Fatturazione</strong>, scarica un report di sicurezza per tenant (flotta, asset, alert, costi) o invialo come allegato email.</li>
+            </ul>
+        </section>
+
+        <section id="billing" class="guide-section mb-5">
+            <h3>11. Fatturazione &amp; Rendicontazione</h3>
+            <p class="mt-3">Ogni tenant ha una <strong>quota fissa</strong> più una tariffazione <strong>a consumo</strong> (per sonda, asset, scansione, alert IDS). La pagina <strong>Fatturazione</strong> calcola consumo corrente e totale stimato dai dati reali; i superadmin possono modificare prezzi e valuta per ogni tenant.</p>
+        </section>
+
+        <section id="settings" class="guide-section mb-5">
+            <h3>12. Impostazioni (superadmin)</h3>
+            <p class="mt-3">Organizzate in schede: <strong>Analisi AI</strong> (Groq + provider alternativi), <strong>Vulnerability Intel</strong> (chiave NVD, validità cache CVE) e <strong>Notifiche</strong> (Telegram/Gmail + test). <strong>Stato Sistema</strong> mostra stato DB, versioni runtime e conteggi record.</p>
+        </section>
+
+        <section id="security" class="guide-section mb-5">
+            <h3>13. Modello di Sicurezza</h3>
+            <ul class="mt-3">
+                <li><strong>Accoppiamento</strong> — handshake ECDH X25519 con challenge; Codici Licenza monouso.</li>
+                <li><strong>Canale dati</strong> — AES-256-GCM con chiave di sessione per ogni sonda (dati di scansione, eventi IDS, risultati wireless).</li>
+                <li><strong>Comandi</strong> — i comandi sensibili (factory reset, restart, self-update) sono firmati HMAC, a tempo limitato e protetti da replay.</li>
+                <li><strong>Isolamento</strong> — ogni pagina e query è limitata al tenant.</li>
+            </ul>
+        </section>
+
+        <section id="faq" class="guide-section mb-5">
+            <h3>14. Risoluzione Problemi</h3>
+            <div class="accordion" id="faqAcc">
+                <div class="accordion-item">
+                    <h2 class="accordion-header"><button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#faq1">Suricata non parte dal server</button></h2>
+                    <div id="faq1" class="accordion-collapse collapse" data-bs-parent="#faqAcc"><div class="accordion-body">Scegli un'interfaccia valida o "auto". Controlla la timeline della <strong>Console</strong> della sonda — l'esito del comando mostra il motivo esatto (es. Suricata non installato, permessi mancanti). La sonda richiede <span class="cmd-tag">NET_ADMIN/NET_RAW</span>.</div></div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header"><button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#faq2">Non compaiono alert IDS</button></h2>
+                    <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAcc"><div class="accordion-body">Assicurati che un ruleset sia preparato in <strong>Regole IDS</strong> con almeno una categoria attiva, poi avvia Suricata così la sonda scarica le regole attive. Flussi/DNS compaiono anche senza regole; gli alert richiedono regole + traffico corrispondente.</div></div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header"><button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#faq3">Ho inviato un comando ma non succede nulla</button></h2>
+                    <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAcc"><div class="accordion-body">I comandi vengono consegnati al prossimo heartbeat (pochi secondi). Apri la <strong>Console</strong> della sonda per vedere il comando passare da pending → running → done, con il suo esito. La sonda deve essere online (LED verde).</div></div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header"><button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#faq4">La scansione BLE non restituisce nulla</button></h2>
+                    <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#faqAcc"><div class="accordion-body">L'host della sonda necessita di un adattatore Bluetooth e il container deve avervi accesso (privileged + D-Bus host, come nel compose incluso). Il WiFi richiede un'interfaccia wireless e lo strumento <span class="cmd-tag">iw</span>.</div></div>
+                </div>
+            </div>
+        </section>
+
+        <p class="text-muted small text-center mt-4">{{ brand }} Command Center · v1.4.8 · © 2026 DS Consulting</p>
+    </div>
+</div>

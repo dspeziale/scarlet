@@ -1,0 +1,77 @@
+{% extends "admin/layout.html" %}
+
+{% block page_title %}System Health{% endblock %}
+{% block content_header %}{{ t('hdr.system') }}{% endblock %}
+
+{% block content %}
+<style>
+    .info-card { border:none; border-radius:1rem; box-shadow:0 4px 14px rgba(0,0,0,.1); }
+    .kv { display:flex; justify-content:space-between; padding:.5rem 0; border-bottom:1px dashed rgba(128,128,128,.2); }
+    .kv:last-child { border-bottom:none; }
+    .kv .k { color:var(--text-muted, #888); font-size:.85rem; }
+    .kv .v { font-weight:600; font-family:monospace; text-align:right; word-break:break-all; }
+    .health-hero { border:none; border-radius:1rem; color:#fff; box-shadow:0 10px 30px rgba(0,0,0,.2); }
+    .h-ok  { background:linear-gradient(135deg,#11998e,#38ef7d); }
+    .h-bad { background:linear-gradient(135deg,#cb2d3e,#ef473a); }
+    .count-box { border-radius:1rem; border:none; box-shadow:0 4px 14px rgba(0,0,0,.1); }
+    .count-box .n { font-size:2rem; font-weight:700; line-height:1; }
+    .count-box .t { font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; opacity:.7; }
+</style>
+
+<!-- Health hero -->
+<div class="card health-hero {{ 'h-ok' if info.db_ok else 'h-bad' }} mb-4">
+    <div class="card-body p-4 d-flex align-items-center">
+        <i class="fas {{ 'fa-circle-check' if info.db_ok else 'fa-triangle-exclamation' }} fa-3x me-4"></i>
+        <div>
+            <h2 class="fw-bold mb-1">{{ 'All Systems Operational' if info.db_ok else 'Database Unreachable' }}</h2>
+            <div style="opacity:.9;">
+                <i class="fas fa-clock me-1"></i> Server time: {{ info.server_time }}
+                {% if not info.db_ok %}<br><i class="fas fa-bug me-1"></i> {{ info.db_error }}{% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Record counts -->
+<div class="row g-3 mb-4">
+    {% set boxes = [('Tenants','building','primary', info.counts.tenants), ('Probes','satellite-dish','success', info.counts.probes), ('Devices','network-wired','warning', info.counts.devices), ('Users','users','info', info.counts.users)] %}
+    {% for label, icon, color, n in boxes %}
+    <div class="col-md-3 col-6">
+        <div class="card count-box h-100"><div class="card-body d-flex justify-content-between align-items-center">
+            <div><div class="n text-{{ color }}">{{ n if n is not none else '—' }}</div><div class="t">{{ label }}</div></div>
+            <i class="fas fa-{{ icon }} fa-2x text-{{ color }} opacity-25"></i>
+        </div></div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="row g-4">
+    <!-- Runtime -->
+    <div class="col-lg-6">
+        <div class="card info-card h-100">
+            <div class="card-header bg-body-secondary border-0"><h5 class="m-0"><i class="fas fa-microchip text-primary me-2"></i> Runtime</h5></div>
+            <div class="card-body">
+                <div class="kv"><span class="k">Python</span><span class="v">{{ info.python_version }}</span></div>
+                <div class="kv"><span class="k">Flask</span><span class="v">{{ info.flask_version }}</span></div>
+                <div class="kv"><span class="k">SQLAlchemy</span><span class="v">{{ info.sqlalchemy_version }}</span></div>
+                <div class="kv"><span class="k">Platform</span><span class="v">{{ info.platform }}</span></div>
+                <div class="kv"><span class="k">Debug Mode</span><span class="v">{% if info.debug %}<span class="badge bg-warning text-dark">ON</span>{% else %}<span class="badge bg-success">OFF</span>{% endif %}</span></div>
+                <div class="kv"><span class="k">App Version</span><span class="v"><span class="badge bg-danger">v1.4.8</span></span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Database -->
+    <div class="col-lg-6">
+        <div class="card info-card h-100">
+            <div class="card-header bg-body-secondary border-0"><h5 class="m-0"><i class="fas fa-database text-success me-2"></i> Database</h5></div>
+            <div class="card-body">
+                <div class="kv"><span class="k">Status</span><span class="v">{% if info.db_ok %}<span class="badge bg-success">Connected</span>{% else %}<span class="badge bg-danger">Down</span>{% endif %}</span></div>
+                <div class="kv"><span class="k">Dialect</span><span class="v">{{ info.db_dialect }}</span></div>
+                <div class="kv"><span class="k">Host</span><span class="v">{{ info.db_host }}</span></div>
+                {% if info.db_version %}<div class="kv"><span class="k">Engine</span><span class="v" style="font-size:.75rem;">{{ info.db_version }}</span></div>{% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

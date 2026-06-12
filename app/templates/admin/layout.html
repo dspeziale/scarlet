@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ brand }} | {% block page_title %}Admin{% endblock %}</title>
+
+    <!-- Google Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- AdminLTE v4/Bootstrap 5 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@4.0.0-alpha2/dist/css/adminlte.min.css">
+
+    <style>
+        :root { --scarlet: #ff2a5f; --scarlet-dark: #d11f49; }
+        body { font-family: 'Outfit', sans-serif; transition: font-size 0.2s ease; }
+
+        /* ---- Brand / logo fix ---- */
+        .app-sidebar .brand-link {
+            display: flex; align-items: center; gap: .6rem;
+            padding: .9rem 1rem; border-bottom: 1px solid rgba(255,255,255,.08);
+            text-decoration: none;
+        }
+        .brand-badge {
+            width: 38px; height: 38px; flex: 0 0 38px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--scarlet) 0%, var(--scarlet-dark) 100%);
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 1.1rem;
+            box-shadow: 0 3px 10px rgba(255,42,95,.4);
+        }
+        .brand-text { font-weight: 800; letter-spacing: 1px; line-height: 1; }
+        .brand-text small { display:block; font-weight:400; letter-spacing:.5px; opacity:.6; font-size:.62rem; text-transform:uppercase; }
+
+        /* ---- Sidebar nav polish ---- */
+        .sidebar-menu .nav-link.active {
+            background: linear-gradient(90deg, rgba(255,42,95,.18), transparent);
+            border-left: 3px solid var(--scarlet);
+        }
+        .sidebar-menu .nav-icon { width: 1.4rem; text-align: center; }
+        .nav-header { letter-spacing: .08em; font-size: .68rem; opacity:.55; }
+
+        /* ---- Header accent ---- */
+        .app-content-header h3 { font-weight: 700; }
+        .accent-bar { height: 3px; width: 48px; background: var(--scarlet); border-radius: 2px; margin-top: .25rem; }
+    </style>
+    {% block head_extra %}{% endblock %}
+</head>
+<body class="layout-fixed sidebar-expand-lg bg-body-tertiary">
+<div class="app-wrapper">
+    <!-- Navbar -->
+    <nav class="app-header navbar navbar-expand bg-body">
+        <div class="container-fluid">
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link" data-lte-toggle="sidebar" href="#" role="button"><i class="fas fa-bars"></i></a>
+                </li>
+                <li class="nav-item d-none d-md-block">
+                    <a href="/" target="_blank" class="nav-link"><i class="fas fa-arrow-up-right-from-square me-1"></i> {{ t('top.view_site') }}</a>
+                </li>
+                <!-- Active tenant context -->
+                <li class="nav-item ms-2 d-flex align-items-center">
+                    {% if current_user.role == 'superadmin' %}
+                    <div class="dropdown">
+                        <button class="btn btn-sm dropdown-toggle d-flex align-items-center gap-2 {{ 'btn-danger' if active_tenant else 'btn-outline-secondary' }}" data-bs-toggle="dropdown">
+                            <i class="fas fa-building"></i>
+                            <span>{{ active_tenant.name if active_tenant else t('top.all_tenants') }}</span>
+                        </button>
+                        <ul class="dropdown-menu" style="max-height:320px; overflow-y:auto;">
+                            <li>
+                                <form method="POST" action="{{ url_for('admin.set_tenant') }}">
+                                    <button class="dropdown-item {{ 'active' if not active_tenant else '' }}" type="submit"><i class="fas fa-globe me-2"></i>{{ t('top.all_tenants') }}</button>
+                                </form>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            {% for tn in nav_tenants %}
+                            <li>
+                                <form method="POST" action="{{ url_for('admin.set_tenant') }}">
+                                    <input type="hidden" name="tenant_id" value="{{ tn.id }}">
+                                    <button class="dropdown-item {{ 'active' if active_tenant and active_tenant.id == tn.id else '' }}" type="submit"><i class="fas fa-building me-2"></i>{{ tn.name }}</button>
+                                </form>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% elif active_tenant %}
+                    <span class="badge bg-danger py-2 px-3"><i class="fas fa-building me-1"></i> {{ active_tenant.name }}</span>
+                    {% endif %}
+                </li>
+            </ul>
+            <ul class="navbar-nav ms-auto align-items-center">
+                <!-- Live clock -->
+                <li class="nav-item me-3 d-none d-md-block">
+                    <span class="badge bg-body-secondary text-body border"><i class="fas fa-clock me-1 text-danger"></i><span id="liveClock">--:--:--</span></span>
+                </li>
+                <!-- Language selector -->
+                <li class="nav-item dropdown me-2">
+                    <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" title="{{ t('top.language') }}">
+                        <span style="font-size:1.1rem;">{{ languages[lang].flag }}</span>
+                        <span class="d-none d-md-inline ms-1">{{ lang|upper }}</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        {% for code, info in languages.items() %}
+                        <li>
+                            <a class="dropdown-item {% if code == lang %}active{% endif %}" href="{{ url_for('admin.set_language', code=code) }}">
+                                <span style="font-size:1.1rem;">{{ info.flag }}</span> <span class="ms-1">{{ info.label }}</span>
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </li>
+                <!-- Font Size Controls -->
+                <li class="nav-item me-2">
+                    <button class="btn btn-sm btn-outline-secondary" onclick="changeFontSize(-1)" title="Decrease Font Size"><i class="fas fa-font"></i>-</button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="changeFontSize(1)" title="Increase Font Size"><i class="fas fa-font"></i>+</button>
+                </li>
+                <!-- Dark Mode Toggle -->
+                <li class="nav-item me-3">
+                    <button class="btn btn-sm btn-outline-secondary" id="darkModeToggle" title="Toggle Dark Mode">
+                        <i class="fas fa-moon" id="darkModeIcon"></i>
+                    </button>
+                </li>
+                <!-- User Menu -->
+                <li class="nav-item dropdown user-menu">
+                    <a href="#" class="nav-link dropdown-toggle d-flex align-items-center gap-2" data-bs-toggle="dropdown">
+                        <span class="brand-badge" style="width:30px;height:30px;flex:0 0 30px;font-size:.8rem;border-radius:8px;"><i class="fas fa-user"></i></span>
+                        <span class="d-none d-md-inline">{{ current_user.email }}</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li class="dropdown-header">{{ t('top.signed_in_as') }} <strong>{{ current_user.email }}</strong><br><span class="badge bg-danger mt-1">{{ current_user.role }}</span></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger" href="{{ url_for('admin.logout') }}"><i class="fas fa-right-from-bracket me-2"></i> {{ t('top.sign_out') }}</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </nav>
+    <!-- /.navbar -->
+
+    <!-- Main Sidebar Container -->
+    <aside class="app-sidebar shadow bg-body-secondary" id="mainSidebar" data-bs-theme="dark">
+        <!-- Brand Logo -->
+        <a href="{{ url_for('admin.dashboard') }}" class="brand-link">
+            <span class="brand-badge"><i class="fas fa-satellite-dish"></i></span>
+            <span class="brand-text text-body">{{ brand }}<small>Command Center</small></span>
+        </a>
+
+        <!-- Sidebar -->
+        <div class="sidebar-wrapper">
+            <nav class="mt-2">
+                <ul class="nav sidebar-menu flex-column" data-lte-toggle="treeview" role="menu" data-accordion="false">
+                    <li class="nav-header">{{ t('nav.section.operations') }}</li>
+                    <li class="nav-item">
+                        <a href="{{ url_for('admin.dashboard') }}" class="nav-link {% if request.endpoint == 'admin.dashboard' %}active{% endif %}">
+                            <i class="nav-icon fas fa-gauge-high"></i>
+                            <p>{{ t('nav.dashboard') }}</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ url_for('admin.probes_fleet') }}" class="nav-link {% if request.endpoint == 'admin.probes_fleet' %}active{% endif %}">
+                            <i class="nav-icon fas fa-satellite-dish"></i>
+                            <p>{{ t('nav.fleet') }}</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ url_for('admin.assets') }}" class="nav-link {% if request.endpoint == 'admin.assets' %}active{% endif %}">
+                            <i class="nav-icon fas fa-network-wired"></i>
+                            <p>{{ t('nav.assets') }}</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ url_for('admin.wireless') }}" class="nav-link {% if request.endpoint == 'admin.wireless' %}active{% endif %}">
+                            <i class="nav-icon fas fa-wifi"></i>
+                            <p>{{ t('nav.wireless') }}</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ url_for('admin.threats') }}" class="nav-link {% if request.endpoint == 'admin.threats' %}active{% endif %}">
+                            <i class="nav-icon fas fa-shield-halved"></i>
+                            <p>{{ t('nav.threats') }}</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ url_for('admin.threat_intel') }}" class="nav-link {% if request.endpoint == 'admin.threat_intel' %}active{% endif %}">
+                            <i class="nav-icon fas fa-brain"></i>
+                            <p>{{ t('nav.threat_intel') }}</p>
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a href="{{ url_for('admin.guide') }}" class="nav-link {% if request.endpoint == 'admin.guide' %}active{% endif %}">
+                            <i class="nav-icon fas fa-book-open"></i>
+                            <p>{{ t('nav.guide') }}</p>
+                        </a>
+                    </li>
+
+                    <li class="nav-header">{{ t('nav.section.management') }}</li>
+                    <li class="nav-item">
+                        <a href="{{ url_for('admin.tenants') }}" class="nav-link {% if request.endpoint == 'admin.tenants' %}active{% endif %}">
+                            <i class="nav-icon fas fa-building"></i>
+                            <p>{{ t('nav.tenants') }}</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ url_for('admin.billing') }}" class="nav-link {% if request.endpoint == 'admin.billing' %}active{% endif %}">
+                            <i class="nav-icon fas fa-file-invoice-dollar"></i>
+                            <p>{{ t('nav.billing') }}</p>
+                        </a>
+                    </li>
+
+                    {% if current_user.role == 'superadmin' %}
+                    <li class="nav-header">{{ t('nav.section.system') }}</li>
+                    <li class="nav-item">
+                        <a href="{{ url_for('admin.ids_rules') }}" class="nav-link {% if request.endpoint == 'admin.ids_rules' %}active{% endif %}">
+                            <i class="nav-icon fas fa-list-check"></i>
+                            <p>{{ t('nav.ids_rules') }}</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ url_for('admin.system_status') }}" class="nav-link {% if request.endpoint == 'admin.system_status' %}active{% endif %}">
+                            <i class="nav-icon fas fa-heart-pulse"></i>
+                            <p>{{ t('nav.system') }}</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ url_for('admin.audit_log') }}" class="nav-link {% if request.endpoint == 'admin.audit_log' %}active{% endif %}">
+                            <i class="nav-icon fas fa-clipboard-list"></i>
+                            <p>{{ t('nav.audit') }}</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ url_for('admin.settings') }}" class="nav-link {% if request.endpoint == 'admin.settings' %}active{% endif %}">
+                            <i class="nav-icon fas fa-gears"></i>
+                            <p>{{ t('nav.settings') }}</p>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        <!-- /.sidebar -->
+    </aside>
+
+    <!-- Content Wrapper. Contains page content -->
+    <main class="app-main">
+        <div class="app-content-header">
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col-sm-6">
+                        <h3 class="mb-0">{% block content_header %}{% endblock %}</h3>
+                        <div class="accent-bar"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="app-content">
+            <div class="container-fluid">
+                {% block content %}{% endblock %}
+            </div>
+        </div>
+    </main>
+    <!-- /.content-wrapper -->
+
+    <!-- Main Footer -->
+    <footer class="app-footer">
+        <div class="float-end d-none d-sm-inline">
+            <strong>{{ brand }} Command Center</strong>
+            <span class="badge bg-danger ms-1">v1.4.8</span>
+        </div>
+        &copy; 2026. <strong>DS Consulting</strong>. {{ t('footer.rights') }}
+    </footer>
+</div>
+<!-- ./wrapper -->
+
+<!-- REQUIRED SCRIPTS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/admin-lte@4.0.0-alpha2/dist/js/adminlte.min.js"></script>
+
+<script>
+    // Theme toggling
+    const htmlElement = document.documentElement;
+    const darkModeToggle = document.getElementById('darkModeToggle');
+    const darkModeIcon = document.getElementById('darkModeIcon');
+    const sidebar = document.getElementById('mainSidebar');
+
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    const savedFontSize = parseInt(localStorage.getItem('fontSize')) || 16;
+
+    applyTheme(savedTheme);
+    document.body.style.fontSize = savedFontSize + 'px';
+
+    darkModeToggle.addEventListener('click', () => {
+        const currentTheme = htmlElement.getAttribute('data-bs-theme');
+        applyTheme(currentTheme === 'light' ? 'dark' : 'light');
+    });
+
+    function applyTheme(theme) {
+        htmlElement.setAttribute('data-bs-theme', theme);
+        localStorage.setItem('theme', theme);
+        if (theme === 'dark') {
+            darkModeIcon.classList.replace('fa-moon', 'fa-sun');
+            darkModeToggle.classList.replace('btn-outline-secondary', 'btn-outline-light');
+        } else {
+            darkModeIcon.classList.replace('fa-sun', 'fa-moon');
+            darkModeToggle.classList.replace('btn-outline-light', 'btn-outline-secondary');
+        }
+        // Sidebar follows the selected theme
+        sidebar.setAttribute('data-bs-theme', theme);
+    }
+
+    // Font size toggling
+    let currentFontSize = savedFontSize;
+    window.changeFontSize = function(direction) {
+        currentFontSize += (direction * 2);
+        if (currentFontSize < 12) currentFontSize = 12;
+        if (currentFontSize > 24) currentFontSize = 24;
+        document.body.style.fontSize = currentFontSize + 'px';
+        localStorage.setItem('fontSize', currentFontSize);
+    }
+
+    // Live clock
+    const clockEl = document.getElementById('liveClock');
+    if (clockEl) {
+        const tick = () => { clockEl.textContent = new Date().toLocaleTimeString(); };
+        tick(); setInterval(tick, 1000);
+    }
+
+    // ---- Smart auto-refresh for data pages (reflects command outcomes) ----
+    // Reloads on an interval but preserves the active tab + scroll, pauses when the
+    // tab is hidden, and skips while the user is interacting (typing, modal, dropdown).
+    window.scarletAutoRefresh = function (seconds) {
+        const key = 'ar_' + location.pathname;
+        try {
+            const t = sessionStorage.getItem(key + '_tab');
+            if (t) { const el = document.querySelector('[data-bs-target="' + t + '"]'); if (el && window.bootstrap) bootstrap.Tab.getOrCreateInstance(el).show(); }
+            const s = sessionStorage.getItem(key + '_scroll');
+            if (s) window.scrollTo(0, parseInt(s));
+        } catch (e) {}
+
+        const busy = () => document.querySelector('.modal.show')
+            || document.querySelector('.dropdown-menu.show')
+            || ['INPUT', 'SELECT', 'TEXTAREA'].includes((document.activeElement || {}).tagName);
+
+        setInterval(() => {
+            if (document.hidden || busy()) return;
+            try {
+                const active = document.querySelector('.nav-link.active[data-bs-target]');
+                if (active) sessionStorage.setItem(key + '_tab', active.getAttribute('data-bs-target'));
+                sessionStorage.setItem(key + '_scroll', String(window.scrollY));
+            } catch (e) {}
+            location.reload();
+        }, seconds * 1000);
+    };
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

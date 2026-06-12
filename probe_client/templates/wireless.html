@@ -1,0 +1,103 @@
+{% extends "layout.html" %}
+
+{% block title %}Wireless{% endblock %}
+{% block content_header %}{{ t('hdr.wireless') }}{% endblock %}
+
+{% block content %}
+<style>
+    .sig-bar { height:.4rem; border-radius:1rem; }
+</style>
+<div class="row g-4">
+    <!-- WiFi -->
+    <div class="col-lg-6">
+        <div class="card shadow-sm border-0" style="border-radius:1rem; overflow:hidden;">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="card-title m-0"><i class="fas fa-wifi me-2"></i> {{ t('wl.wifi') }}</h5>
+                <span class="badge bg-light text-dark" id="wifi-count">0</span>
+            </div>
+            <div class="card-body">
+                <div class="input-group input-group-sm mb-3">
+                    <select id="wifi-iface" class="form-select"><option value="">auto interface</option></select>
+                    <button class="btn btn-primary" id="btn-wifi"><i class="fas fa-search me-1"></i> Scan</button>
+                </div>
+                <div id="wifi-note" class="small text-muted mb-2"></div>
+                <div class="table-responsive" style="max-height:380px; overflow-y:auto;">
+                    <table class="table table-sm table-hover align-middle">
+                        <thead><tr><th>SSID</th><th>{{ t('wl.ch') }}</th><th>{{ t('wl.signal') }}</th><th>{{ t('wl.sec') }}</th></tr></thead>
+                        <tbody id="wifi-body"><tr><td colspan="4" class="text-muted text-center py-4">No scan yet.</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BLE -->
+    <div class="col-lg-6">
+        <div class="card shadow-sm border-0" style="border-radius:1rem; overflow:hidden;">
+            <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                <h5 class="card-title m-0"><i class="fab fa-bluetooth-b me-2"></i> {{ t('wl.ble') }}</h5>
+                <span class="badge bg-light text-dark" id="ble-count">0</span>
+            </div>
+            <div class="card-body">
+                <div class="d-flex gap-2 mb-3">
+                    <button class="btn btn-info btn-sm text-white" id="btn-ble"><i class="fas fa-search me-1"></i> Scan (10s)</button>
+                </div>
+                <div id="ble-note" class="small text-muted mb-2"></div>
+                <div class="table-responsive" style="max-height:380px; overflow-y:auto;">
+                    <table class="table table-sm table-hover align-middle">
+                        <thead><tr><th>{{ t('wl.name') }}</th><th>{{ t('wl.address') }}</th></tr></thead>
+                        <tbody id="ble-body"><tr><td colspan="2" class="text-muted text-center py-4">No scan yet.</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+// Populate WiFi interfaces
+fetch('/api/network/interfaces').then(r=>r.json()).then(d=>{
+    const sel = document.getElementById('wifi-iface');
+    (d.interfaces||[]).forEach(i=>{
+        const o=document.createElement('option'); o.value=i.name; o.textContent=i.name+(i.is_up?' 🟢':''); sel.appendChild(o);
+    });
+}).catch(()=>{});
+
+function sigColor(s){ if(s==null)return 'secondary'; if(s>=-55)return 'success'; if(s>=-70)return 'warning'; return 'danger'; }
+
+async function scan(type) {
+    const btn = document.getElementById(type==='wifi'?'btn-wifi':'btn-ble');
+    const note = document.getElementById(type+'-note');
+    const orig = btn.innerHTML; btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Scanning…';
+    note.textContent='Scanning… this may take a few seconds.';
+    const fd = new FormData(); fd.append('type', type);
+    if (type==='wifi') fd.append('interface', document.getElementById('wifi-iface').value);
+    try {
+        const r = await fetch('/api/wireless/scan', { method:'POST', body: fd });
+        const d = await r.json();
+        note.textContent = d.note || '';
+        const items = d.items || [];
+        document.getElementById(type+'-count').textContent = items.length;
+        if (type==='wifi') {
+            document.getElementById('wifi-body').innerHTML = items.length ? items.map(n=>`
+                <tr><td><strong>${esc(n.ssid||'(hidden)')}</strong></td><td>${n.channel||'—'}</td>
+                <td><span class="badge bg-${sigColor(n.signal)}">${n.signal!=null?Math.round(n.signal):'—'} dBm</span></td>
+                <td><small>${esc(n.encryption||'—')}</small></td></tr>`).join('')
+                : '<tr><td colspan="4" class="text-muted text-center py-4">No networks found.</td></tr>';
+        } else {
+            document.getElementById('ble-body').innerHTML = items.length ? items.map(b=>`
+                <tr><td><strong>${esc(b.name||'(unknown)')}</strong></td><td><code class="small">${esc(b.address)}</code></td></tr>`).join('')
+                : '<tr><td colspan="2" class="text-muted text-center py-4">No devices found.</td></tr>';
+        }
+    } catch (e) { note.textContent = 'Scan failed.'; }
+    btn.disabled=false; btn.innerHTML=orig;
+}
+
+document.getElementById('btn-wifi').addEventListener('click', ()=>scan('wifi'));
+document.getElementById('btn-ble').addEventListener('click', ()=>scan('ble'));
+</script>
+{% endblock %}

@@ -1,0 +1,197 @@
+{% extends "admin/layout.html" %}
+
+{% block page_title %}IDS Rules{% endblock %}
+{% block content_header %}{{ t('hdr.ids_rules') }}{% endblock %}
+
+{% block content %}
+<div class="alert alert-info d-flex align-items-start gap-2">
+    <i class="fas fa-circle-info mt-1"></i>
+    <div><strong>How rules reach the probes:</strong>
+        <span class="d-block small">1) <strong>Download &amp; Prepare</strong> a ruleset →
+        2) choose a <strong>Detection Template</strong> or tick <strong>categories</strong> →
+        3) probes download the active set automatically on their next Suricata start, or click
+        <strong>Push to Fleet</strong> below to apply it to all paired probes right now.</span>
+    </div>
+</div>
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card shadow-sm border-0" style="border-radius:1rem; overflow:hidden;">
+            <div class="card-header bg-dark text-white">
+                <h5 class="card-title m-0"><i class="fas fa-shield-halved me-2"></i> Download &amp; Prepare Ruleset</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small">
+                    Download a Suricata ruleset from the internet. It is parsed, fingerprinted and stored centrally;
+                    every probe then fetches it automatically the next time Suricata is started.
+                    Supports plain <code>.rules</code> files and <code>.tar.gz</code> bundles (e.g. Emerging Threats Open).
+                </p>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Ruleset Source URL</label>
+                    <input type="url" class="form-control" id="source_url"
+                           value="{{ ruleset.source_url if ruleset and ruleset.source_url else default_url }}"
+                           placeholder="https://rules.emergingthreats.net/open/...">
+                    <div class="form-text">Leave the default for the free Emerging Threats Open ruleset.</div>
+                </div>
+
+                <button class="btn btn-primary" id="btn-update"><i class="fas fa-cloud-arrow-down me-1"></i> Download &amp; Prepare</button>
+                <div id="upd-result" class="alert d-none mt-3 py-2 small"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card shadow-sm border-0 h-100" style="border-radius:1rem; overflow:hidden;">
+            <div class="card-header bg-body-secondary border-0"><h6 class="m-0"><i class="fas fa-circle-info text-primary me-1"></i> Active Ruleset</h6></div>
+            <div class="card-body">
+                {% if ruleset and ruleset.version %}
+                <div class="text-center mb-3">
+                    <div class="display-5 fw-bold text-success">{{ ruleset.rule_count }}</div>
+                    <div class="text-muted text-uppercase small">Active Rules</div>
+                </div>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between"><span class="text-muted">Version</span><code>{{ ruleset.version }}</code></li>
+                    <li class="list-group-item d-flex justify-content-between"><span class="text-muted">Updated</span><span>{{ ruleset.updated_at.strftime('%Y-%m-%d %H:%M') if ruleset.updated_at else '—' }}</span></li>
+                    <li class="list-group-item"><span class="text-muted d-block small">Source</span><span class="text-break small">{{ ruleset.source_url }}</span></li>
+                </ul>
+                <div class="alert alert-success mt-3 py-2 small mb-0"><i class="fas fa-check-circle me-1"></i> Distributed to all probes via the secure sync endpoint.</div>
+                {% else %}
+                <div class="text-center text-muted py-5">
+                    <i class="fas fa-folder-open fa-2x mb-2 opacity-25 d-block"></i>
+                    No ruleset prepared yet. Download one to enable IDS alerts across the fleet.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if ruleset and ruleset.categories %}
+<!-- Detection templates -->
+<div class="card shadow-sm border-0 mt-4" style="border-radius:1rem; overflow:hidden;">
+    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+        <h5 class="card-title m-0"><i class="fas fa-layer-group me-2"></i> Detection Templates</h5>
+        <span class="badge bg-success" id="active-badge">{{ active_count }} active rules</span>
+    </div>
+    <div class="card-body">
+        <p class="text-muted small">Apply a characteristic profile to instantly enable the matching rule categories, then fine-tune below. Probes re-sync the active set on their next Suricata start.</p>
+        <div class="row g-3">
+            {% for tmpl in templates %}
+            <div class="col-md-4 col-sm-6">
+                <button type="button" class="btn btn-outline-primary w-100 h-100 text-start p-3 tmpl-btn" data-template="{{ tmpl.name }}">
+                    <div class="fw-bold mb-1"><i class="fas {{ tmpl.icon }} me-2"></i>{{ tmpl.name }}</div>
+                    <div class="small text-muted">{{ tmpl.desc }}</div>
+                </button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Category selection -->
+<div class="card shadow-sm border-0 mt-4" style="border-radius:1rem; overflow:hidden;">
+    <div class="card-header bg-body-secondary border-0 d-flex justify-content-between align-items-center">
+        <h6 class="m-0"><i class="fas fa-sliders me-2"></i> Active Rule Categories</h6>
+        <div>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setAll(true)">All</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setAll(false)">None</button>
+            <button type="button" class="btn btn-sm btn-success ms-2" id="btn-push"><i class="fas fa-cloud-arrow-up me-1"></i> Push to Fleet</button>
+        </div>
+    </div>
+    <div class="card-body">
+        <form id="cats-form">
+            <div class="row g-2" style="max-height:360px; overflow-y:auto;">
+                {% for c in ruleset.categories %}
+                <div class="col-md-4 col-sm-6">
+                    <label class="d-flex justify-content-between align-items-center border rounded px-2 py-1">
+                        <span class="form-check mb-0">
+                            <input class="form-check-input cat-cb" type="checkbox" name="enabled" value="{{ c.name }}" {% if c.enabled %}checked{% endif %}>
+                            <span class="form-check-label ms-1">{{ c.name }}</span>
+                        </span>
+                        <span class="badge bg-secondary rounded-pill">{{ c.count }}</span>
+                    </label>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="d-grid d-md-flex justify-content-md-end mt-3">
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i> Save Active Categories</button>
+            </div>
+        </form>
+        <div id="cats-result" class="alert d-none mt-3 py-2 small"></div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('btn-update').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    const box = document.getElementById('upd-result');
+    const url = document.getElementById('source_url').value;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Downloading & parsing…';
+    box.classList.add('d-none');
+    try {
+        const fd = new FormData(); fd.append('source_url', url);
+        const r = await fetch('{{ url_for("admin.ids_rules_update") }}', { method:'POST', body: fd });
+        const d = await r.json();
+        box.className = 'alert mt-3 py-2 small ' + (r.ok ? 'alert-success' : 'alert-danger');
+        box.innerHTML = (r.ok ? '<i class="fas fa-check-circle me-1"></i> ' : '<i class="fas fa-triangle-exclamation me-1"></i> ') + (d.message || d.error);
+        box.classList.remove('d-none');
+        if (r.ok) setTimeout(() => window.location.reload(), 1500);
+    } catch (err) {
+        box.className = 'alert alert-danger mt-3 py-2 small';
+        box.textContent = 'Request failed.';
+        box.classList.remove('d-none');
+    }
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-cloud-arrow-down me-1"></i> Download & Prepare';
+});
+
+// ---- Detection templates ----
+function showCats(msg, ok) {
+    const box = document.getElementById('cats-result');
+    if (!box) return;
+    box.className = 'alert mt-3 py-2 small ' + (ok ? 'alert-success' : 'alert-danger');
+    box.textContent = msg; box.classList.remove('d-none');
+}
+
+document.querySelectorAll('.tmpl-btn').forEach(b => b.addEventListener('click', async () => {
+    const fd = new FormData(); fd.append('template', b.dataset.template);
+    b.disabled = true;
+    try {
+        const r = await fetch('{{ url_for("admin.ids_rules_template") }}', { method:'POST', body: fd });
+        const d = await r.json();
+        showCats(d.message || d.error, d.ok);
+        if (d.ok) setTimeout(() => window.location.reload(), 900);
+    } catch (e) { showCats('Failed to apply template.', false); }
+    b.disabled = false;
+}));
+
+// ---- Manual category selection ----
+function setAll(state) { document.querySelectorAll('.cat-cb').forEach(c => c.checked = state); }
+
+const btnPush = document.getElementById('btn-push');
+if (btnPush) btnPush.addEventListener('click', async () => {
+    btnPush.disabled = true;
+    try {
+        const r = await fetch('{{ url_for("admin.ids_rules_push") }}', { method:'POST' });
+        const d = await r.json();
+        showCats(d.message || d.error, d.ok);
+    } catch (e) { showCats('Push failed.', false); }
+    btnPush.disabled = false;
+});
+
+const catsForm = document.getElementById('cats-form');
+if (catsForm) catsForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+        const r = await fetch('{{ url_for("admin.ids_rules_categories") }}', { method:'POST', body: new FormData(catsForm) });
+        const d = await r.json();
+        showCats(d.message || d.error, d.ok);
+        if (d.ok) document.getElementById('active-badge').textContent = d.active_rules + ' active rules';
+    } catch (e) { showCats('Failed to save categories.', false); }
+});
+</script>
+{% endblock %}

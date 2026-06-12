@@ -1,0 +1,145 @@
+{% extends "admin/layout.html" %}
+
+{% block page_title %}System Settings{% endblock %}
+{% block content_header %}{{ t('hdr.settings') }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-9 mx-auto">
+        <div class="card shadow border-0" style="border-radius:1rem; overflow:hidden;">
+            <div class="card-header bg-dark text-white">
+                <h3 class="card-title m-0"><i class="fas fa-cogs me-2"></i> Global Configuration</h3>
+            </div>
+            <div class="card-body">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                  {% if messages %}
+                    {% for category, message in messages %}
+                      <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                      </div>
+                    {% endfor %}
+                  {% endif %}
+                {% endwith %}
+
+                <!-- Tab navigation -->
+                <ul class="nav nav-tabs mb-4" role="tablist">
+                    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-ai" type="button"><i class="fas fa-robot me-1 text-info"></i> {{ t('set.ai') }}</button></li>
+                    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-vuln" type="button"><i class="fas fa-shield-alt me-1 text-danger"></i> {{ t('set.vuln') }}</button></li>
+                    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-notif" type="button"><i class="fas fa-bell me-1 text-success"></i> {{ t('set.notif') }}</button></li>
+                    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-brand" type="button"><i class="fas fa-tag me-1 text-warning"></i> {{ t('set.branding') }}</button></li>
+                </ul>
+
+                <form method="POST" action="{{ url_for('admin.settings') }}">
+                    <div class="tab-content">
+
+                        <!-- AI ANALYSIS -->
+                        <div class="tab-pane fade show active" id="tab-ai" role="tabpanel">
+                            <div class="mb-3">
+                                <label for="groq_api_key" class="form-label">Groq API Key</label>
+                                <input type="password" class="form-control" id="groq_api_key" name="groq_api_key" value="{{ settings.get('GROQ_API_KEY', '') }}" placeholder="gsk_...">
+                                <div class="form-text">Stored securely in the database. Leave blank to disable AI features.</div>
+                            </div>
+                            <div class="mb-4">
+                                <label for="groq_model" class="form-label">Groq Model</label>
+                                <select class="form-select" id="groq_model" name="groq_model">
+                                    <option value="llama-3.3-70b-versatile" {% if settings.get('GROQ_MODEL', 'llama-3.3-70b-versatile') == 'llama-3.3-70b-versatile' %}selected{% endif %}>Llama 3.3 70B (llama-3.3-70b-versatile)</option>
+                                    <option value="llama3-8b-8192" {% if settings.get('GROQ_MODEL') == 'llama3-8b-8192' %}selected{% endif %}>Llama 3 8B (llama3-8b-8192)</option>
+                                    <option value="gemma2-9b-it" {% if settings.get('GROQ_MODEL') == 'gemma2-9b-it' %}selected{% endif %}>Gemma 2 9B (gemma2-9b-it)</option>
+                                </select>
+                                <div class="form-text">Llama 3.3 70B is recommended for optimal security analysis.</div>
+                            </div>
+
+                            <h6 class="text-uppercase text-muted fw-bold mt-4 mb-3" style="font-size:.78rem;"><i class="fas fa-brain me-1"></i> Alternative Providers</h6>
+                            <div class="mb-3">
+                                <label for="gemini_api_key" class="form-label">Google Gemini API Key</label>
+                                <input type="password" class="form-control" id="gemini_api_key" name="gemini_api_key" value="{{ settings.get('GEMINI_API_KEY', '') }}" placeholder="AIza...">
+                            </div>
+                            <div class="mb-2">
+                                <label for="ollama_api_key" class="form-label">Ollama API Key / Token</label>
+                                <input type="password" class="form-control" id="ollama_api_key" name="ollama_api_key" value="{{ settings.get('OLLAMA_API_KEY', '') }}">
+                                <div class="form-text">For local or remotely hosted Ollama instances requiring authentication.</div>
+                            </div>
+                        </div>
+
+                        <!-- VULNERABILITY INTEL -->
+                        <div class="tab-pane fade" id="tab-vuln" role="tabpanel">
+                            <div class="mb-3">
+                                <label for="nvd_api_key" class="form-label">NIST NVD API Key</label>
+                                <input type="text" class="form-control" id="nvd_api_key" name="nvd_api_key" value="{{ settings.get('NVD_API_KEY', '') }}">
+                                <div class="form-text">Bypasses rate limits (50 req/30s) when fetching CVE details.</div>
+                            </div>
+                            <div class="mb-2">
+                                <label for="cve_cache_ttl_days" class="form-label">CVE Cache Validity (days)</label>
+                                <input type="number" class="form-control" id="cve_cache_ttl_days" name="cve_cache_ttl_days" min="1" value="{{ settings.get('CVE_CACHE_TTL_DAYS', '30') }}">
+                                <div class="form-text">Days a cached CVE stays valid before being auto-refreshed from NIST (default 30).</div>
+                            </div>
+                            <div class="alert alert-info mt-3 small mb-0"><i class="fas fa-info-circle me-1"></i> Manage Suricata IDS rulesets under the <strong>IDS Rules</strong> page.</div>
+                        </div>
+
+                        <!-- NOTIFICATIONS -->
+                        <div class="tab-pane fade" id="tab-notif" role="tabpanel">
+                            <div class="mb-3">
+                                <label for="telegram_bot_token" class="form-label">Telegram Bot Token</label>
+                                <input type="password" class="form-control" id="telegram_bot_token" name="telegram_bot_token" value="{{ settings.get('TELEGRAM_BOT_TOKEN', '') }}" placeholder="123456:ABC-...">
+                                <div class="form-text">Per-probe chat IDs come from the probe's Telegram metadata.</div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="gmail_user" class="form-label">Gmail Address</label>
+                                    <input type="email" class="form-control" id="gmail_user" name="gmail_user" value="{{ settings.get('GMAIL_USER', '') }}" placeholder="alerts@gmail.com">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="gmail_app_password" class="form-label">Gmail App Password</label>
+                                    <input type="password" class="form-control" id="gmail_app_password" name="gmail_app_password" value="{{ settings.get('GMAIL_APP_PASSWORD', '') }}" placeholder="16-char app password">
+                                    <div class="form-text">Use a Google <em>App Password</em>, not your account password.</div>
+                                </div>
+                            </div>
+                            <div class="border rounded p-3 bg-body-tertiary">
+                                <div class="small text-muted mb-2">Send a test notification (save your settings first):</div>
+                                <div class="input-group input-group-sm">
+                                    <input type="text" id="test-target" class="form-control" placeholder="Telegram chat id or email address">
+                                    <button type="button" class="btn btn-outline-info" onclick="testNotify('telegram')"><i class="fab fa-telegram me-1"></i> Test Telegram</button>
+                                    <button type="button" class="btn btn-outline-danger" onclick="testNotify('email')"><i class="fas fa-envelope me-1"></i> Test Email</button>
+                                </div>
+                                <div id="test-result" class="small mt-2"></div>
+                            </div>
+                        </div>
+
+                        <!-- BRANDING -->
+                        <div class="tab-pane fade" id="tab-brand" role="tabpanel">
+                            <div class="mb-2">
+                                <label for="brand_name" class="form-label">{{ t('set.brand_name') }}</label>
+                                <input type="text" class="form-control" id="brand_name" name="brand_name" value="{{ settings.get('BRAND_NAME', 'SCARLET') }}" placeholder="SCARLET">
+                                <div class="form-text">{{ t('set.brand_help') }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end border-top pt-3 mt-4">
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i> {{ t('btn.save_config') }}</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function testNotify(channel) {
+    const target = document.getElementById('test-target').value.trim();
+    const out = document.getElementById('test-result');
+    out.innerHTML = '<span class="text-muted">Sending…</span>';
+    const fd = new FormData(); fd.append('channel', channel); fd.append('target', target);
+    try {
+        const r = await fetch('{{ url_for("admin.notify_test") }}', { method:'POST', body: fd });
+        const d = await r.json();
+        out.innerHTML = `<span class="text-${d.ok ? 'success' : 'danger'}">${d.message}</span>`;
+    } catch (e) {
+        out.innerHTML = '<span class="text-danger">Request failed.</span>';
+    }
+}
+</script>
+{% endblock %}

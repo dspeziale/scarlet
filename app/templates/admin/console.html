@@ -1,0 +1,192 @@
+{% extends "admin/layout.html" %}
+
+{% block page_title %}Probe Console{% endblock %}
+{% block content_header %}Probe Console{% endblock %}
+
+{% block content %}
+<style>
+    .cmd-card { border:none; border-radius:1rem; box-shadow:0 4px 14px rgba(0,0,0,.1); }
+    .cmd-btn { text-align:left; }
+    .timeline { max-height:560px; overflow-y:auto; }
+    .tl-item { border-left:3px solid #ccc; padding:.5rem .8rem; margin-bottom:.5rem; border-radius:0 .5rem .5rem 0; background:var(--bs-body-tertiary); }
+    .tl-item.done { border-left-color:#2ecc71; }
+    .tl-item.failed { border-left-color:#e74c3c; }
+    .tl-item.running { border-left-color:#f1c40f; }
+    .tl-item.pending { border-left-color:#3498db; }
+    .result-pre { background:#0b0e14; color:#c8e1ff; font-size:11px; border-radius:.4rem; padding:.5rem; max-height:220px; overflow:auto; white-space:pre-wrap; }
+    .led { display:inline-block; width:.6rem; height:.6rem; border-radius:50%; }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h4 class="mb-0"><i class="fas fa-satellite-dish text-info me-2"></i>{{ probe.probe_name or 'Unnamed Probe' }}</h4>
+        <small class="text-muted font-monospace">{{ probe.id }}</small>
+    </div>
+    <div class="text-end">
+        <span class="badge bg-body-secondary text-body border" id="agent-badge">agent —</span>
+        <span class="badge bg-secondary" id="suri-badge">IDS —</span>
+        <a href="{{ url_for('admin.probes_fleet') }}" class="btn btn-sm btn-outline-secondary ms-2"><i class="fas fa-arrow-left"></i></a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Command palette -->
+    <div class="col-lg-5">
+        <div class="card cmd-card mb-3">
+            <div class="card-header bg-dark text-white"><h6 class="m-0"><i class="fas fa-terminal me-2"></i> Command Palette</h6></div>
+            <div class="card-body">
+                <h6 class="text-uppercase text-muted small fw-bold">Scanning</h6>
+                <div class="d-grid gap-2 mb-3">
+                    <button class="btn btn-outline-success cmd-btn" data-cap="scan_network" onclick="send('scan_network')"><i class="fas fa-network-wired me-1"></i> Run Network Scan</button>
+                    <div class="input-group input-group-sm">
+                        <input id="vuln-ip" class="form-control" placeholder="target IP">
+                        <button class="btn btn-outline-danger" data-cap="vuln_scan" onclick="send('vuln_scan', {target_ip: val('vuln-ip')})"><i class="fas fa-shield-virus me-1"></i> Vuln Scan</button>
+                    </div>
+                    <div class="input-group input-group-sm">
+                        <input id="scan-subnet" class="form-control" placeholder="subnet e.g. 192.168.1.0/24">
+                        <button class="btn btn-outline-primary" data-cap="set_scan_config" onclick="send('set_scan_config', {subnet: val('scan-subnet')})">Set Subnet</button>
+                    </div>
+                </div>
+
+                <h6 class="text-uppercase text-muted small fw-bold">IDS</h6>
+                <div class="d-grid gap-2 mb-3">
+                    <div class="input-group input-group-sm">
+                        <select id="suri-iface" class="form-select"><option value="">interface…</option></select>
+                        <button class="btn btn-outline-success" data-cap="suricata_start" onclick="send('suricata_start', {interface: val('suri-iface')})"><i class="fas fa-play"></i></button>
+                        <button class="btn btn-outline-danger" data-cap="suricata_stop" onclick="send('suricata_stop')"><i class="fas fa-stop"></i></button>
+                    </div>
+                    <button class="btn btn-outline-warning cmd-btn" data-cap="suricata_reload_rules" onclick="send('suricata_reload_rules')"><i class="fas fa-rotate me-1"></i> Reload IDS Rules</button>
+                </div>
+
+                <h6 class="text-uppercase text-muted small fw-bold">Diagnostics</h6>
+                <div class="d-grid gap-2 mb-3">
+                    <button class="btn btn-outline-info cmd-btn" data-cap="get_status" onclick="send('get_status')"><i class="fas fa-heartbeat me-1"></i> Get Status</button>
+                    <button class="btn btn-outline-info cmd-btn" data-cap="get_logs" onclick="send('get_logs')"><i class="fas fa-file-lines me-1"></i> Fetch Logs</button>
+                    <div class="input-group input-group-sm">
+                        <input id="pcap-n" class="form-control" type="number" value="40" min="1" max="500" style="max-width:90px;">
+                        <span class="input-group-text">pkts</span>
+                        <button class="btn btn-outline-secondary" data-cap="capture_pcap" onclick="send('capture_pcap', {count: val('pcap-n'), interface: val('suri-iface')})"><i class="fas fa-wifi me-1"></i> Capture</button>
+                    </div>
+                </div>
+
+                <h6 class="text-uppercase text-muted small fw-bold">Wireless</h6>
+                <div class="d-grid gap-2 mb-3">
+                    <button class="btn btn-outline-primary cmd-btn" data-cap="scan_wifi" onclick="send('scan_wifi', {interface: val('suri-iface')})"><i class="fas fa-wifi me-1"></i> Scan WiFi</button>
+                    <button class="btn btn-outline-primary cmd-btn" data-cap="scan_ble" onclick="send('scan_ble')"><i class="fab fa-bluetooth-b me-1"></i> Scan BLE</button>
+                </div>
+
+                <h6 class="text-uppercase text-danger small fw-bold">Danger Zone</h6>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-warning cmd-btn" data-cap="self_update" onclick="confirmSend('self_update', null, 'Pull latest agent code and restart?')"><i class="fas fa-cloud-arrow-down me-1"></i> Self-Update</button>
+                    <button class="btn btn-outline-danger cmd-btn" data-cap="restart_agent" onclick="confirmSend('restart_agent', null, 'Restart the probe agent?')"><i class="fas fa-power-off me-1"></i> Restart Agent</button>
+                    <button class="btn btn-danger cmd-btn" data-cap="factory_reset" onclick="confirmSend('factory_reset', null, 'FACTORY RESET wipes all pairing data. Continue?')"><i class="fas fa-trash me-1"></i> Factory Reset</button>
+                </div>
+                <div id="cmd-result" class="alert d-none mt-3 py-2 small"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Timeline -->
+    <div class="col-lg-7">
+        <div class="card cmd-card">
+            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                <h6 class="m-0"><i class="fas fa-clock-rotate-left me-2"></i> Command Timeline</h6>
+                <span class="badge bg-success"><span class="led bg-white me-1"></span>Live</span>
+            </div>
+            <div class="card-body timeline" id="timeline">
+                <div class="text-muted text-center py-4">Loading…</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const PROBE = "{{ probe.id }}";
+const FEED = "{{ url_for('admin.probe_commands', probe_id=probe.id) }}";
+const CMD  = "{{ url_for('admin.probe_command', probe_id=probe.id) }}";
+let caps = [];
+
+const val = id => document.getElementById(id).value.trim();
+
+function showResult(msg, ok) {
+    const box = document.getElementById('cmd-result');
+    box.className = 'alert mt-3 py-2 small ' + (ok ? 'alert-success' : 'alert-danger');
+    box.textContent = msg; box.classList.remove('d-none');
+}
+
+async function send(type, params) {
+    try {
+        const r = await fetch(CMD, {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify(Object.assign({type}, params || {}))
+        });
+        const d = await r.json();
+        showResult(d.message || d.error, d.ok);
+        poll();
+    } catch (e) { showResult('Request failed.', false); }
+}
+function confirmSend(type, params, msg) { if (confirm(msg)) send(type, params); }
+
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+function renderResult(action, result) {
+    if (!result) return '';
+    if (action === 'get_logs' && (result.suricata_logs || result.scan_logs)) {
+        const lines = [].concat(result.scan_logs || [], result.suricata_logs || []);
+        return `<pre class="result-pre">${esc(lines.join('\n'))}</pre>`;
+    }
+    return `<pre class="result-pre">${esc(JSON.stringify(result, null, 2))}</pre>`;
+}
+
+async function poll() {
+    try {
+        const r = await fetch(FEED);
+        const d = await r.json();
+        caps = d.capabilities || [];
+
+        // Agent + IDS badges
+        document.getElementById('agent-badge').textContent = 'agent ' + (d.agent_version || '—');
+        const suri = (d.runtime && d.runtime.suricata) || {};
+        const sb = document.getElementById('suri-badge');
+        sb.className = 'badge ' + (suri.running ? 'bg-success' : 'bg-secondary');
+        sb.textContent = suri.running ? ('IDS running · ' + (suri.interface || '')) : 'IDS stopped';
+
+        // Capability-aware buttons
+        document.querySelectorAll('[data-cap]').forEach(b => {
+            const ok = !caps.length || caps.includes(b.dataset.cap);
+            b.disabled = !ok;
+        });
+
+        // Interfaces dropdown
+        const sel = document.getElementById('suri-iface');
+        const ifaces = (d.runtime && d.runtime.interfaces) || [];
+        if (ifaces.length && sel.options.length <= ifaces.length) {
+            const cur = sel.value;
+            sel.innerHTML = '<option value="">interface…</option>' + ifaces.map(i=>`<option ${i===cur?'selected':''}>${esc(i)}</option>`).join('');
+        }
+
+        // Timeline
+        const tl = document.getElementById('timeline');
+        if (!d.commands.length) { tl.innerHTML = '<div class="text-muted text-center py-4">No commands issued yet.</div>'; return; }
+        tl.innerHTML = d.commands.map(c => {
+            const badge = {done:'success', completed:'success', failed:'danger', running:'warning', pending:'info'}[c.status] || 'secondary';
+            const cls = c.status === 'completed' ? 'done' : c.status;
+            const p = Object.keys(c.params||{}).length ? ' <code>'+esc(JSON.stringify(c.params))+'</code>' : '';
+            return `<div class="tl-item ${cls}">
+                <div class="d-flex justify-content-between">
+                    <strong>${esc(c.action)}${p}</strong>
+                    <span class="badge bg-${badge}">${esc(c.status)}</span>
+                </div>
+                <div class="small text-muted">${esc(c.created_at)}${c.issued_by ? ' · '+esc(c.issued_by):''}${c.completed_at ? ' · done '+esc(c.completed_at):''}</div>
+                ${renderResult(c.action, c.result)}
+            </div>`;
+        }).join('');
+    } catch (e) {}
+}
+
+poll();
+setInterval(poll, 3000);
+</script>
+{% endblock %}

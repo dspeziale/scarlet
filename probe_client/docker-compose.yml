@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  probe:
+    build: .
+    container_name: scarlet-probe
+    network_mode: "host"
+    # privileged + host network give raw access to the host's network and
+    # Bluetooth (HCI) adapters, required for Suricata capture, WiFi (iw) and BLE scans.
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    # Note: When using network_mode: host, ports mapping is ignored. 
+    # The app will be available on the host's port 5001 directly.
+    environment:
+      # Modifica questa variabile con l'URL del tuo server Vercel (es. https://scarlet-rho.vercel.app)
+      - SERVER_URL=https://scarlet-rho.vercel.app
+    volumes:
+      # Monta il file di stato per non perdere la registrazione al riavvio del container
+      - ./probe_state.json:/app/probe_state.json
+      # Host D-Bus so bluetoothctl can drive the host's BlueZ daemon for BLE scans
+      - /var/run/dbus:/var/run/dbus

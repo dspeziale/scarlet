@@ -1,0 +1,265 @@
+{% extends "layout.html" %}
+
+{% block title %}Overview{% endblock %}
+{% block content_header %}{{ t('hdr.overview') }}{% endblock %}
+
+{% block content %}
+<style>
+    .hero-card {
+        border: none; border-radius: 1rem; overflow: hidden; color:#fff;
+        box-shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+    .hero-paired   { background: linear-gradient(135deg,#0f9b0f 0%,#11998e 100%); }
+    .hero-unpaired { background: linear-gradient(135deg,#cb2d3e 0%,#ef473a 100%); }
+    .hero-pending  { background: linear-gradient(135deg,#f7971e 0%,#ffd200 100%); color:#3a2e00; }
+
+    .pulse-orb {
+        width: 90px; height: 90px; border-radius: 50%;
+        background: rgba(255,255,255,.18);
+        display:flex; align-items:center; justify-content:center;
+        font-size: 2.4rem;
+    }
+    .pulse-orb.live { animation: orb-pulse 1.8s infinite ease-in-out; }
+    @keyframes orb-pulse {
+        0%   { box-shadow: 0 0 0 0 rgba(255,255,255,.5); }
+        70%  { box-shadow: 0 0 0 22px rgba(255,255,255,0); }
+        100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+    }
+
+    .tile { border:none; border-radius:.9rem; box-shadow:0 4px 14px rgba(0,0,0,.18); }
+    .tile .tile-label { font-size:.72rem; text-transform:uppercase; letter-spacing:.06em; opacity:.7; }
+    .tile .tile-value { font-size:1.05rem; font-weight:700; word-break:break-all; }
+    .tile .tile-icon { font-size:1.4rem; }
+</style>
+
+<!-- ===== STATUS HERO ===== -->
+<div class="row">
+    <div class="col-lg-10 col-xl-9">
+        <div class="card hero-card mb-4 {{ 'hero-paired' if state.status == 'paired' else ('hero-pending' if state.status == 'pending' else 'hero-unpaired') }}">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center">
+                    <div class="pulse-orb {{ 'live' if state.status == 'paired' else '' }} me-4">
+                        <i class="fas {{ 'fa-satellite-dish' if state.status == 'paired' else ('fa-hourglass-half' if state.status == 'pending' else 'fa-plug-circle-xmark') }}"></i>
+                    </div>
+                    <div>
+                        <div class="text-uppercase fw-bold" style="letter-spacing:.1em; opacity:.85; font-size:.8rem;">{{ t('conn.status') }}</div>
+                        <h1 class="display-5 fw-bold mb-1" style="line-height:1;">
+                            {% if state.status == 'paired' %}
+                                <span id="status-badge">{{ t('conn.paired') }}</span>
+                            {% elif state.status == 'pending' %}
+                                <span id="status-badge">{{ t('conn.pending') }}</span>
+                            {% else %}
+                                <span id="status-badge">{{ t('conn.not_connected') }}</span>
+                            {% endif %}
+                        </h1>
+                        <div style="opacity:.9;">
+                            {% if state.status == 'paired' %}
+                                <i class="fas fa-lock me-1"></i> {{ t('conn.paired_sub') }}
+                            {% else %}
+                                <i class="fas fa-info-circle me-1"></i> {{ t('conn.register_sub') }}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if state.status == 'paired' %}
+<!-- ===== PAIRED: KPI TILES ===== -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3 col-6">
+        <div class="card tile h-100 bg-body-secondary">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="tile-label">{{ t('tile.probe_id') }}</div>
+                    <i class="fas fa-fingerprint tile-icon text-info"></i>
+                </div>
+                <div class="tile-value mt-1"><code id="probe-id" style="font-size:.85rem;">{{ state.probe_id }}</code></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card tile h-100 bg-body-secondary">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="tile-label">{{ t('tile.subnet') }}</div>
+                    <i class="fas fa-network-wired tile-icon text-success"></i>
+                </div>
+                <div class="tile-value mt-1">{{ state.subnet or 'Auto-detect' }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card tile h-100 bg-body-secondary">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="tile-label">{{ t('tile.encryption') }}</div>
+                    <i class="fas fa-shield-halved tile-icon text-warning"></i>
+                </div>
+                <div class="tile-value mt-1 text-success"><i class="fas fa-check-circle me-1"></i>X25519 + AES-GCM</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card tile h-100 bg-body-secondary">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="tile-label">{{ t('tile.autoscan') }}</div>
+                    <i class="fas fa-clock tile-icon text-primary"></i>
+                </div>
+                <div class="tile-value mt-1">{{ t('tile.autoscan_val') }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-6">
+        <div class="card tile">
+            <div class="card-body">
+                <h6 class="text-uppercase fw-bold text-muted mb-3" style="font-size:.78rem;"><i class="fas fa-rocket text-info me-1"></i> {{ t('act.quick_actions') }}</h6>
+                <div class="d-grid gap-2 d-sm-flex">
+                    <a href="/scanner" class="btn btn-outline-success"><i class="fas fa-network-wired me-1"></i> {{ t('nav.scanner') }}</a>
+                    <a href="/suricata" class="btn btn-outline-danger"><i class="fas fa-shield-alt me-1"></i> {{ t('nav.suricata') }}</a>
+                </div>
+                <hr>
+                <div class="border border-danger rounded p-3 bg-danger bg-opacity-10">
+                    <h6 class="text-danger mb-2"><i class="fas fa-exclamation-triangle me-1"></i> {{ t('act.danger_zone') }}</h6>
+                    <p class="small text-muted mb-2">{{ t('act.reset_warn') }}</p>
+                    <button class="btn btn-outline-danger btn-sm w-100" id="btn-reset">
+                        <i class="fas fa-trash-alt me-1"></i> {{ t('act.factory_reset') }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<!-- ===== UNPAIRED: REGISTRATION FORM ===== -->
+<div class="row">
+    <div class="col-lg-8 col-xl-7">
+        <div class="card tile">
+            <div class="card-header bg-body-secondary border-0">
+                <h5 class="m-0"><i class="fas fa-link text-primary me-2"></i> {{ t('act.register') }}</h5>
+            </div>
+            <div class="card-body">
+                <span id="probe-id" class="d-none">Not Registered</span>
+                <form id="connect-form">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">{{ t('form.probe_name') }}</label>
+                        <input type="text" class="form-control form-control-sm" name="probe_name" placeholder="e.g. Branch-Office-1">
+                    </div>
+
+                    <h6 class="mt-4 mb-3 text-secondary border-bottom pb-2" style="font-size: 0.9rem;">{{ t('form.geo_contact') }}</h6>
+                    <div class="row g-2">
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label small">{{ t('form.address') }}</label>
+                            <input type="text" class="form-control form-control-sm" name="meta_address" placeholder="Via Roma 1, Milano">
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label small">{{ t('form.coords') }}</label>
+                            <input type="text" class="form-control form-control-sm" name="meta_coords" placeholder="45.4642, 9.1900">
+                        </div>
+                        <div class="col-md-12 mb-2">
+                            <label class="form-label small">{{ t('form.contact') }}</label>
+                            <input type="text" class="form-control form-control-sm" name="meta_contact" placeholder="Mario Rossi (IT Dept)">
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label small">{{ t('form.email') }}</label>
+                            <input type="email" class="form-control form-control-sm" name="meta_email" placeholder="admin@example.com">
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label small">{{ t('form.telegram') }}</label>
+                            <input type="text" class="form-control form-control-sm" name="meta_telegram" placeholder="@ITAdmin">
+                        </div>
+                    </div>
+
+                    <h6 class="mt-4 mb-3 text-secondary border-bottom pb-2" style="font-size: 0.9rem;">Authentication</h6>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">{{ t('form.tenant') }}</label>
+                        <input type="text" class="form-control form-control-sm" name="tenant_id" placeholder="e.g. Stark Industries" required>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">{{ t('form.license') }}</label>
+                        <input type="text" class="form-control form-control-sm" name="license_code" placeholder="Enter License Code" required>
+                    </div>
+                    <button class="btn btn-primary w-100" type="submit" id="btn-connect">
+                        <i class="fas fa-link me-1"></i> {{ t('act.connect') }}
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div id="result-message" class="alert d-none mt-3"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const connectForm = document.getElementById('connect-form');
+    if (connectForm) {
+        connectForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btn-connect');
+            const msgBox = document.getElementById('result-message');
+            btn.disabled = true;
+            btn.innerHTML = 'Connecting...';
+
+            const formData = new FormData(e.target);
+
+            try {
+                const response = await fetch('/connect', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+            msgBox.classList.remove('d-none', 'alert-danger', 'alert-success');
+
+            if(data.error) {
+                msgBox.classList.add('alert-danger');
+                msgBox.innerHTML = data.error;
+                btn.disabled = false;
+            } else {
+                msgBox.classList.add('alert-success');
+                msgBox.innerHTML = data.message + ' Reloading...';
+                setTimeout(() => window.location.reload(), 1200);
+            }
+        } catch (err) {
+            msgBox.classList.remove('d-none');
+            msgBox.classList.add('alert-danger');
+            msgBox.innerHTML = "An unexpected error occurred.";
+            btn.disabled = false;
+        }
+            btn.innerHTML = 'Connect to Server';
+        });
+    }
+
+    const btnReset = document.getElementById('btn-reset');
+    if (btnReset) {
+        btnReset.addEventListener('click', async (e) => {
+            if (!confirm('Are you absolutely sure you want to reset this probe? All local pairing data will be destroyed!')) return;
+
+            btnReset.disabled = true;
+            btnReset.innerHTML = 'Resetting...';
+
+            try {
+                const response = await fetch('/api/probe/reset', { method: 'POST' });
+                if (!response.ok) throw new Error('Reset failed on server');
+                window.location.reload();
+            } catch (err) {
+                alert('Failed to reset probe: ' + err.message);
+                btnReset.disabled = false;
+                btnReset.innerHTML = '<i class="fas fa-trash-alt me-1"></i> {{ t('act.factory_reset') }}';
+            }
+        });
+    }
+
+    scarletAutoRefresh(20);
+</script>
+{% endblock %}

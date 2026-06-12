@@ -1,0 +1,10 @@
+Flask==3.0.3
+requests==2.31.0
+cryptography==42.0.5
+python-nmap==0.7.1
+pysnmp==4.4.12
+pyasn1==0.4.8
+apscheduler==3.10.4
+psutil==5.9.8
+psycopg2-binary==2.9.9
+SQLAlchemy==2.0.29

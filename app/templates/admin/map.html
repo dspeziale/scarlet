@@ -1,0 +1,329 @@
+{% extends "admin/layout.html" %}
+
+{% block content_header %}{{ t('hdr.dashboard') }}{% endblock %}
+
+{% block content %}
+
+<style>
+    /* ===== Modern KPI dashboard styling ===== */
+    .kpi-card {
+        position: relative;
+        border: none;
+        border-radius: 1rem;
+        overflow: hidden;
+        color: #fff;
+        box-shadow: 0 8px 24px rgba(0,0,0,.15);
+        transition: transform .2s ease, box-shadow .2s ease;
+    }
+    .kpi-card:hover { transform: translateY(-4px); box-shadow: 0 14px 30px rgba(0,0,0,.25); }
+    .kpi-card .kpi-body { position: relative; z-index: 2; padding: 1.1rem 1.25rem; }
+    .kpi-card .kpi-value { font-size: 2.3rem; font-weight: 700; line-height: 1; }
+    .kpi-card .kpi-label { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; opacity: .9; }
+    .kpi-card .kpi-sub { font-size: .75rem; opacity: .85; }
+    .kpi-card .kpi-icon {
+        position: absolute; right: -.5rem; bottom: -1rem;
+        font-size: 5rem; opacity: .18; z-index: 1; transform: rotate(-12deg);
+    }
+    .g-tenants  { background: linear-gradient(135deg,#6a11cb 0%,#2575fc 100%); }
+    .g-probes   { background: linear-gradient(135deg,#11998e 0%,#38ef7d 100%); }
+    .g-devices  { background: linear-gradient(135deg,#f7971e 0%,#ffd200 100%); color:#3a2e00; }
+    .g-services { background: linear-gradient(135deg,#373B44 0%,#4286f4 100%); }
+    .g-vuln     { background: linear-gradient(135deg,#cb2d3e 0%,#ef473a 100%); }
+    .g-bytes    { background: linear-gradient(135deg,#0f2027 0%,#203a43 50%,#2c5364 100%); }
+
+    .mini-card { border-radius: .9rem; border: none; box-shadow: 0 4px 14px rgba(0,0,0,.08); }
+    .health-dot { display:inline-block; width:.65rem; height:.65rem; border-radius:50%; margin-right:.4rem; }
+    .progress-thin { height: .55rem; border-radius: 1rem; }
+
+    @keyframes live-blink { 0%,100%{opacity:1} 50%{opacity:.25} }
+    .live-pulse { animation: live-blink 1.4s infinite; }
+</style>
+
+<!-- ===== KPI HERO ROW ===== -->
+<div class="row g-3 mb-1">
+    <div class="col-xl-2 col-md-4 col-6">
+        <div class="kpi-card g-tenants h-100">
+            <div class="kpi-body">
+                <div class="kpi-value">{{ stats.tenants }}</div>
+                <div class="kpi-label">{{ t('kpi.tenants') }}</div>
+                <i class="fas fa-building kpi-icon"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-2 col-md-4 col-6">
+        <div class="kpi-card g-probes h-100">
+            <div class="kpi-body">
+                <div class="kpi-value">{{ stats.probes_online }}<span class="fs-5 fw-light">/{{ stats.probes }}</span></div>
+                <div class="kpi-label"><span class="health-dot bg-white live-pulse"></span>{{ t('kpi.probes_online') }}</div>
+                <div class="kpi-sub mt-1">{{ stats.online_pct }}% fleet reachable</div>
+                <i class="fas fa-satellite-dish kpi-icon"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-2 col-md-4 col-6">
+        <div class="kpi-card g-devices h-100">
+            <div class="kpi-body">
+                <div class="kpi-value">{{ stats.devices }}</div>
+                <div class="kpi-label">{{ t('kpi.assets') }}</div>
+                <div class="kpi-sub mt-1">~{{ stats.avg_assets }} per probe</div>
+                <i class="fas fa-network-wired kpi-icon"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-2 col-md-4 col-6">
+        <div class="kpi-card g-services h-100">
+            <div class="kpi-body">
+                <div class="kpi-value">{{ stats.services }}</div>
+                <div class="kpi-label">{{ t('kpi.services') }}</div>
+                <div class="kpi-sub mt-1">ports &amp; endpoints</div>
+                <i class="fas fa-plug kpi-icon"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-2 col-md-4 col-6">
+        <div class="kpi-card g-vuln h-100">
+            <div class="kpi-body">
+                <div class="kpi-value">{{ stats.vulnerable_devices }}</div>
+                <div class="kpi-label">{{ t('kpi.vuln_assets') }}</div>
+                <div class="kpi-sub mt-1">awaiting remediation</div>
+                <i class="fas fa-shield-virus kpi-icon"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-2 col-md-4 col-6">
+        <div class="kpi-card g-bytes h-100">
+            <div class="kpi-body">
+                {% set b = stats.data_ingested_bytes %}
+                <div class="kpi-value">
+                    {% if b < 1024 %}{{ b }}<span class="fs-5 fw-light"> B</span>
+                    {% elif b < 1048576 %}{{ (b/1024)|round(1) }}<span class="fs-5 fw-light"> KB</span>
+                    {% else %}{{ (b/1048576)|round(2) }}<span class="fs-5 fw-light"> MB</span>{% endif %}
+                </div>
+                <div class="kpi-label">{{ t('kpi.data_ingested') }}</div>
+                <div class="kpi-sub mt-1">vulnerability payloads</div>
+                <i class="fas fa-database kpi-icon"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== BREAKDOWN WIDGETS ===== -->
+<div class="row g-3 mt-1 mb-2">
+    <!-- Fleet availability -->
+    <div class="col-lg-4">
+        <div class="card mini-card h-100">
+            <div class="card-body">
+                <h6 class="text-uppercase text-muted fw-bold mb-3" style="font-size:.78rem;"><i class="fas fa-heartbeat text-success me-1"></i> {{ t('dw.fleet_avail') }}</h6>
+                <div class="d-flex justify-content-between mb-1 small">
+                    <span><span class="health-dot bg-success"></span>{{ t('status.online') }}</span>
+                    <strong>{{ stats.probes_online }}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-2 small">
+                    <span><span class="health-dot bg-secondary"></span>{{ t('status.offline') }}</span>
+                    <strong>{{ stats.probes_offline }}</strong>
+                </div>
+                <div class="progress progress-thin">
+                    <div class="progress-bar bg-success" role="progressbar" style="width: {{ stats.online_pct }}%;" aria-valuenow="{{ stats.online_pct }}" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+                <div class="text-end text-muted mt-1" style="font-size:.72rem;">{{ stats.online_pct }}% reachable in last 10 min</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Probe status distribution -->
+    <div class="col-lg-4">
+        <div class="card mini-card h-100">
+            <div class="card-body">
+                <h6 class="text-uppercase text-muted fw-bold mb-3" style="font-size:.78rem;"><i class="fas fa-diagram-project text-info me-1"></i> {{ t('dw.probe_status') }}</h6>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small"><span class="health-dot bg-success"></span>{{ t('dw.paired') }}</span>
+                    <span class="badge bg-success rounded-pill">{{ stats.status_counts.paired }}</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small"><span class="health-dot" style="background:#00bfff"></span>{{ t('dw.scanning') }}</span>
+                    <span class="badge bg-info rounded-pill">{{ stats.status_counts.scanning }}</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small"><span class="health-dot bg-warning"></span>{{ t('dw.pending') }}</span>
+                    <span class="badge bg-warning text-dark rounded-pill">{{ stats.status_counts.pending }}</span>
+                </div>
+                {% if stats.status_counts.other %}
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="small"><span class="health-dot bg-secondary"></span>{{ t('dw.other') }}</span>
+                    <span class="badge bg-secondary rounded-pill">{{ stats.status_counts.other }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Security posture -->
+    <div class="col-lg-4">
+        <div class="card mini-card h-100">
+            <div class="card-body">
+                <h6 class="text-uppercase text-muted fw-bold mb-3" style="font-size:.78rem;"><i class="fas fa-user-shield text-danger me-1"></i> {{ t('dw.security_posture') }}</h6>
+                {% set safe = stats.devices - stats.vulnerable_devices if stats.devices >= stats.vulnerable_devices else 0 %}
+                {% set vuln_pct = ((stats.vulnerable_devices / stats.devices) * 100)|round(0)|int if stats.devices else 0 %}
+                <div class="d-flex align-items-baseline mb-1">
+                    <span class="display-6 fw-bold {{ 'text-danger' if vuln_pct > 0 else 'text-success' }}">{{ vuln_pct }}%</span>
+                    <span class="ms-2 text-muted small">{{ t('dw.flagged') }}</span>
+                </div>
+                <div class="progress progress-thin mb-2">
+                    <div class="progress-bar bg-danger" role="progressbar" style="width: {{ vuln_pct }}%;"></div>
+                </div>
+                <div class="d-flex justify-content-between small text-muted">
+                    <span><i class="fas fa-check-circle text-success me-1"></i>{{ safe }} {{ t('dw.clean') }}</span>
+                    <span><i class="fas fa-bug text-danger me-1"></i>{{ stats.vulnerable_devices }} {{ t('dw.at_risk') }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== GEOGRAPHIC MAP ===== -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow border-0" style="border-radius:1rem; overflow:hidden;">
+            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                <h3 class="card-title m-0"><i class="fas fa-map-marked-alt me-2"></i> {{ t('kpi.geo') }}</h3>
+                <span class="badge bg-success"><span class="health-dot bg-white live-pulse"></span>Live</span>
+            </div>
+            <div class="card-body p-0">
+                <div id="map" style="height: 600px; width: 100%;"></div>
+            </div>
+        </div>
+
+<!-- Fixed Bottom Panel for Probe Details -->
+<div id="probePanel" class="bg-body-secondary border-top shadow-lg d-none" style="position: fixed; bottom: 0; right: 0; left: 250px; z-index: 1030; height: auto; transition: left 0.3s ease-in-out;">
+  <div class="bg-dark text-white py-1 px-3 d-flex justify-content-between align-items-center">
+    <h6 class="mb-0"><i class="fas fa-satellite-dish text-info me-2"></i> <span id="panel-probe-name">Probe Details</span></h6>
+    <button type="button" class="btn-close btn-close-white btn-sm" onclick="document.getElementById('probePanel').classList.add('d-none')" aria-label="Close"></button>
+  </div>
+  <div class="p-2 overflow-auto" style="max-height: 200px;">
+    <div class="row g-2">
+        <div class="col-md-4">
+            <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.8rem;"><i class="fas fa-info-circle me-1"></i> General Info</h6>
+            <ul class="list-group list-group-flush shadow-sm rounded small">
+                <li class="list-group-item d-flex justify-content-between align-items-center bg-body py-1">
+                    Tenant
+                    <span class="fw-bold" id="panel-tenant"></span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center bg-body py-1">
+                    Status
+                    <span id="panel-status"></span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center bg-body py-1">
+                    Last Seen
+                    <span class="text-muted" id="panel-last-seen" style="font-size: 0.75rem;"></span>
+                </li>
+            </ul>
+        </div>
+        <div class="col-md-4">
+            <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.8rem;"><i class="fas fa-map-marker-alt me-1"></i> Logistics</h6>
+            <ul class="list-group list-group-flush shadow-sm rounded small">
+                <li class="list-group-item bg-body py-1">
+                    <small class="text-muted d-block" style="font-size: 0.7rem;">Physical Address</small>
+                    <span id="panel-address" class="text-truncate d-inline-block" style="max-width: 100%;">N/A</span>
+                </li>
+                <li class="list-group-item bg-body py-1">
+                    <small class="text-muted d-block" style="font-size: 0.7rem;">Contact Person</small>
+                    <span id="panel-contact" class="text-truncate d-inline-block" style="max-width: 100%;">N/A</span>
+                </li>
+            </ul>
+        </div>
+        <div class="col-md-4">
+            <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.8rem;"><i class="fas fa-chart-line me-1"></i> Statistics</h6>
+            <div class="card bg-warning bg-opacity-10 border-warning shadow-sm">
+                <div class="card-body text-center py-2">
+                    <h3 class="text-warning fw-bold mb-0" id="panel-devices">0</h3>
+                    <p class="text-muted text-uppercase mb-0 fw-bold" style="font-size: 0.7rem;">Discovered Assets</p>
+                </div>
+            </div>
+        </div>
+    </div>
+  </div>
+</div>
+
+<style>
+    /* Adjust panel left position when sidebar is collapsed */
+    body.sidebar-collapse #probePanel {
+        left: 0 !important;
+    }
+    @media (max-width: 991.98px) {
+        #probePanel {
+            left: 0 !important;
+        }
+    }
+
+    @keyframes pulse-ring {
+        0% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(0, 191, 255, 0.7); }
+        70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 191, 255, 0); }
+        100% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(0, 191, 255, 0); }
+    }
+
+    .pulse-animation {
+        animation: pulse-ring 1.5s infinite ease-in-out;
+    }
+</style>
+
+<!-- Leaflet CSS & JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        var map = L.map('map').setView([41.8719, 12.5674], 6);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
+
+        var probes = {{ probes_json|safe }};
+        var markers = [];
+
+        var probePanelElement = document.getElementById('probePanel');
+
+        probes.forEach(function(probe) {
+            if (probe.lat !== null && probe.lng !== null) {
+                var iconColor = probe.status === 'paired' ? 'green' : (probe.status === 'scanning' ? '#00bfff' : 'orange');
+                var pulseClass = probe.status === 'scanning' ? 'pulse-animation' : '';
+
+                var customIcon = L.divIcon({
+                    className: 'custom-div-icon',
+                    html: `<div class="${pulseClass}" style='background-color:${iconColor}; width:15px; height:15px; border-radius:50%; border:2px solid white; box-shadow: 0 0 4px rgba(0,0,0,0.5);'></div>`,
+                    iconSize: [15, 15],
+                    iconAnchor: [7, 7]
+                });
+
+                var marker = L.marker([probe.lat, probe.lng], {icon: customIcon}).addTo(map);
+
+                // When clicking a marker, open the bottom panel and populate data
+                marker.on('click', function() {
+                    document.getElementById('panel-probe-name').innerText = probe.name;
+                    document.getElementById('panel-tenant').innerText = probe.tenant;
+                    document.getElementById('panel-last-seen').innerText = probe.last_seen;
+                    document.getElementById('panel-address').innerText = probe.address || 'N/A';
+                    document.getElementById('panel-contact').innerText = probe.contact || 'N/A';
+                    document.getElementById('panel-devices').innerText = probe.device_count;
+
+                    var statusBadge = probe.status === 'scanning' ? 'bg-info' : (probe.status === 'paired' ? 'bg-success' : 'bg-warning text-dark');
+                    var statusText = probe.status === 'scanning' ? '<i class="fas fa-spinner fa-spin me-1"></i> Scanning' : probe.status;
+                    document.getElementById('panel-status').innerHTML = `<span class="badge ${statusBadge}">${statusText}</span>`;
+
+                    probePanelElement.classList.remove('d-none');
+                });
+
+                markers.push(marker);
+            }
+        });
+
+        scarletAutoRefresh(25);
+    });
+</script>
+{% endblock %}

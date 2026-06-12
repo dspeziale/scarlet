@@ -1,0 +1,190 @@
+<div class="row">
+    <div class="col-lg-3 d-none d-lg-block">
+        <div class="guide-toc">
+            <div class="card guide-card">
+                <div class="card-header bg-dark text-white py-2"><i class="fas fa-list me-1"></i> Contents</div>
+                <div class="list-group list-group-flush">
+                    <a class="list-group-item list-group-item-action" href="#overview">1. Overview</a>
+                    <a class="list-group-item list-group-item-action" href="#start">2. Getting Started</a>
+                    <a class="list-group-item list-group-item-action" href="#probe">3. Deploy &amp; Pair a Probe</a>
+                    <a class="list-group-item list-group-item-action" href="#dashboard">4. Dashboard &amp; Tenants</a>
+                    <a class="list-group-item list-group-item-action" href="#fleet">5. Fleet &amp; Remote Control</a>
+                    <a class="list-group-item list-group-item-action" href="#assets">6. Network Assets &amp; Vulns</a>
+                    <a class="list-group-item list-group-item-action" href="#ids">7. Suricata IDS &amp; Rules</a>
+                    <a class="list-group-item list-group-item-action" href="#threats">8. Threat Monitor &amp; Intel</a>
+                    <a class="list-group-item list-group-item-action" href="#wireless">9. Wireless (WiFi/BLE)</a>
+                    <a class="list-group-item list-group-item-action" href="#notify">10. Notifications &amp; Reports</a>
+                    <a class="list-group-item list-group-item-action" href="#billing">11. Billing</a>
+                    <a class="list-group-item list-group-item-action" href="#settings">12. Settings</a>
+                    <a class="list-group-item list-group-item-action" href="#security">13. Security Model</a>
+                    <a class="list-group-item list-group-item-action" href="#faq">14. Troubleshooting</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-9">
+        <section id="overview" class="guide-section mb-5">
+            <h3>1. Overview</h3>
+            <p class="mt-3"><strong>{{ brand }}</strong> is a multi-tenant network monitoring &amp; security platform. Lightweight <strong>probes</strong> deployed inside customer networks discover assets, scan for vulnerabilities, run intrusion detection (Suricata) and scan wireless (WiFi/BLE). Everything is reported to this central <strong>Command Center</strong> over an end-to-end encrypted channel.</p>
+            <div class="card guide-card"><div class="card-body">
+                <h6 class="text-uppercase text-muted fw-bold" style="font-size:.78rem;">How it fits together</h6>
+                <ul class="mb-0">
+                    <li><strong>Server (this app)</strong> — runs serverless (Vercel) on a PostgreSQL database. Manages tenants, probes, data and remote commands.</li>
+                    <li><strong>Probe</strong> — a containerized agent in the customer network. Pairs with a License Code, then is fully driven from the server.</li>
+                    <li><strong>Encryption</strong> — X25519 key exchange + AES-256-GCM for all probe⇄server data.</li>
+                </ul>
+            </div></div>
+        </section>
+
+        <section id="start" class="guide-section mb-5">
+            <h3>2. Getting Started</h3>
+            <p class="mt-3">You sign in with your <strong>email + password</strong>. There are two roles:</p>
+            <ul>
+                <li><strong>Superadmin</strong> — sees and manages everything across all tenants, plus System pages (Settings, IDS Rules, System Health).</li>
+                <li><strong>Tenant admin</strong> — sees only their own tenant's probes, assets and threats.</li>
+            </ul>
+            <div class="card guide-card"><div class="card-body">
+                <h6 class="fw-bold">First-time setup (superadmin)</h6>
+                <div class="step"><div class="n">1</div><div>Go to <strong>Tenants &amp; Licenses</strong> → create a <strong>Tenant</strong> (the customer).</div></div>
+                <div class="step"><div class="n">2</div><div>Generate one or more <strong>License Codes</strong> for that tenant (one per probe).</div></div>
+                <div class="step"><div class="n">3</div><div>Optionally create a <strong>Tenant Admin</strong> user (email + password) for the customer.</div></div>
+            </div></div>
+        </section>
+
+        <section id="probe" class="guide-section mb-5">
+            <h3>3. Deploy &amp; Pair a Probe</h3>
+            <div class="card guide-card"><div class="card-body">
+                <div class="step"><div class="n">1</div><div>Run the probe container on a machine inside the target network (<span class="cmd-tag">docker compose up -d</span>). It exposes a local UI on port <kbd>5001</kbd>.</div></div>
+                <div class="step"><div class="n">2</div><div>Open the probe UI → <strong>Dashboard</strong> → fill the registration form: probe name, optional location/contact, <strong>Tenant name</strong> and <strong>License Code</strong>.</div></div>
+                <div class="step"><div class="n">3</div><div>Click <strong>Connect</strong>. The probe performs the encrypted handshake and becomes <span class="badge bg-success">Paired</span>. The green <strong>LED</strong> in the probe top bar confirms it is online with the server.</div></div>
+                <div class="step"><div class="n">4</div><div>The probe now appears under <strong>Probe Fleet</strong> on the server and starts auto-scanning the network every 30 min.</div></div>
+            </div></div>
+            <p class="mt-2 text-muted small"><i class="fas fa-info-circle me-1"></i> For WiFi/BLE and Suricata the probe container needs network/Bluetooth privileges (provided in the bundled <span class="cmd-tag">docker-compose.yml</span>).</p>
+        </section>
+
+        <section id="dashboard" class="guide-section mb-5">
+            <h3>4. Dashboard &amp; Tenant Context</h3>
+            <p class="mt-3">The <strong>Dashboard</strong> shows live KPIs (probes online, assets, open services, vulnerable assets, data ingested) and a geographic map of your probes.</p>
+            <div class="card guide-card"><div class="card-body">
+                <i class="fas fa-building text-danger me-1"></i> <strong>Active tenant selector</strong> (top bar, superadmin): pick a tenant to scope <em>every</em> page to it, or "All Tenants". Tenant admins are always scoped to their own tenant, shown as a red badge.
+            </div></div>
+        </section>
+
+        <section id="fleet" class="guide-section mb-5">
+            <h3>5. Probe Fleet &amp; Remote Control</h3>
+            <p class="mt-3"><strong>Probe Fleet</strong> lists every probe with status, reachability, asset count, IDS state and a quick Suricata Start/Stop. Click the <i class="fas fa-terminal"></i> <strong>Console</strong> button to fully pilot a probe.</p>
+            <div class="card guide-card"><div class="card-body">
+                <h6 class="fw-bold">Probe Console — available commands</h6>
+                <div class="row">
+                    <div class="col-md-6"><ul class="mb-0">
+                        <li><span class="cmd-tag">scan_network</span> — full network discovery</li>
+                        <li><span class="cmd-tag">vuln_scan</span> — vulnerability scan of an IP</li>
+                        <li><span class="cmd-tag">scan_wifi</span> / <span class="cmd-tag">scan_ble</span> — wireless scans</li>
+                        <li><span class="cmd-tag">suricata_start/stop</span> — IDS control</li>
+                        <li><span class="cmd-tag">suricata_reload_rules</span> — re-sync ruleset</li>
+                    </ul></div>
+                    <div class="col-md-6"><ul class="mb-0">
+                        <li><span class="cmd-tag">set_scan_config</span> — set subnet</li>
+                        <li><span class="cmd-tag">get_logs</span> / <span class="cmd-tag">get_status</span> — diagnostics</li>
+                        <li><span class="cmd-tag">capture_pcap</span> — capture N packets</li>
+                        <li><span class="cmd-tag">self_update</span> / <span class="cmd-tag">restart_agent</span></li>
+                        <li><span class="cmd-tag">factory_reset</span> — wipe pairing (signed)</li>
+                    </ul></div>
+                </div>
+            </div></div>
+            <p class="mt-2">Commands are queued and picked up within seconds (the heartbeat speeds up while commands are pending). The <strong>command timeline</strong> shows each command's status and result. Sensitive commands are cryptographically signed. Use the <strong>Wireless</strong> page's fleet buttons to command all probes at once.</p>
+        </section>
+
+        <section id="assets" class="guide-section mb-5">
+            <h3>6. Network Assets &amp; Vulnerabilities</h3>
+            <p class="mt-3"><strong>Network Assets</strong> lists every discovered device: IP, MAC, OS, hostname, SNMP, open ports/services.</p>
+            <ul>
+                <li><strong>Scan</strong> — runs a Nmap vulnerability scan (<span class="cmd-tag">--script vuln</span>) on that device.</li>
+                <li><strong>Vulns</strong> → modal with three tabs:
+                    <ul>
+                        <li><em>Vulnerability Data</em> — raw scan output.</li>
+                        <li><em>AI Analysis</em> — a Groq-powered security report (needs a Groq key in Settings).</li>
+                        <li><em>CVE Intelligence</em> — live NVD enrichment for each CVE, with a self-refreshing cache.</li>
+                    </ul>
+                </li>
+            </ul>
+        </section>
+
+        <section id="ids" class="guide-section mb-5">
+            <h3>7. Suricata IDS &amp; Rules</h3>
+            <p class="mt-3">Start/stop Suricata per probe from the Fleet or Console (an interface of "auto" selects the best physical NIC). Alerts stream back to the Threat Monitor.</p>
+            <div class="card guide-card"><div class="card-body">
+                <h6 class="fw-bold"><i class="fas fa-list-check me-1"></i> IDS Rules (superadmin)</h6>
+                <div class="step"><div class="n">1</div><div><strong>Download &amp; Prepare</strong> a ruleset from a URL (default: Emerging Threats Open). Supports <span class="cmd-tag">.rules</span> and <span class="cmd-tag">.tar.gz</span>.</div></div>
+                <div class="step"><div class="n">2</div><div>Pick a <strong>Detection Template</strong> (Malware &amp; C2, Network Recon, Web Attacks, Exploits, Policy, or Full Coverage) to instantly enable matching categories.</div></div>
+                <div class="step"><div class="n">3</div><div>Fine-tune <strong>Active Rule Categories</strong> with the checkboxes. Probes download <em>only</em> the active subset on their next Suricata start.</div></div>
+            </div></div>
+        </section>
+
+        <section id="threats" class="guide-section mb-5">
+            <h3>8. Threat Monitor &amp; Threat Intelligence</h3>
+            <ul class="mt-3">
+                <li><strong>Threat Monitor</strong> — a live terminal feed of IDS events (alerts, flows, DNS, TLS) streamed from the fleet.</li>
+                <li><strong>Threat Intelligence</strong> — aggregated analytics: top signatures, top source/destination IPs, severity breakdown, plus an <strong>AI Threat Briefing</strong> (Groq) that interprets the telemetry into actionable intelligence.</li>
+            </ul>
+        </section>
+
+        <section id="wireless" class="guide-section mb-5">
+            <h3>9. Wireless (WiFi / BLE)</h3>
+            <p class="mt-3">The <strong>Wireless</strong> page shows discovered WiFi access points (SSID, channel, signal, security) and BLE devices (name, address). Trigger scans on the whole fleet with the <strong>Scan WiFi / Scan BLE</strong> buttons, or per-probe from the Console. Results are deduplicated and stored like node discovery. Probes can also scan locally from their own <strong>Wireless</strong> page.</p>
+        </section>
+
+        <section id="notify" class="guide-section mb-5">
+            <h3>10. Notifications &amp; Reports</h3>
+            <ul class="mt-3">
+                <li><strong>Telegram &amp; Gmail</strong> — configure a bot token and a Gmail address + App Password under <strong>Settings → Notifications</strong>, then use the test buttons.</li>
+                <li><strong>PDF Reports</strong> — from <strong>Billing</strong>, download a per-tenant security report (fleet, assets, alerts, billing) or email it as an attachment.</li>
+            </ul>
+        </section>
+
+        <section id="billing" class="guide-section mb-5">
+            <h3>11. Billing &amp; Accountability</h3>
+            <p class="mt-3">Each tenant has a <strong>fixed fee</strong> plus <strong>pay-per-use</strong> pricing (per probe, asset, scan, IDS alert). The <strong>Billing</strong> page computes current usage and the estimated total from real data; superadmins can edit prices and currency per tenant.</p>
+        </section>
+
+        <section id="settings" class="guide-section mb-5">
+            <h3>12. Settings (superadmin)</h3>
+            <p class="mt-3">Organized into tabs: <strong>AI Analysis</strong> (Groq + alternative providers), <strong>Vulnerability Intel</strong> (NVD key, CVE cache validity), and <strong>Notifications</strong> (Telegram/Gmail + tests). <strong>System Health</strong> shows DB status, runtime versions and record counts.</p>
+        </section>
+
+        <section id="security" class="guide-section mb-5">
+            <h3>13. Security Model</h3>
+            <ul class="mt-3">
+                <li><strong>Pairing</strong> — X25519 ECDH handshake with a challenge; one-time License Codes.</li>
+                <li><strong>Data channel</strong> — AES-256-GCM with a per-probe session key (scan data, IDS events, wireless results).</li>
+                <li><strong>Commands</strong> — sensitive commands (factory reset, restart, self-update) are HMAC-signed, time-limited and replay-protected.</li>
+                <li><strong>Isolation</strong> — every page and query is scoped to the tenant.</li>
+            </ul>
+        </section>
+
+        <section id="faq" class="guide-section mb-5">
+            <h3>14. Troubleshooting</h3>
+            <div class="accordion" id="faqAcc">
+                <div class="accordion-item">
+                    <h2 class="accordion-header"><button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#faq1">Suricata won't start from the server</button></h2>
+                    <div id="faq1" class="accordion-collapse collapse" data-bs-parent="#faqAcc"><div class="accordion-body">Choose a valid interface or "auto". Check the probe <strong>Console</strong> timeline — the command result shows the exact reason (e.g. Suricata not installed, no privileges). The probe needs <span class="cmd-tag">NET_ADMIN/NET_RAW</span>.</div></div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header"><button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#faq2">No IDS alerts appear</button></h2>
+                    <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAcc"><div class="accordion-body">Make sure a ruleset is prepared under <strong>IDS Rules</strong> with at least one active category, then start Suricata so the probe downloads the active rules. Flows/DNS appear even without rules; alerts require rules + matching traffic.</div></div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header"><button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#faq3">A command was issued but nothing happened</button></h2>
+                    <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAcc"><div class="accordion-body">Commands are delivered on the next heartbeat (seconds). Open the probe <strong>Console</strong> to watch the command move pending → running → done, with its result. The probe must be online (green LED).</div></div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header"><button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#faq4">BLE scan returns nothing</button></h2>
+                    <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#faqAcc"><div class="accordion-body">The probe host needs a Bluetooth adapter and the container needs access to it (privileged + host D-Bus, as in the bundled compose). WiFi needs a wireless interface and the <span class="cmd-tag">iw</span> tool.</div></div>
+                </div>
+            </div>
+        </section>
+
+        <p class="text-muted small text-center mt-4">{{ brand }} Command Center · v1.4.8 · © 2026 DS Consulting</p>
+    </div>
+</div>

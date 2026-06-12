@@ -1,0 +1,113 @@
+{% extends "admin/layout.html" %}
+
+{% block page_title %}Billing{% endblock %}
+{% block content_header %}{{ t('hdr.billing') }}{% endblock %}
+
+{% block content %}
+<style>
+    .bill-card { border:none; border-radius:1rem; box-shadow:0 6px 18px rgba(0,0,0,.1); }
+    .usage-box { border-radius:.8rem; background:var(--bs-body-tertiary); padding:.6rem .9rem; }
+    .usage-box .n { font-size:1.4rem; font-weight:700; line-height:1; }
+    .usage-box .t { font-size:.68rem; text-transform:uppercase; letter-spacing:.04em; opacity:.7; }
+    .total-pill { font-size:1.6rem; font-weight:800; color:var(--bs-success); }
+</style>
+
+{% for row in rows %}
+{% set t = row.tenant %}{% set b = row.billing %}{% set plan = row.plan %}
+<div class="card bill-card mb-4">
+    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+        <h5 class="m-0"><i class="fas fa-building me-2"></i> {{ t.name }}</h5>
+        <div>
+            <a href="{{ url_for('admin.report_pdf', tenant_id=t.id) }}" class="btn btn-sm btn-light"><i class="fas fa-file-pdf text-danger me-1"></i> {{ t('bill.pdf') }}</a>
+            <button class="btn btn-sm btn-outline-light ms-1 btn-email-report" data-tenant="{{ t.id }}"><i class="fas fa-paper-plane me-1"></i> {{ t('bill.email') }}</button>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row g-4">
+            <!-- Usage + cost -->
+            <div class="col-lg-7">
+                <div class="row g-2 mb-2">
+                    <div class="col"><div class="usage-box"><div class="n">{{ b.usage.probes }}</div><div class="t">Probes</div></div></div>
+                    <div class="col"><div class="usage-box"><div class="n">{{ b.usage.assets }}</div><div class="t">Assets</div></div></div>
+                    <div class="col"><div class="usage-box"><div class="n">{{ b.usage.scans }}</div><div class="t">Scans</div></div></div>
+                    <div class="col"><div class="usage-box"><div class="n">{{ b.usage.alerts }}</div><div class="t">Alerts</div></div></div>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col"><div class="usage-box"><div class="n">{{ b.usage.gb }}</div><div class="t">GB In</div></div></div>
+                    <div class="col"><div class="usage-box"><div class="n">{{ b.usage.cpu_min }}</div><div class="t">CPU min</div></div></div>
+                    <div class="col"><div class="usage-box"><div class="n">{{ b.usage.notifications }}</div><div class="t">Notifs</div></div></div>
+                </div>
+                <table class="table table-sm align-middle">
+                    <thead class="table-light"><tr><th>Item</th><th>Detail</th><th class="text-end">Amount</th></tr></thead>
+                    <tbody>
+                        {% for l in b.lines %}
+                        <tr><td>{{ l.label }}</td><td class="text-muted small">{{ l.detail }}</td><td class="text-end">{{ l.amount }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot><tr class="border-top"><th colspan="2">{{ t('bill.total') }}</th><th class="text-end total-pill">{{ b.total }}</th></tr></tfoot>
+                </table>
+            </div>
+
+            <!-- Plan editor -->
+            <div class="col-lg-5">
+                {% if current_user.role == 'superadmin' %}
+                <h6 class="text-uppercase fw-bold text-muted mb-3" style="font-size:.78rem;"><i class="fas fa-sliders me-1"></i> {{ t('bill.plan') }}</h6>
+                <form method="POST" action="{{ url_for('admin.billing_save', tenant_id=t.id) }}">
+                    <div class="row g-2">
+                        <div class="col-6"><label class="form-label small mb-0">Currency</label>
+                            <input class="form-control form-control-sm" name="currency" value="{{ plan.currency if plan else 'EUR' }}"></div>
+                        <div class="col-6"><label class="form-label small mb-0">Fixed Fee</label>
+                            <input type="number" step="0.01" class="form-control form-control-sm" name="fixed_fee" value="{{ '%.2f'|format(plan.fixed_fee) if plan else '0.00' }}"></div>
+                        <div class="col-6"><label class="form-label small mb-0">€ / Probe</label>
+                            <input type="number" step="0.01" class="form-control form-control-sm" name="price_per_probe" value="{{ '%.2f'|format(plan.price_per_probe) if plan else '0.00' }}"></div>
+                        <div class="col-6"><label class="form-label small mb-0">€ / Asset</label>
+                            <input type="number" step="0.01" class="form-control form-control-sm" name="price_per_asset" value="{{ '%.2f'|format(plan.price_per_asset) if plan else '0.00' }}"></div>
+                        <div class="col-6"><label class="form-label small mb-0">€ / Scan</label>
+                            <input type="number" step="0.01" class="form-control form-control-sm" name="price_per_scan" value="{{ '%.2f'|format(plan.price_per_scan) if plan else '0.00' }}"></div>
+                        <div class="col-6"><label class="form-label small mb-0">€ / Alert</label>
+                            <input type="number" step="0.0001" class="form-control form-control-sm" name="price_per_alert" value="{{ '%.4f'|format(plan.price_per_alert) if plan else '0.0000' }}"></div>
+                        <div class="col-6"><label class="form-label small mb-0">€ / GB</label>
+                            <input type="number" step="0.01" class="form-control form-control-sm" name="price_per_gb" value="{{ '%.2f'|format(plan.price_per_gb) if plan and plan.price_per_gb is not none else '0.00' }}"></div>
+                        <div class="col-6"><label class="form-label small mb-0">€ / Notification</label>
+                            <input type="number" step="0.01" class="form-control form-control-sm" name="price_per_notification" value="{{ '%.2f'|format(plan.price_per_notification) if plan and plan.price_per_notification is not none else '0.00' }}"></div>
+                        <div class="col-6"><label class="form-label small mb-0">€ / CPU-min</label>
+                            <input type="number" step="0.0001" class="form-control form-control-sm" name="price_per_cpu_min" value="{{ '%.4f'|format(plan.price_per_cpu_min) if plan and plan.price_per_cpu_min is not none else '0.0000' }}"></div>
+                    </div>
+                    <button class="btn btn-primary btn-sm mt-3 w-100"><i class="fas fa-save me-1"></i> {{ t('bill.save_plan') }}</button>
+                </form>
+                {% else %}
+                <div class="alert alert-info small mb-0"><i class="fas fa-circle-info me-1"></i> Pricing is managed by your provider.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-info"><i class="fas fa-circle-info me-2"></i> No tenants to bill.</div>
+{% endfor %}
+
+<div id="bill-toast" class="position-fixed bottom-0 end-0 m-3 alert d-none shadow" style="z-index:1080;"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.btn-email-report').forEach(btn => {
+    btn.addEventListener('click', async () => {
+        const to = prompt('Send the PDF report to which email address?');
+        if (!to) return;
+        const toast = document.getElementById('bill-toast');
+        const fd = new FormData(); fd.append('to', to);
+        try {
+            const r = await fetch(`/admin/report/${btn.dataset.tenant}/email`, { method:'POST', body: fd });
+            const d = await r.json();
+            toast.className = 'position-fixed bottom-0 end-0 m-3 alert shadow ' + (d.ok ? 'alert-success' : 'alert-danger');
+            toast.textContent = d.message; toast.classList.remove('d-none');
+            setTimeout(() => toast.classList.add('d-none'), 6000);
+        } catch (e) {
+            toast.className = 'position-fixed bottom-0 end-0 m-3 alert alert-danger shadow';
+            toast.textContent = 'Failed to send report.'; toast.classList.remove('d-none');
+        }
+    });
+});
+</script>
+{% endblock %}

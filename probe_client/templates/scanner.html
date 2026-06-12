@@ -1,0 +1,166 @@
+{% extends "layout.html" %}
+
+{% block title %}Network Scanner{% endblock %}
+{% block content_header %}{{ t('hdr.scanner') }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header bg-success text-white">
+                <h4 class="card-title mb-0">{{ t('scan.manual') }}</h4>
+            </div>
+            <div class="card-body">
+                <p>The probe automatically scans the network every 30 minutes. If you want to force an immediate scan, click the button below.</p>
+                
+                <button class="btn btn-success" id="btn-scan">
+                    <i class="fas fa-search"></i> {{ t('scan.force') }}
+                </button>
+                
+                <div id="scan-result" class="alert d-none mt-3"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-primary text-white">
+                <h4 class="card-title mb-0">{{ t('scan.config') }}</h4>
+            </div>
+            <div class="card-body">
+                <form id="config-form">
+                    <div class="mb-3">
+                        <label class="form-label">{{ t('scan.subnet') }}</label>
+                        <input type="text" class="form-control" name="subnet" placeholder="e.g. 192.168.1.0/24 (Leave empty for auto-detect)" value="{{ state.subnet or '' }}">
+                        <div class="form-text">If left blank, the probe will automatically detect the subnet from its primary network interface.</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="btn-save-config">{{ t('scan.save') }}</button>
+                </form>
+                <div id="config-result" class="alert d-none mt-3"></div>
+            </div>
+        </div>
+
+        <div class="card shadow">
+            <div class="card-header bg-secondary text-white">
+                <h4 class="card-title mb-0">{{ t('scan.status') }}</h4>
+            </div>
+            <div class="card-body">
+                <div class="mb-2"><strong>Status:</strong> <span id="status-text">Idle</span></div>
+                <div class="mb-2"><strong>Last Scan Triggered:</strong> <span id="last-scan-time">Never</span></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                <h4 class="card-title mb-0">{{ t('scan.logs') }}</h4>
+                <button class="btn btn-sm btn-outline-light" id="btn-refresh-logs">
+                    <i class="fas fa-sync-alt"></i> {{ t('scan.refresh') }}
+                </button>
+            </div>
+            <div class="card-body bg-black text-light p-0">
+                <pre id="log-output" class="m-0 p-3" style="max-height: 400px; overflow-y: auto; font-family: monospace; font-size: 12px;"></pre>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('btn-scan').addEventListener('click', async (e) => {
+        const btn = e.target;
+        const msgBox = document.getElementById('scan-result');
+        const statusText = document.getElementById('status-text');
+        const timeText = document.getElementById('last-scan-time');
+        
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Triggering Scan...';
+        statusText.innerText = 'Scanning...';
+        
+        try {
+            const response = await fetch('/api/scan/trigger', { method: 'POST' });
+            const data = await response.json();
+            
+            msgBox.classList.remove('d-none', 'alert-danger', 'alert-success');
+            
+            if(data.error) {
+                msgBox.classList.add('alert-danger');
+                msgBox.innerHTML = data.error;
+                statusText.innerText = 'Error';
+            } else {
+                msgBox.classList.add('alert-success');
+                msgBox.innerHTML = "Scan triggered successfully in background.";
+                statusText.innerText = 'Idle';
+                timeText.innerText = new Date().toLocaleString();
+            }
+        } catch (err) {
+            msgBox.classList.remove('d-none');
+            msgBox.classList.add('alert-danger');
+            msgBox.innerHTML = "Failed to trigger scan.";
+            statusText.innerText = 'Error';
+        }
+        
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-search"></i> {{ t('scan.force') }}';
+    });
+
+    document.getElementById('config-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('btn-save-config');
+        const msgBox = document.getElementById('config-result');
+        
+        btn.disabled = true;
+        btn.innerHTML = 'Saving...';
+        
+        const formData = new FormData(e.target);
+        
+        try {
+            const response = await fetch('/api/scan/config', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            
+            msgBox.classList.remove('d-none', 'alert-danger', 'alert-success');
+            msgBox.classList.add('alert-success');
+            msgBox.innerHTML = data.message;
+            
+            setTimeout(() => {
+                msgBox.classList.add('d-none');
+            }, 3000);
+        } catch (err) {
+            msgBox.classList.remove('d-none');
+            msgBox.classList.add('alert-danger');
+            msgBox.innerHTML = "Failed to save configuration.";
+        }
+        
+        btn.disabled = false;
+        btn.innerHTML = 'Save Configuration';
+    });
+
+    async function fetchLogs() {
+        try {
+            const res = await fetch('/api/scan/logs');
+            const data = await res.json();
+            const logOutput = document.getElementById('log-output');
+            if (data.logs && data.logs.length > 0) {
+                logOutput.innerText = data.logs.join('\n');
+                logOutput.scrollTop = logOutput.scrollHeight;
+            } else {
+                logOutput.innerText = "No logs yet.";
+            }
+        } catch (e) {
+            console.error("Failed to fetch logs", e);
+        }
+    }
+
+    document.getElementById('btn-refresh-logs').addEventListener('click', fetchLogs);
+    
+    // Fetch logs immediately and then every 3 seconds
+    fetchLogs();
+    setInterval(fetchLogs, 3000);
+</script>
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends "admin/layout.html" %}
+
+{% block page_title %}{{ t('hdr.guide') }}{% endblock %}
+{% block content_header %}{{ t('hdr.guide') }}{% endblock %}
+
+{% block content %}
+<style>
+    .guide-toc { position: sticky; top: 1rem; }
+    .guide-toc .list-group-item { border:none; padding:.35rem .75rem; font-size:.88rem; }
+    .guide-toc .list-group-item:hover { background: var(--bs-body-tertiary); }
+    .guide-section { scroll-margin-top: 1rem; }
+    .guide-section h3 { font-weight:700; border-bottom:2px solid var(--scarlet); display:inline-block; padding-bottom:.2rem; }
+    .guide-card { border:none; border-radius:1rem; box-shadow:0 4px 14px rgba(0,0,0,.08); }
+    .step { display:flex; gap:.8rem; margin-bottom:.8rem; }
+    .step .n { flex:0 0 28px; height:28px; border-radius:50%; background:linear-gradient(135deg,var(--scarlet),var(--scarlet-dark)); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:.85rem; }
+    kbd { background:#333; }
+    .cmd-tag { font-family:monospace; background:var(--bs-body-tertiary); border:1px solid var(--bs-border-color); border-radius:.3rem; padding:.05rem .35rem; font-size:.85em; }
+</style>
+
+{% include 'admin/_guide_' ~ lang ~ '.html' ignore missing with context %}
+{% endblock %}

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ brand }} Probe | {% block title %}Dashboard{% endblock %}</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@4.0.0-alpha2/dist/css/adminlte.min.css">
+
+    <style>
+        :root { --scarlet:#ff2a5f; --scarlet-dark:#d11f49; }
+        body { font-family:'Outfit', sans-serif; }
+
+        .app-sidebar .brand-link {
+            display:flex; align-items:center; gap:.6rem; padding:.9rem 1rem;
+            border-bottom:1px solid rgba(255,255,255,.08); text-decoration:none;
+        }
+        .brand-badge {
+            width:38px; height:38px; flex:0 0 38px; border-radius:10px;
+            background:linear-gradient(135deg,var(--scarlet),var(--scarlet-dark));
+            display:flex; align-items:center; justify-content:center; color:#fff; font-size:1.1rem;
+            box-shadow:0 3px 10px rgba(255,42,95,.4);
+        }
+        .brand-text { font-weight:800; letter-spacing:1px; line-height:1; }
+        .brand-text small { display:block; font-weight:400; letter-spacing:.5px; opacity:.6; font-size:.62rem; text-transform:uppercase; }
+        .sidebar-menu .nav-link.active { background:linear-gradient(90deg,rgba(255,42,95,.18),transparent); border-left:3px solid var(--scarlet); }
+        .sidebar-menu .nav-icon { width:1.4rem; text-align:center; }
+        .nav-header { letter-spacing:.08em; font-size:.68rem; opacity:.55; }
+        .app-content-header h3 { font-weight:700; }
+        .accent-bar { height:3px; width:48px; background:var(--scarlet); border-radius:2px; margin-top:.25rem; }
+
+        /* Online LED */
+        .led { display:inline-block; width:.7rem; height:.7rem; border-radius:50%; margin-right:.4rem; background:#6c757d; }
+        .led.on  { background:#2ecc71; box-shadow:0 0 8px #2ecc71; animation:led-blink 1.6s infinite; }
+        .led.off { background:#e74c3c; box-shadow:0 0 8px #e74c3c; }
+        @keyframes led-blink { 0%,100%{opacity:1} 50%{opacity:.35} }
+    </style>
+    {% block head_extra %}{% endblock %}
+</head>
+<body class="layout-fixed sidebar-expand-lg bg-body-tertiary">
+<div class="app-wrapper">
+    <!-- Navbar -->
+    <nav class="app-header navbar navbar-expand bg-body">
+        <div class="container-fluid">
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link" data-lte-toggle="sidebar" href="#" role="button"><i class="fas fa-bars"></i></a>
+                </li>
+            </ul>
+            <ul class="navbar-nav ms-auto align-items-center">
+                <!-- Server link status LED -->
+                <li class="nav-item me-2">
+                    <span class="badge bg-body-secondary text-body border py-2 px-3">
+                        <span class="led off" id="serverLed"></span>
+                        <span id="serverLedText">{{ t('led.connecting') }}</span>
+                    </span>
+                </li>
+                <!-- IDS status indicator -->
+                <li class="nav-item me-3">
+                    <span class="badge bg-secondary py-2 px-3" id="idsBadge" title="Suricata IDS">
+                        <i class="fas fa-shield-halved me-1"></i><span id="idsText">IDS —</span>
+                    </span>
+                </li>
+                <!-- Language selector -->
+                <li class="nav-item dropdown me-2">
+                    <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" title="{{ t('common.language') }}">
+                        <span style="font-size:1.1rem;">{{ languages[lang].flag }}</span>
+                        <span class="d-none d-md-inline ms-1">{{ lang|upper }}</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        {% for code, info in languages.items() %}
+                        <li><a class="dropdown-item {% if code == lang %}active{% endif %}" href="/lang/{{ code }}"><span style="font-size:1.1rem;">{{ info.flag }}</span> <span class="ms-1">{{ info.label }}</span></a></li>
+                        {% endfor %}
+                    </ul>
+                </li>
+                <!-- Font Size Controls -->
+                <li class="nav-item me-2">
+                    <button class="btn btn-sm btn-outline-secondary" onclick="changeFontSize(-1)" title="Decrease Font Size"><i class="fas fa-font"></i>-</button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="changeFontSize(1)" title="Increase Font Size"><i class="fas fa-font"></i>+</button>
+                </li>
+                <!-- Dark Mode Toggle -->
+                <li class="nav-item">
+                    <button class="btn btn-sm btn-outline-secondary" id="darkModeToggle" title="Toggle Dark Mode">
+                        <i class="fas fa-moon" id="darkModeIcon"></i>
+                    </button>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Sidebar -->
+    <aside class="app-sidebar shadow bg-body-secondary" id="mainSidebar" data-bs-theme="dark">
+        <a href="/" class="brand-link">
+            <span class="brand-badge"><i class="fas fa-satellite-dish"></i></span>
+            <span class="brand-text text-body">{{ brand }}<small>Probe Client</small></span>
+        </a>
+        <div class="sidebar-wrapper">
+            <nav class="mt-2">
+                <ul class="nav sidebar-menu flex-column" data-lte-toggle="treeview" role="menu" data-accordion="false">
+                    <li class="nav-header">{{ t('nav.section.overview') }}</li>
+                    <li class="nav-item">
+                        <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">
+                            <i class="nav-icon fas fa-gauge-high"></i><p>{{ t('nav.dashboard') }}</p>
+                        </a>
+                    </li>
+                    <li class="nav-header">{{ t('nav.section.modules') }}</li>
+                    <li class="nav-item">
+                        <a href="/scanner" class="nav-link {% if request.path == '/scanner' %}active{% endif %}">
+                            <i class="nav-icon fas fa-network-wired"></i><p>{{ t('nav.scanner') }}</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/wireless" class="nav-link {% if request.path == '/wireless' %}active{% endif %}">
+                            <i class="nav-icon fas fa-wifi"></i><p>{{ t('nav.wireless') }}</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/suricata" class="nav-link {% if request.path == '/suricata' %}active{% endif %}">
+                            <i class="nav-icon fas fa-shield-halved"></i><p>{{ t('nav.suricata') }}</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/guide" class="nav-link {% if request.path == '/guide' %}active{% endif %}">
+                            <i class="nav-icon fas fa-book-open"></i><p>{{ t('nav.guide') }}</p>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </aside>
+
+    <!-- Content -->
+    <main class="app-main">
+        <div class="app-content-header">
+            <div class="container-fluid">
+                <div class="row"><div class="col-sm-6">
+                    <h3 class="mb-0">{% block content_header %}{% endblock %}</h3>
+                    <div class="accent-bar"></div>
+                </div></div>
+            </div>
+        </div>
+        <div class="app-content">
+            <div class="container-fluid">
+                {% block content %}{% endblock %}
+            </div>
+        </div>
+    </main>
+
+    <footer class="app-footer">
+        <div class="float-end d-none d-sm-inline">
+            <strong>{{ brand }} Command Center</strong>
+            <span class="badge bg-danger ms-1">v1.4.8</span>
+        </div>
+        &copy; 2026. <strong>DS Consulting</strong>. {{ t('footer.rights') }}
+    </footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/admin-lte@4.0.0-alpha2/dist/js/adminlte.min.js"></script>
+
+<script>
+    // Theme + font controls (mirrors the server command center)
+    const htmlElement = document.documentElement;
+    const darkModeToggle = document.getElementById('darkModeToggle');
+    const darkModeIcon = document.getElementById('darkModeIcon');
+    const sidebar = document.getElementById('mainSidebar');
+
+    const savedTheme = localStorage.getItem('probeTheme') || 'dark';
+    const savedFontSize = parseInt(localStorage.getItem('probeFontSize')) || 16;
+
+    applyTheme(savedTheme);
+    document.body.style.fontSize = savedFontSize + 'px';
+
+    darkModeToggle.addEventListener('click', () => {
+        const current = htmlElement.getAttribute('data-bs-theme');
+        applyTheme(current === 'light' ? 'dark' : 'light');
+    });
+
+    function applyTheme(theme) {
+        htmlElement.setAttribute('data-bs-theme', theme);
+        localStorage.setItem('probeTheme', theme);
+        sidebar.setAttribute('data-bs-theme', theme);
+        if (theme === 'dark') {
+            darkModeIcon.classList.replace('fa-moon', 'fa-sun');
+            darkModeToggle.classList.replace('btn-outline-secondary', 'btn-outline-light');
+        } else {
+            darkModeIcon.classList.replace('fa-sun', 'fa-moon');
+            darkModeToggle.classList.replace('btn-outline-light', 'btn-outline-secondary');
+        }
+    }
+
+    let currentFontSize = savedFontSize;
+    window.changeFontSize = function (direction) {
+        currentFontSize += (direction * 2);
+        if (currentFontSize < 12) currentFontSize = 12;
+        if (currentFontSize > 24) currentFontSize = 24;
+        document.body.style.fontSize = currentFontSize + 'px';
+        localStorage.setItem('probeFontSize', currentFontSize);
+    };
+
+    // Smart auto-refresh (preserves scroll, pauses on interaction/hidden tab)
+    window.scarletAutoRefresh = function (seconds) {
+        const key = 'ar_' + location.pathname;
+        try { const s = sessionStorage.getItem(key); if (s) window.scrollTo(0, parseInt(s)); } catch (e) {}
+        const busy = () => document.querySelector('.modal.show')
+            || ['INPUT', 'SELECT', 'TEXTAREA'].includes((document.activeElement || {}).tagName);
+        setInterval(() => {
+            if (document.hidden || busy()) return;
+            try { sessionStorage.setItem(key, String(window.scrollY)); } catch (e) {}
+            location.reload();
+        }, seconds * 1000);
+    };
+
+    // Global server-link LED, polled from /api/status
+    const LED_I18N = {
+        online: {{ t('led.online')|tojson }},
+        unreachable: {{ t('led.unreachable')|tojson }},
+        not_paired: {{ t('led.not_paired')|tojson }},
+        offline: {{ t('led.offline')|tojson }}
+    };
+    (function () {
+        const led = document.getElementById('serverLed');
+        const txt = document.getElementById('serverLedText');
+        async function poll() {
+            try {
+                const r = await fetch('/api/status');
+                const d = await r.json();
+                if (d.online) {
+                    led.className = 'led on';
+                    txt.textContent = LED_I18N.online;
+                } else {
+                    led.className = 'led off';
+                    txt.textContent = d.status === 'paired' ? LED_I18N.unreachable : LED_I18N.not_paired;
+                }
+            } catch (e) {
+                led.className = 'led off';
+                txt.textContent = LED_I18N.offline;
+            }
+        }
+        poll();
+        setInterval(poll, 5000);
+    })();
+
+    // IDS status indicator (top bar)
+    const IDS_I18N = { active: {{ t('ids.active')|tojson }}, off: {{ t('ids.off')|tojson }} };
+    (function () {
+        const badge = document.getElementById('idsBadge');
+        const txt = document.getElementById('idsText');
+        async function pollIds() {
+            try {
+                const r = await fetch('/api/suricata/status');
+                const d = await r.json();
+                if (d.running) {
+                    badge.className = 'badge bg-success py-2 px-3';
+                    txt.textContent = IDS_I18N.active + (d.interface ? ' · ' + d.interface : '');
+                } else {
+                    badge.className = 'badge bg-secondary py-2 px-3';
+                    txt.textContent = IDS_I18N.off;
+                }
+            } catch (e) {
+                badge.className = 'badge bg-secondary py-2 px-3';
+                txt.textContent = IDS_I18N.off;
+            }
+        }
+        pollIds();
+        setInterval(pollIds, 5000);
+    })();
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

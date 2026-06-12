@@ -1,0 +1,160 @@
+{% extends "admin/layout.html" %}
+
+{% block page_title %}Threat Intelligence{% endblock %}
+{% block content_header %}{{ t('hdr.threat_intel') }}{% endblock %}
+
+{% block content %}
+<style>
+    .ti-kpi { border:none; border-radius:1rem; color:#fff; box-shadow:0 8px 24px rgba(0,0,0,.15); }
+    .ti-kpi .v { font-size:2rem; font-weight:700; line-height:1; }
+    .ti-kpi .l { font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; opacity:.9; }
+    .g-alerts { background:linear-gradient(135deg,#cb2d3e,#ef473a); }
+    .g-events { background:linear-gradient(135deg,#373B44,#4286f4); }
+    .g-sources{ background:linear-gradient(135deg,#6a11cb,#2575fc); }
+    .g-hour   { background:linear-gradient(135deg,#11998e,#38ef7d); }
+    .ti-card { border:none; border-radius:1rem; box-shadow:0 4px 14px rgba(0,0,0,.1); }
+    .bar { height:.5rem; border-radius:1rem; background:var(--bs-danger); }
+</style>
+
+<!-- KPI row -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3 col-6"><div class="card ti-kpi g-alerts h-100"><div class="card-body">
+        <div class="v">{{ stats.total_alerts }}</div><div class="l">{{ t('ti.ids_alerts') }}</div>
+        <div class="small mt-1" style="opacity:.85;">{{ stats.high_severity }} high severity</div>
+    </div></div></div>
+    <div class="col-md-3 col-6"><div class="card ti-kpi g-events h-100"><div class="card-body">
+        <div class="v">{{ stats.total_events }}</div><div class="l">{{ t('ti.events_analyzed') }}</div>
+        <div class="small mt-1" style="opacity:.85;">{{ stats.unique_signatures }} unique signatures</div>
+    </div></div></div>
+    <div class="col-md-3 col-6"><div class="card ti-kpi g-sources h-100"><div class="card-body">
+        <div class="v">{{ stats.unique_sources }}</div><div class="l">Distinct Sources</div>
+    </div></div></div>
+    <div class="col-md-3 col-6"><div class="card ti-kpi g-hour h-100"><div class="card-body">
+        <div class="v">{{ stats.events_last_hour }}</div><div class="l">Events / Last Hour</div>
+    </div></div></div>
+</div>
+
+<!-- Severity + AI briefing -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-4">
+        <div class="card ti-card h-100"><div class="card-body">
+            <h6 class="text-uppercase fw-bold text-muted mb-3" style="font-size:.78rem;"><i class="fas fa-gauge-high text-danger me-1"></i> Severity Breakdown</h6>
+            {% set total_sev = (stats.sev_high + stats.sev_med + stats.sev_low) or 1 %}
+            <div class="mb-2"><div class="d-flex justify-content-between small"><span class="text-danger fw-bold">High</span><span>{{ stats.sev_high }}</span></div>
+                <div class="progress" style="height:.5rem;"><div class="progress-bar bg-danger" style="width:{{ (stats.sev_high/total_sev*100)|round }}%"></div></div></div>
+            <div class="mb-2"><div class="d-flex justify-content-between small"><span class="text-warning fw-bold">Medium</span><span>{{ stats.sev_med }}</span></div>
+                <div class="progress" style="height:.5rem;"><div class="progress-bar bg-warning" style="width:{{ (stats.sev_med/total_sev*100)|round }}%"></div></div></div>
+            <div class="mb-2"><div class="d-flex justify-content-between small"><span class="text-info fw-bold">Low / Info</span><span>{{ stats.sev_low }}</span></div>
+                <div class="progress" style="height:.5rem;"><div class="progress-bar bg-info" style="width:{{ (stats.sev_low/total_sev*100)|round }}%"></div></div></div>
+        </div></div>
+    </div>
+    <div class="col-lg-8">
+        <div class="card ti-card h-100">
+            <div class="card-header bg-body-secondary border-0 d-flex justify-content-between align-items-center">
+                <h6 class="m-0"><i class="fas fa-robot text-primary me-1"></i> {{ t('ti.briefing') }}</h6>
+                <button class="btn btn-sm btn-primary" id="btn-briefing"><i class="fas fa-bolt me-1"></i> Generate</button>
+            </div>
+            <div class="card-body">
+                <div id="brief-loading" class="text-center py-4 d-none">
+                    <div class="spinner-border text-primary"></div>
+                    <p class="text-muted mt-2 mb-0">Correlating IDS telemetry…</p>
+                </div>
+                <div id="brief-error" class="alert alert-danger d-none"></div>
+                <div id="brief-result" class="markdown-body" style="max-height:320px; overflow-y:auto;">
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-shield-halved fa-2x mb-2 opacity-25 d-block"></i>
+                        Generate an AI briefing that interprets the top signatures and source IPs into actionable intelligence.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tables -->
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card ti-card"><div class="card-header bg-dark text-white"><h6 class="m-0"><i class="fas fa-fingerprint me-1"></i> {{ t('ti.top_sigs') }}</h6></div>
+            <div class="table-responsive"><table class="table table-hover align-middle mb-0">
+                <tbody>
+                    {% for sig, cnt in top_sigs %}
+                    <tr><td>{{ sig }}</td><td class="text-end"><span class="badge bg-danger rounded-pill">{{ cnt }}</span></td></tr>
+                    {% else %}
+                    <tr><td class="text-muted text-center py-4">No alert signatures yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table></div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card ti-card"><div class="card-header bg-dark text-white"><h6 class="m-0"><i class="fas fa-location-crosshairs me-1"></i> {{ t('ti.top_src') }}</h6></div>
+            <div class="table-responsive"><table class="table table-hover align-middle mb-0">
+                <tbody>
+                    {% for ip, cnt in top_sources %}
+                    <tr><td><code>{{ ip }}</code></td><td class="text-end"><span class="badge bg-primary rounded-pill">{{ cnt }}</span></td></tr>
+                    {% else %}
+                    <tr><td class="text-muted text-center py-4">No source data yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table></div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card ti-card"><div class="card-header bg-dark text-white"><h6 class="m-0"><i class="fas fa-bullseye me-1"></i> Top Destination IPs</h6></div>
+            <div class="table-responsive"><table class="table table-hover align-middle mb-0">
+                <tbody>
+                    {% for ip, cnt in top_dests %}
+                    <tr><td><code>{{ ip }}</code></td><td class="text-end"><span class="badge bg-secondary rounded-pill">{{ cnt }}</span></td></tr>
+                    {% else %}
+                    <tr><td class="text-muted text-center py-4">No destination data yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table></div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card ti-card"><div class="card-header bg-dark text-white"><h6 class="m-0"><i class="fas fa-diagram-project me-1"></i> Protocol Mix</h6></div>
+            <div class="card-body">
+                {% for proto, cnt in proto_mix %}
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="badge bg-info text-dark">{{ proto }}</span>
+                    <span class="fw-bold">{{ cnt }}</span>
+                </div>
+                {% else %}
+                <div class="text-muted text-center py-4">No protocol data yet.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+document.getElementById('btn-briefing').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    const loading = document.getElementById('brief-loading');
+    const result = document.getElementById('brief-result');
+    const error = document.getElementById('brief-error');
+    btn.disabled = true; loading.classList.remove('d-none');
+    result.classList.add('d-none'); error.classList.add('d-none');
+    try {
+        const r = await fetch('{{ url_for("admin.threat_briefing") }}', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin' });
+        const d = await r.json();
+        loading.classList.add('d-none'); btn.disabled = false;
+        if (r.ok && d.markdown) {
+            result.innerHTML = marked.parse(d.markdown);
+            result.classList.remove('d-none');
+        } else {
+            error.textContent = d.error || 'Failed to generate briefing.';
+            error.classList.remove('d-none');
+        }
+    } catch (err) {
+        loading.classList.add('d-none'); btn.disabled = false;
+        error.textContent = 'Network error generating briefing.';
+        error.classList.remove('d-none');
+    }
+});
+</script>
+{% endblock %}

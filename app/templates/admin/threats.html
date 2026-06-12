@@ -1,0 +1,90 @@
+{% extends "admin/layout.html" %}
+
+{% block page_title %}Threat Monitor{% endblock %}
+{% block content_header %}{{ t('hdr.threats') }}{% endblock %}
+
+{% block content %}
+<style>
+    .term {
+        background:#0b0e14; color:#c8e1ff; font-family:'JetBrains Mono','Courier New',monospace;
+        font-size:13px; line-height:1.55; border-radius:.6rem; padding:1rem;
+        height:560px; overflow-y:auto; white-space:pre-wrap; word-break:break-word;
+        border:1px solid rgba(255,255,255,.08);
+    }
+    .term .sev1 { color:#ff5c6c; }
+    .term .sev2 { color:#ffb454; }
+    .term .sev3 { color:#7ee787; }
+    .term .ts   { color:#6c757d; }
+    .stat-pill { border:none; border-radius:.9rem; box-shadow:0 4px 14px rgba(0,0,0,.1); }
+    .stat-pill .v { font-size:1.7rem; font-weight:700; line-height:1; }
+    .stat-pill .l { font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; opacity:.7; }
+</style>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-4"><div class="card stat-pill"><div class="card-body d-flex justify-content-between align-items-center">
+        <div><div class="v" id="kpi-total">0</div><div class="l">{{ t('thr.alerts_recent') }}</div></div>
+        <i class="fas fa-bell fa-2x text-primary opacity-50"></i>
+    </div></div></div>
+    <div class="col-md-4"><div class="card stat-pill"><div class="card-body d-flex justify-content-between align-items-center">
+        <div><div class="v text-danger" id="kpi-critical">0</div><div class="l">{{ t('thr.high_sev') }}</div></div>
+        <i class="fas fa-triangle-exclamation fa-2x text-danger opacity-50"></i>
+    </div></div></div>
+    <div class="col-md-4"><div class="card stat-pill"><div class="card-body d-flex justify-content-between align-items-center">
+        <div><div class="v" id="kpi-sources">0</div><div class="l">{{ t('thr.sources') }}</div></div>
+        <i class="fas fa-location-crosshairs fa-2x text-warning opacity-50"></i>
+    </div></div></div>
+</div>
+
+<div class="card shadow-sm border-0" style="border-radius:1rem; overflow:hidden;">
+    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+        <h3 class="card-title m-0"><i class="fas fa-terminal me-2"></i> Live IDS Feed <small class="text-muted">— streamed from probe fleet</small></h3>
+        <div>
+            <span class="badge bg-success"><span style="display:inline-block;width:.5rem;height:.5rem;border-radius:50%;background:#fff;" class="me-1"></span>Live</span>
+            <button class="btn btn-sm btn-outline-light ms-1" id="btn-clear"><i class="fas fa-eraser"></i></button>
+        </div>
+    </div>
+    <div class="card-body p-2 bg-black">
+        <div class="term" id="term"><span class="text-muted">Awaiting Suricata alerts from paired probes…</span></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const term = document.getElementById('term');
+let autoScroll = true;
+let lastIds = new Set();
+
+term.addEventListener('scroll', () => {
+    autoScroll = (term.scrollTop + term.clientHeight >= term.scrollHeight - 20);
+});
+document.getElementById('btn-clear').addEventListener('click', () => { term.innerHTML = ''; lastIds = new Set(); });
+
+function esc(s) { return (s || '').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+async function poll() {
+    try {
+        const r = await fetch('{{ url_for("admin.threats_feed") }}');
+        const d = await r.json();
+        const events = d.events || [];
+
+        // KPIs
+        document.getElementById('kpi-total').textContent = events.length;
+        document.getElementById('kpi-critical').textContent = events.filter(e => e.severity !== null && e.severity <= 1).length;
+        document.getElementById('kpi-sources').textContent = new Set(events.map(e => e.src_ip).filter(Boolean)).size;
+
+        if (!events.length) return;
+
+        const html = events.map(e => {
+            const sevCls = e.severity <= 1 ? 'sev1' : (e.severity === 2 ? 'sev2' : 'sev3');
+            return `<span class="ts">[${e.received_at}]</span> <span class="${sevCls}">${esc(e.line || (e.signature + ' ' + e.src_ip + ' -> ' + e.dest_ip))}</span>`;
+        }).join('\n');
+        term.innerHTML = html;
+        if (autoScroll) term.scrollTop = term.scrollHeight;
+    } catch (e) {}
+}
+
+poll();
+setInterval(poll, 4000);
+</script>
+{% endblock %}

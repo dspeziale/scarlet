@@ -1,0 +1,164 @@
+{% extends "admin/layout.html" %}
+
+{% block page_title %}Probe Fleet{% endblock %}
+{% block content_header %}{{ t('hdr.fleet') }}{% endblock %}
+
+{% block content %}
+<style>
+    .stat-pill { border:none; border-radius:.9rem; box-shadow:0 4px 14px rgba(0,0,0,.1); }
+    .stat-pill .v { font-size:1.8rem; font-weight:700; line-height:1; }
+    .stat-pill .l { font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; opacity:.7; }
+    .dot { display:inline-block; width:.6rem; height:.6rem; border-radius:50%; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .dot.live { animation: blink 1.4s infinite; }
+</style>
+
+<!-- Summary -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4 col-6">
+        <div class="card stat-pill"><div class="card-body d-flex justify-content-between align-items-center">
+            <div><div class="v">{{ summary.total }}</div><div class="l">{{ t('fleet.registered') }}</div></div>
+            <i class="fas fa-satellite-dish fa-2x text-primary opacity-50"></i>
+        </div></div>
+    </div>
+    <div class="col-md-4 col-6">
+        <div class="card stat-pill"><div class="card-body d-flex justify-content-between align-items-center">
+            <div><div class="v text-success">{{ summary.online }}</div><div class="l"><span class="dot bg-success live me-1"></span>{{ t('fleet.online_now') }}</div></div>
+            <i class="fas fa-wifi fa-2x text-success opacity-50"></i>
+        </div></div>
+    </div>
+    <div class="col-md-4 col-6">
+        <div class="card stat-pill"><div class="card-body d-flex justify-content-between align-items-center">
+            <div><div class="v text-secondary">{{ summary.offline }}</div><div class="l"><span class="dot bg-secondary me-1"></span>{{ t('fleet.offline') }}</div></div>
+            <i class="fas fa-plug-circle-xmark fa-2x text-secondary opacity-50"></i>
+        </div></div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0" style="border-radius:1rem; overflow:hidden;">
+    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+        <h3 class="card-title m-0"><i class="fas fa-list-check me-2"></i> {{ t('fleet.status_title') }}</h3>
+        <span class="badge bg-success"><span class="dot bg-white live me-1"></span>Live</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>{{ t('fleet.col_probe') }}</th>
+                        <th>{{ t('lbl.tenant') }}</th>
+                        <th>{{ t('lbl.status') }}</th>
+                        <th>{{ t('lbl.reachability') }}</th>
+                        <th>{{ t('lbl.location') }}</th>
+                        <th class="text-center">{{ t('lbl.assets') }}</th>
+                        <th>{{ t('fleet.col_suricata') }}</th>
+                        <th>{{ t('lbl.license') }}</th>
+                        <th>{{ t('lbl.last_seen') }}</th>
+                        <th class="text-end">{{ t('lbl.actions') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in fleet %}
+                    {% set probe = item.probe %}
+                    <tr>
+                        <td>
+                            <div class="fw-bold"><i class="fas fa-satellite-dish text-info me-1"></i> {{ probe.probe_name or 'Unnamed Probe' }}</div>
+                            <small class="text-muted font-monospace">{{ probe.id }}</small>
+                        </td>
+                        <td>{{ probe.tenant.name if probe.tenant else 'Unknown' }}</td>
+                        <td>
+                            {% if probe.status == 'paired' %}<span class="badge bg-success">Paired</span>
+                            {% elif probe.status == 'scanning' %}<span class="badge bg-info"><i class="fas fa-spinner fa-spin me-1"></i>Scanning</span>
+                            {% elif probe.status == 'pending' %}<span class="badge bg-warning text-dark">Pending</span>
+                            {% else %}<span class="badge bg-secondary">{{ probe.status }}</span>{% endif %}
+                        </td>
+                        <td>
+                            {% if item.online %}
+                                <span class="text-success"><span class="dot bg-success live me-1"></span>Online</span>
+                            {% else %}
+                                <span class="text-muted"><span class="dot bg-secondary me-1"></span>Offline</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if probe.metadata_col and probe.metadata_col.address %}
+                                <small><i class="fas fa-map-marker-alt text-danger me-1"></i>{{ probe.metadata_col.address }}</small>
+                            {% else %}<small class="text-muted">—</small>{% endif %}
+                        </td>
+                        <td class="text-center"><span class="badge bg-warning text-dark rounded-pill">{{ item.device_count }}</span></td>
+                        <td style="min-width:230px;">
+                            {% set rt = probe.runtime_info or {} %}
+                            {% set suri = rt.get('suricata') or {} %}
+                            {% set ifaces = rt.get('interfaces') or [] %}
+                            {% if suri.get('installed') == false %}
+                                <span class="badge bg-secondary">{{ t('fleet.not_installed') }}</span>
+                            {% elif suri.get('running') %}
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-success"><span class="dot bg-white live me-1"></span>Running</span>
+                                    <code class="small">{{ suri.get('interface') }}</code>
+                                    <form method="POST" action="{{ url_for('admin.suricata_stop', probe_id=probe.id) }}" class="suri-form">
+                                        <button class="btn btn-sm btn-outline-danger" title="Stop Suricata"><i class="fas fa-stop"></i></button>
+                                    </form>
+                                </div>
+                            {% else %}
+                                <form method="POST" action="{{ url_for('admin.suricata_start', probe_id=probe.id) }}" class="suri-form d-flex gap-1">
+                                    <select name="interface" class="form-select form-select-sm" style="max-width:130px;">
+                                        {% for i in ifaces %}<option value="{{ i }}">{{ i }}</option>{% else %}<option value="-">auto</option>{% endfor %}
+                                    </select>
+                                    <button class="btn btn-sm btn-success" title="Start Suricata"><i class="fas fa-play"></i></button>
+                                </form>
+                            {% endif %}
+                        </td>
+                        <td><code class="text-muted small">{{ probe.license.code if probe.license else 'N/A' }}</code></td>
+                        <td><small>{{ probe.last_seen.strftime('%Y-%m-%d %H:%M') if probe.last_seen else t('fleet.never') }}</small></td>
+                        <td class="text-end text-nowrap">
+                            <a href="{{ url_for('admin.probe_console', probe_id=probe.id) }}" class="btn btn-sm btn-outline-primary" title="Open Console"><i class="fas fa-terminal"></i></a>
+                            <form action="{{ url_for('admin.delete_probe', probe_id=probe.id) }}" method="POST" class="d-inline" onsubmit="return confirm('WARNING: Deleting this probe erases all associated data and discovered assets. This cannot be undone. Continue?');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete Probe"><i class="fas fa-trash-alt"></i></button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="10" class="text-center text-muted py-5">
+                        <i class="fas fa-satellite-dish fa-2x mb-2 opacity-25 d-block"></i>
+                        No probes registered yet. Deploy a probe client and pair it with a License Code.
+                    </td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="suri-toast" class="position-fixed bottom-0 end-0 m-3 alert d-none shadow" style="z-index:1080;"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Submit Suricata start/stop commands asynchronously with feedback
+document.querySelectorAll('.suri-form').forEach(form => {
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const toast = document.getElementById('suri-toast');
+        try {
+            const r = await fetch(form.action, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const d = await r.json();
+            toast.className = 'position-fixed bottom-0 end-0 m-3 alert shadow ' + (d.ok ? 'alert-success' : 'alert-danger');
+            toast.innerHTML = '<i class="fas fa-satellite-dish me-1"></i> ' + d.message;
+            toast.classList.remove('d-none');
+            // Refresh shortly so the reported Suricata state updates after the next heartbeat
+            if (d.ok) setTimeout(() => window.location.reload(), 6000);
+        } catch (err) {
+            toast.className = 'position-fixed bottom-0 end-0 m-3 alert alert-danger shadow';
+            toast.textContent = 'Failed to send command.';
+            toast.classList.remove('d-none');
+        }
+    });
+});
+
+scarletAutoRefresh(12);
+</script>
+{% endblock %}

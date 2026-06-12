@@ -1,0 +1,105 @@
+{% extends "admin/layout.html" %}
+
+{% block page_title %}Tenants &amp; Licenses{% endblock %}
+{% block content_header %}{{ t('hdr.tenants') }}{% endblock %}
+
+{% block content %}
+
+{% if current_user.role == 'superadmin' %}
+<!-- Global Admin Actions -->
+<div class="card mb-4 shadow-sm border-0" style="border-radius:1rem; overflow:hidden;">
+    <div class="card-header bg-primary text-white">
+        <h3 class="card-title m-0"><i class="fas fa-plus-circle me-2"></i> Provisioning</h3>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-5 border-end">
+                <h6 class="text-uppercase text-muted fw-bold mb-3" style="font-size:.78rem;">Create New Tenant</h6>
+                <form action="/admin/tenant/create" method="POST" class="d-flex">
+                    <input type="text" class="form-control me-2" name="name" placeholder="Tenant Name" required>
+                    <button class="btn btn-outline-primary" type="submit"><i class="fas fa-plus"></i></button>
+                </form>
+            </div>
+            <div class="col-md-7">
+                <h6 class="text-uppercase text-muted fw-bold mb-3" style="font-size:.78rem;">Create Tenant Admin User</h6>
+                <form action="/admin/user/create" method="POST" class="row gx-2 gy-2">
+                    <div class="col-sm-4"><input type="email" class="form-control" name="email" placeholder="Email" required></div>
+                    <div class="col-sm-4"><input type="password" class="form-control" name="password" placeholder="Password" required></div>
+                    <div class="col-sm-4 d-flex">
+                        <select class="form-select me-2" name="tenant_id" required>
+                            <option value="" disabled selected>Select Tenant...</option>
+                            {% for tenant in tenants %}
+                            <option value="{{ tenant.id }}">{{ tenant.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-user-plus"></i></button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Tenant cards -->
+<div class="row g-4">
+    {% for tenant in tenants %}
+    <div class="col-lg-6">
+        <div class="card shadow-sm border-0 h-100" style="border-radius:1rem; overflow:hidden;">
+            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="card-title m-0"><i class="fas fa-building me-2"></i> {{ tenant.name }}</h5>
+                    <small class="text-muted font-monospace" style="font-size:.7rem;">{{ tenant.id }}</small>
+                </div>
+                <span class="badge bg-primary">{{ tenant.probes|length }} probes</span>
+            </div>
+            <div class="card-body">
+                <!-- Quick stats -->
+                <div class="row text-center g-2 mb-3">
+                    <div class="col-4"><div class="border rounded py-2"><div class="fw-bold fs-5">{{ tenant.probes|length }}</div><small class="text-muted">Probes</small></div></div>
+                    <div class="col-4"><div class="border rounded py-2"><div class="fw-bold fs-5">{{ tenant.devices|length }}</div><small class="text-muted">Assets</small></div></div>
+                    <div class="col-4"><div class="border rounded py-2"><div class="fw-bold fs-5">{{ tenant.admins|length }}</div><small class="text-muted">Admins</small></div></div>
+                </div>
+
+                <!-- Licenses -->
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="m-0"><i class="fas fa-key text-warning me-1"></i> Licenses</h6>
+                    <form action="/admin/license/create" method="POST">
+                        <input type="hidden" name="tenant_id" value="{{ tenant.id }}">
+                        <button class="btn btn-sm btn-success" type="submit"><i class="fas fa-plus"></i> Generate</button>
+                    </form>
+                </div>
+                <ul class="list-group list-group-flush border rounded mb-3" style="max-height:180px; overflow-y:auto;">
+                    {% for lic in tenant.licenses %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-2">
+                        <code>{{ lic.code }}</code>
+                        {% if lic.is_used %}<span class="badge bg-danger">Used</span>{% else %}<span class="badge bg-success">Active</span>{% endif %}
+                    </li>
+                    {% else %}
+                    <li class="list-group-item text-muted text-center small py-2">No licenses generated.</li>
+                    {% endfor %}
+                </ul>
+
+                <!-- Admins -->
+                {% if tenant.admins %}
+                <h6 class="mb-2"><i class="fas fa-user-shield text-info me-1"></i> Admins</h6>
+                <div class="d-flex flex-wrap gap-1 mb-2">
+                    {% for u in tenant.admins %}
+                    <span class="badge bg-body-secondary text-body border"><i class="fas fa-user me-1"></i>{{ u.email }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            <div class="card-footer bg-body-tertiary d-flex gap-2">
+                <a href="{{ url_for('admin.probes_fleet') }}" class="btn btn-sm btn-outline-secondary flex-fill"><i class="fas fa-satellite-dish me-1"></i> Probes</a>
+                <a href="{{ url_for('admin.assets') }}" class="btn btn-sm btn-outline-secondary flex-fill"><i class="fas fa-network-wired me-1"></i> Assets</a>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12">
+        <div class="alert alert-info"><i class="fas fa-info-circle me-2"></i> No tenants found or you don't have access to any tenant.</div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
