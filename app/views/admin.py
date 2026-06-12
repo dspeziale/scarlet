@@ -973,32 +973,49 @@ def dashboard():
         for p in all_probes:
             # Check if coordinates exist
             lat, lng = None, None
-            address, contact = "", ""
-            if p.metadata_col:
-                address = p.metadata_col.get('address', '')
-                contact = p.metadata_col.get('contact', '')
-                if p.metadata_col.get('coordinates'):
-                    coords = p.metadata_col.get('coordinates').split(',')
-                    if len(coords) == 2:
-                        try:
-                            lat = float(coords[0].strip())
-                            lng = float(coords[1].strip())
-                        except ValueError:
-                            pass
-            
+            md = p.metadata_col or {}
+            address = md.get('address', '')
+            contact = md.get('contact', '')
+            email = md.get('email', '')
+            telegram = md.get('telegram', '')
+            coords_str = md.get('coordinates', '')
+            if coords_str:
+                coords = coords_str.split(',')
+                if len(coords) == 2:
+                    try:
+                        lat = float(coords[0].strip())
+                        lng = float(coords[1].strip())
+                    except ValueError:
+                        pass
+
             device_count = len(p.devices) if hasattr(p, 'devices') else 0
-                        
+            rt = p.runtime_info or {}
+            suri = rt.get('suricata') or {}
+            ifaces = rt.get('interfaces') or []
+            n_services = sum(len(d.services) for d in p.devices) if hasattr(p, 'devices') else 0
+
             probes_data.append({
                 "id": str(p.id),
                 "name": p.probe_name or "Unknown Probe",
                 "tenant": p.tenant.name if p.tenant else "Unknown",
                 "status": p.status,
+                "online": _is_online(p),
                 "lat": lat,
                 "lng": lng,
                 "last_seen": p.last_seen.strftime('%Y-%m-%d %H:%M:%S') if p.last_seen else 'Never',
                 "address": address,
                 "contact": contact,
-                "device_count": device_count
+                "email": email,
+                "telegram": telegram,
+                "coords": coords_str,
+                "device_count": device_count,
+                "services": n_services,
+                "license": (p.license.code if p.license else None),
+                "agent_version": rt.get('agent_version'),
+                "interfaces": len(ifaces),
+                "cpu": rt.get('cpu'),
+                "mem": rt.get('mem'),
+                "suricata": {"running": suri.get('running'), "interface": suri.get('interface'), "installed": suri.get('installed')},
             })
             
         stats = {

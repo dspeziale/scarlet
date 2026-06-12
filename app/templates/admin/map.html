@@ -204,47 +204,27 @@
     <h6 class="mb-0"><i class="fas fa-satellite-dish text-info me-2"></i> <span id="panel-probe-name">Probe Details</span></h6>
     <button type="button" class="btn-close btn-close-white btn-sm" onclick="document.getElementById('probePanel').classList.add('d-none')" aria-label="Close"></button>
   </div>
-  <div class="p-2 overflow-auto" style="max-height: 200px;">
-    <div class="row g-2">
-        <div class="col-md-4">
-            <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.8rem;"><i class="fas fa-info-circle me-1"></i> General Info</h6>
-            <ul class="list-group list-group-flush shadow-sm rounded small">
-                <li class="list-group-item d-flex justify-content-between align-items-center bg-body py-1">
-                    Tenant
-                    <span class="fw-bold" id="panel-tenant"></span>
-                </li>
-                <li class="list-group-item d-flex justify-content-between align-items-center bg-body py-1">
-                    Status
-                    <span id="panel-status"></span>
-                </li>
-                <li class="list-group-item d-flex justify-content-between align-items-center bg-body py-1">
-                    Last Seen
-                    <span class="text-muted" id="panel-last-seen" style="font-size: 0.75rem;"></span>
-                </li>
-            </ul>
-        </div>
-        <div class="col-md-4">
-            <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.8rem;"><i class="fas fa-map-marker-alt me-1"></i> Logistics</h6>
-            <ul class="list-group list-group-flush shadow-sm rounded small">
-                <li class="list-group-item bg-body py-1">
-                    <small class="text-muted d-block" style="font-size: 0.7rem;">Physical Address</small>
-                    <span id="panel-address" class="text-truncate d-inline-block" style="max-width: 100%;">N/A</span>
-                </li>
-                <li class="list-group-item bg-body py-1">
-                    <small class="text-muted d-block" style="font-size: 0.7rem;">Contact Person</small>
-                    <span id="panel-contact" class="text-truncate d-inline-block" style="max-width: 100%;">N/A</span>
-                </li>
-            </ul>
-        </div>
-        <div class="col-md-4">
-            <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.8rem;"><i class="fas fa-chart-line me-1"></i> Statistics</h6>
-            <div class="card bg-warning bg-opacity-10 border-warning shadow-sm">
-                <div class="card-body text-center py-2">
-                    <h3 class="text-warning fw-bold mb-0" id="panel-devices">0</h3>
-                    <p class="text-muted text-uppercase mb-0 fw-bold" style="font-size: 0.7rem;">Discovered Assets</p>
-                </div>
-            </div>
-        </div>
+  <div class="p-2 overflow-auto" style="max-height: 230px;">
+    <div class="info-chips">
+        <div class="chip"><i class="fas fa-building"></i><div><span class="k">Tenant</span><span class="v" id="panel-tenant">—</span></div></div>
+        <div class="chip"><i class="fas fa-circle-dot"></i><div><span class="k">Status</span><span class="v" id="panel-status">—</span></div></div>
+        <div class="chip"><i class="fas fa-wifi"></i><div><span class="k">Reachability</span><span class="v" id="panel-online">—</span></div></div>
+        <div class="chip"><i class="fas fa-clock"></i><div><span class="k">Last Seen</span><span class="v" id="panel-last-seen">—</span></div></div>
+        <div class="chip"><i class="fas fa-network-wired"></i><div><span class="k">Assets</span><span class="v" id="panel-devices">0</span></div></div>
+        <div class="chip"><i class="fas fa-plug"></i><div><span class="k">Services</span><span class="v" id="panel-services">0</span></div></div>
+        <div class="chip"><i class="fas fa-ethernet"></i><div><span class="k">Interfaces</span><span class="v" id="panel-ifaces">0</span></div></div>
+        <div class="chip"><i class="fas fa-shield-halved"></i><div><span class="k">IDS</span><span class="v" id="panel-ids">—</span></div></div>
+        <div class="chip"><i class="fas fa-microchip"></i><div><span class="k">Agent</span><span class="v" id="panel-agent">—</span></div></div>
+        <div class="chip"><i class="fas fa-gauge"></i><div><span class="k">CPU / Mem</span><span class="v" id="panel-cpu">—</span></div></div>
+        <div class="chip"><i class="fas fa-key"></i><div><span class="k">License</span><span class="v" id="panel-license">—</span></div></div>
+        <div class="chip"><i class="fas fa-location-dot"></i><div><span class="k">Coordinates</span><span class="v" id="panel-coords">—</span></div></div>
+        <div class="chip"><i class="fas fa-map-marker-alt"></i><div><span class="k">Address</span><span class="v" id="panel-address">—</span></div></div>
+        <div class="chip"><i class="fas fa-user"></i><div><span class="k">Contact</span><span class="v" id="panel-contact">—</span></div></div>
+        <div class="chip"><i class="fas fa-envelope"></i><div><span class="k">Email</span><span class="v" id="panel-email">—</span></div></div>
+        <div class="chip"><i class="fab fa-telegram"></i><div><span class="k">Telegram</span><span class="v" id="panel-telegram">—</span></div></div>
+    </div>
+    <div class="text-end mt-2">
+        <a href="#" id="panel-console" class="btn btn-sm btn-primary"><i class="fas fa-terminal me-1"></i> Open Console</a>
     </div>
   </div>
 </div>
@@ -269,6 +249,13 @@
     .pulse-animation {
         animation: pulse-ring 1.5s infinite ease-in-out;
     }
+
+    /* Compact info chips in the probe panel */
+    .info-chips { display:grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap:.4rem; }
+    .info-chips .chip { display:flex; align-items:center; gap:.5rem; background:var(--bs-body); border:1px solid var(--bs-border-color); border-radius:.5rem; padding:.35rem .55rem; }
+    .info-chips .chip > i { width:1.1rem; text-align:center; color:var(--scarlet); opacity:.85; }
+    .info-chips .chip .k { display:block; font-size:.6rem; text-transform:uppercase; letter-spacing:.04em; opacity:.6; line-height:1; }
+    .info-chips .chip .v { display:block; font-size:.82rem; font-weight:600; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:130px; }
 </style>
 
 <!-- Leaflet CSS & JS -->
@@ -305,16 +292,37 @@
 
                 // When clicking a marker, open the bottom panel and populate data
                 marker.on('click', function() {
+                    const set = (id, val, title) => { const el = document.getElementById(id); if (el) { el.innerText = (val===null||val===undefined||val==='') ? '—' : val; el.title = title || el.innerText; } };
+                    set('panel-tenant', probe.tenant);
+                    set('panel-last-seen', probe.last_seen);
+                    set('panel-address', probe.address);
+                    set('panel-contact', probe.contact);
+                    set('panel-email', probe.email);
+                    set('panel-telegram', probe.telegram);
+                    set('panel-coords', probe.coords);
+                    set('panel-devices', probe.device_count);
+                    set('panel-services', probe.services);
+                    set('panel-ifaces', probe.interfaces);
+                    set('panel-agent', probe.agent_version ? ('v' + probe.agent_version) : '—');
+                    set('panel-license', probe.license);
+                    set('panel-cpu', (probe.cpu!=null ? probe.cpu+'%' : '—') + ' / ' + (probe.mem!=null ? probe.mem+'%' : '—'));
                     document.getElementById('panel-probe-name').innerText = probe.name;
-                    document.getElementById('panel-tenant').innerText = probe.tenant;
-                    document.getElementById('panel-last-seen').innerText = probe.last_seen;
-                    document.getElementById('panel-address').innerText = probe.address || 'N/A';
-                    document.getElementById('panel-contact').innerText = probe.contact || 'N/A';
-                    document.getElementById('panel-devices').innerText = probe.device_count;
+
+                    const suri = probe.suricata || {};
+                    const idsEl = document.getElementById('panel-ids');
+                    if (suri.installed === false) idsEl.innerHTML = '<span class="badge bg-secondary">not installed</span>';
+                    else if (suri.running) idsEl.innerHTML = '<span class="badge bg-success">running' + (suri.interface ? ' · '+suri.interface : '') + '</span>';
+                    else idsEl.innerHTML = '<span class="badge bg-secondary">stopped</span>';
+
+                    const onlEl = document.getElementById('panel-online');
+                    onlEl.innerHTML = probe.online ? '<span class="badge bg-success">Online</span>' : '<span class="badge bg-secondary">Offline</span>';
 
                     var statusBadge = probe.status === 'scanning' ? 'bg-info' : (probe.status === 'paired' ? 'bg-success' : 'bg-warning text-dark');
                     var statusText = probe.status === 'scanning' ? '<i class="fas fa-spinner fa-spin me-1"></i> Scanning' : probe.status;
                     document.getElementById('panel-status').innerHTML = `<span class="badge ${statusBadge}">${statusText}</span>`;
+
+                    const cons = document.getElementById('panel-console');
+                    if (cons) cons.href = '/admin/probe/' + probe.id + '/console';
 
                     probePanelElement.classList.remove('d-none');
                 });
