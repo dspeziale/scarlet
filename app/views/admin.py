@@ -158,6 +158,21 @@ def guide():
     return render_template('admin/guide.html')
 
 
+@bp.route('/sensors')
+@login_required
+def sensors():
+    """Datacenter environmental sensors (mock, continuous)."""
+    from app.services import sensors as sensor_svc
+    return render_template('admin/sensors.html', sensors=sensor_svc.current())
+
+
+@bp.route('/sensors/feed')
+@login_required
+def sensors_feed():
+    from app.services import sensors as sensor_svc
+    return jsonify({"current": sensor_svc.current(), "history": sensor_svc.all_histories()})
+
+
 @bp.route('/lang/<code>')
 def set_language(code):
     """Switches the UI language (it/en) and returns to the previous page."""
@@ -1037,6 +1052,42 @@ def create_user():
             _audit('user.create', email, tenant_id=tenant_id)
     return redirect(url_for('admin.tenants'))
 
+
+@bp.route('/user/<user_id>/update', methods=['POST'])
+@login_required
+def update_user(user_id):
+    """Updates a tenant admin's email and/or password."""
+    if current_user.role != 'superadmin':
+        return "Unauthorized", 403
+    user = User.query.get(user_id)
+    if not user:
+        return "Not found", 404
+    new_email = (request.form.get('email') or '').strip().lower()
+    new_password = request.form.get('password') or ''
+    if new_email and new_email != user.email and not User.query.filter_by(email=new_email).first():
+        user.email = new_email
+    if new_password:
+        user.set_password(new_password)
+    db.session.commit()
+    _audit('user.update', user.email, tenant_id=user.tenant_id)
+    flash('Administrator updated.', 'success')
+    return redirect(url_for('admin.tenants'))
+
+
+@bp.route('/user/<user_id>/delete', methods=['POST'])
+@login_required
+def delete_user(user_id):
+    if current_user.role != 'superadmin':
+        return "Unauthorized", 403
+    user = User.query.get(user_id)
+    if user and user.role != 'superadmin':
+        email, tid = user.email, user.tenant_id
+        db.session.delete(user)
+        db.session.commit()
+        _audit('user.delete', email, tenant_id=tid)
+    return redirect(url_for('admin.tenants'))
+
+
 @bp.route('/device/scan/<uuid:device_id>', methods=['POST'])
 @login_required
 def trigger_device_scan(device_id):
@@ -1125,9 +1176,9 @@ def suricata_stop(probe_id):
 # ===========================================================================
 ALLOWED_COMMANDS = {
     'scan_network', 'vuln_scan', 'suricata_start', 'suricata_stop',
-    'suricata_reload_rules', 'set_scan_config', 'get_logs', 'get_status',
+    'suricata_reload_rules', 'set_scan_config', 'set_heartbeat', 'get_logs', 'get_status',
     'capture_pcap', 'restart_agent', 'factory_reset', 'self_update',
-    'scan_wifi', 'scan_ble',
+    'scan_wifi', 'scan_ble', 'clear_suricata_logs',
 }
 
 

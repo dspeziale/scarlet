@@ -101,8 +101,13 @@
                                 </div>
                             {% else %}
                                 <form method="POST" action="{{ url_for('admin.suricata_start', probe_id=probe.id) }}" class="suri-form d-flex gap-1">
-                                    <select name="interface" class="form-select form-select-sm" style="max-width:130px;">
-                                        {% for i in ifaces %}<option value="{{ i }}">{{ i }}</option>{% else %}<option value="-">auto</option>{% endfor %}
+                                    <select name="interface" class="form-select form-select-sm" style="max-width:190px;">
+                                        <option value="-">auto</option>
+                                        {% for i in ifaces %}
+                                            {% set iname = i.name if i is mapping else i %}
+                                            {% set iip = i.ip if i is mapping else None %}
+                                            <option value="{{ iname }}">{{ iname }}{% if iip %} ({{ iip }}){% endif %}</option>
+                                        {% endfor %}
                                     </select>
                                     <button class="btn btn-sm btn-success" title="Start Suricata"><i class="fas fa-play"></i></button>
                                 </form>

@@ -1,0 +1,85 @@
+{% extends "admin/layout.html" %}
+
+{% block page_title %}{{ t('hdr.sensors') }}{% endblock %}
+{% block content_header %}{{ t('hdr.sensors') }}{% endblock %}
+
+{% block content %}
+<style>
+    .sensor-card { border:none; border-radius:1rem; box-shadow:0 4px 14px rgba(0,0,0,.1); overflow:hidden; }
+    .sensor-card .head { padding:.8rem 1rem; display:flex; justify-content:space-between; align-items:center; }
+    .sensor-val { font-size:1.9rem; font-weight:800; line-height:1; }
+    .sensor-unit { font-size:.8rem; opacity:.7; }
+    .s-ok    { background:linear-gradient(135deg,#11998e,#38ef7d); color:#06281f; }
+    .s-warn  { background:linear-gradient(135deg,#f7971e,#ffd200); color:#3a2e00; }
+    .s-alarm { background:linear-gradient(135deg,#cb2d3e,#ef473a); color:#fff; }
+    .pulse-dot { width:.55rem; height:.55rem; border-radius:50%; display:inline-block; animation:sp 1.4s infinite; }
+    @keyframes sp { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .chart-wrap { height:90px; }
+</style>
+
+<div class="alert alert-secondary d-flex align-items-center gap-2">
+    <span class="pulse-dot bg-success"></span>
+    <span class="small">{{ t('sensors.live') }} — datacenter environmental telemetry, updated every few seconds.</span>
+</div>
+
+<div class="row g-3" id="sensor-grid">
+    {% for s in sensors %}
+    <div class="col-xl-3 col-md-4 col-6">
+        <div class="card sensor-card h-100">
+            <div class="head s-{{ s.status }}" id="head-{{ s.key }}">
+                <div>
+                    <div class="text-uppercase fw-bold" style="font-size:.7rem; letter-spacing:.05em;">{{ s.label }}</div>
+                    <div class="mt-1">
+                        {% if s.kind == 'binary' %}
+                        <span class="sensor-val" id="val-{{ s.key }}">{{ 'YES' if s.value else 'NO' }}</span>
+                        {% else %}
+                        <span class="sensor-val" id="val-{{ s.key }}">{{ s.value }}</span><span class="sensor-unit"> {{ s.unit }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <i class="fas {{ s.icon }} fa-2x opacity-50"></i>
+            </div>
+            <div class="card-body p-2">
+                <div class="chart-wrap"><canvas id="chart-{{ s.key }}"></canvas></div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+const charts = {};
+
+function color(status){ return status==='alarm' ? '#ef473a' : (status==='warn' ? '#f7971e' : '#38ef7d'); }
+
+async function load() {
+    let d;
+    try { d = await (await fetch('{{ url_for("admin.sensors_feed") }}')).json(); } catch(e){ return; }
+    d.current.forEach(s => {
+        const valEl = document.getElementById('val-'+s.key);
+        if (valEl) valEl.textContent = (s.kind==='binary') ? (s.value? 'YES':'NO') : s.value;
+        const head = document.getElementById('head-'+s.key);
+        if (head) head.className = 'head s-'+s.status;
+        const h = d.history[s.key];
+        if (!h) return;
+        if (!charts[s.key]) {
+            charts[s.key] = new Chart(document.getElementById('chart-'+s.key), {
+                type:'line',
+                data:{ labels:h.labels, datasets:[{ data:h.values, borderColor:color(s.status), backgroundColor:'rgba(56,239,125,.08)', fill:true, tension:.35, pointRadius:0, borderWidth:2 }]},
+                options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{display:false}, y:{display:false}}, animation:false }
+            });
+        } else {
+            const c = charts[s.key];
+            c.data.labels = h.labels; c.data.datasets[0].data = h.values;
+            c.data.datasets[0].borderColor = color(s.status);
+            c.update('none');
+        }
+    });
+}
+load();
+setInterval(load, 5000);
+</script>
+{% endblock %}

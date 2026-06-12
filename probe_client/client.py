@@ -7,13 +7,13 @@ STATE_FILE = 'probe_state.json'
 SERVER_URL = os.environ.get('SERVER_URL', 'http://localhost:5000')
 
 # Probe agent identity & remote-control capabilities advertised to the server.
-AGENT_VERSION = "1.4.8"
+AGENT_VERSION = "1.0.2"
 DEFAULT_POLL = 20
 CAPABILITIES = [
     "scan_network", "vuln_scan",
     "suricata_start", "suricata_stop", "suricata_reload_rules",
-    "set_scan_config", "get_logs", "get_status", "capture_pcap",
-    "scan_wifi", "scan_ble",
+    "set_scan_config", "set_heartbeat", "get_logs", "get_status", "capture_pcap",
+    "scan_wifi", "scan_ble", "clear_suricata_logs",
     "restart_agent", "factory_reset", "self_update",
 ]
 
@@ -159,7 +159,10 @@ def send_status(status_str):
             pass
         try:
             import suricata_manager
-            payload["interfaces"] = [i["name"] for i in suricata_manager.list_interfaces()]
+            payload["interfaces"] = [
+                {"name": i["name"], "ip": (i["addresses"][0] if i.get("addresses") else None)}
+                for i in suricata_manager.list_interfaces()
+            ]
             s = suricata_manager.get_status()
             payload["suricata"] = {
                 "running": s.get("running"),
@@ -185,6 +188,13 @@ def send_status(status_str):
         except Exception as e:
             connection_status["online"] = False
             connection_status["last_error"] = str(e)
+        # When idle (server not requesting fast polling), honour the configured
+        # heartbeat interval to reduce network traffic.
+        if next_poll >= DEFAULT_POLL:
+            try:
+                next_poll = max(next_poll, int(state.get('hb_interval') or DEFAULT_POLL))
+            except (ValueError, TypeError):
+                pass
     return next_poll
 
 
@@ -210,6 +220,9 @@ def send_suricata_events(events):
             "nonce": nonce,
             "ciphertext": ciphertext
         }, timeout=8)
+    except requests.exceptions.ConnectionError:
+        log_scan("Suricata forward skipped: server temporarily unreachable.")
+        return
     except Exception as e:
         log_scan(f"Failed to forward Suricata events: {e}")
 
@@ -262,6 +275,23 @@ def _cmd_suricata_reload_rules(params, state):
     suricata_manager.stop()
     ok, message = suricata_manager.start(interface, server_url=SERVER_URL, probe_id=state.get("probe_id"))
     return {"ok": ok, "message": f"Rules reloaded. {message}", "status": suricata_manager.get_status()}
+
+
+def _cmd_clear_suricata_logs(params, state):
+    import suricata_manager
+    ok, message = suricata_manager.clear_logs()
+    return {"ok": ok, "message": message}
+
+
+def _cmd_set_heartbeat(params, state):
+    try:
+        interval = int(params.get('interval'))
+    except (ValueError, TypeError):
+        return {"error": "interval must be an integer (seconds)"}
+    interval = max(5, min(interval, 600))
+    state['hb_interval'] = interval
+    save_state(state)
+    return {"ok": True, "message": f"Heartbeat interval set to {interval}s.", "hb_interval": interval}
 
 
 def _cmd_set_scan_config(params, state):
@@ -393,6 +423,8 @@ COMMAND_HANDLERS = {
     "suricata_stop": _cmd_suricata_stop,
     "suricata_reload_rules": _cmd_suricata_reload_rules,
     "set_scan_config": _cmd_set_scan_config,
+    "set_heartbeat": _cmd_set_heartbeat,
+    "clear_suricata_logs": _cmd_clear_suricata_logs,
     "get_logs": _cmd_get_logs,
     "get_status": _cmd_get_status,
     "scan_wifi": _cmd_scan_wifi,

@@ -42,6 +42,7 @@ def ensure_schema():
             id UUID PRIMARY KEY, tenant_id UUID, probe_id UUID NOT NULL,
             bssid VARCHAR NOT NULL, ssid VARCHAR, channel INTEGER, signal DOUBLE PRECISION, encryption VARCHAR,
             first_seen TIMESTAMP WITH TIME ZONE, last_seen TIMESTAMP WITH TIME ZONE)""",
+        "ALTER TABLE wifi_networks ADD COLUMN IF NOT EXISTS band VARCHAR",
         """CREATE TABLE IF NOT EXISTS ble_devices (
             id UUID PRIMARY KEY, tenant_id UUID, probe_id UUID NOT NULL,
             address VARCHAR NOT NULL, name VARCHAR, rssi INTEGER,

@@ -46,6 +46,10 @@
                         <input id="scan-subnet" class="form-control" placeholder="subnet e.g. 192.168.1.0/24">
                         <button class="btn btn-outline-primary" data-cap="set_scan_config" onclick="send('set_scan_config', {subnet: val('scan-subnet')})">Set Subnet</button>
                     </div>
+                    <div class="input-group input-group-sm">
+                        <input id="hb-interval" class="form-control" type="number" min="5" max="600" placeholder="heartbeat sec (e.g. 60)">
+                        <button class="btn btn-outline-primary" data-cap="set_heartbeat" onclick="send('set_heartbeat', {interval: val('hb-interval')})"><i class="fas fa-heart-pulse me-1"></i> Set HB</button>
+                    </div>
                 </div>
 
                 <h6 class="text-uppercase text-muted small fw-bold">IDS</h6>
@@ -56,6 +60,7 @@
                         <button class="btn btn-outline-danger" data-cap="suricata_stop" onclick="send('suricata_stop')"><i class="fas fa-stop"></i></button>
                     </div>
                     <button class="btn btn-outline-warning cmd-btn" data-cap="suricata_reload_rules" onclick="send('suricata_reload_rules')"><i class="fas fa-rotate me-1"></i> Reload IDS Rules</button>
+                    <button class="btn btn-outline-secondary cmd-btn" data-cap="clear_suricata_logs" onclick="confirmSend('clear_suricata_logs', null, 'Clear Suricata logs on this probe?')"><i class="fas fa-eraser me-1"></i> Clear IDS Logs</button>
                 </div>
 
                 <h6 class="text-uppercase text-muted small fw-bold">Diagnostics</h6>
@@ -162,9 +167,13 @@ async function poll() {
         // Interfaces dropdown
         const sel = document.getElementById('suri-iface');
         const ifaces = (d.runtime && d.runtime.interfaces) || [];
-        if (ifaces.length && sel.options.length <= ifaces.length) {
+        if (ifaces.length && sel.options.length <= ifaces.length + 1) {
             const cur = sel.value;
-            sel.innerHTML = '<option value="">interface…</option>' + ifaces.map(i=>`<option ${i===cur?'selected':''}>${esc(i)}</option>`).join('');
+            sel.innerHTML = '<option value="">auto</option>' + ifaces.map(i => {
+                const name = (i && i.name) ? i.name : i;
+                const ip = (i && i.ip) ? ' (' + i.ip + ')' : '';
+                return `<option value="${esc(name)}" ${name===cur?'selected':''}>${esc(name)}${esc(ip)}</option>`;
+            }).join('');
         }
 
         // Timeline

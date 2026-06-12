@@ -405,6 +405,7 @@ def receive_wifi():
         ap.probe_id = probe.id
         ap.ssid = n.get('ssid') or ap.ssid
         ap.channel = n.get('channel')
+        ap.band = n.get('band')
         ap.signal = n.get('signal')
         ap.encryption = n.get('encryption')
         ap.last_seen = now

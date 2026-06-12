@@ -415,6 +415,19 @@ def get_logs():
     return [f"[{e['ts']}] {e['line']}" for e in list(_buffer)]
 
 
+def clear_logs():
+    """Clears the local event buffer and truncates eve.json. Returns (ok, message)."""
+    _buffer.clear()
+    _pending.clear()
+    try:
+        if os.path.exists(EVE_FILE):
+            open(EVE_FILE, "w").close()
+    except Exception:
+        pass
+    _append_line("Logs cleared by administrator.")
+    return True, "Suricata logs cleared."
+
+
 def drain_pending(limit=100):
     """Pops up to `limit` alerts awaiting forward to the central server."""
     out = []

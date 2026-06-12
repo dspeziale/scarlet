@@ -37,7 +37,7 @@ def background_poller():
                 client.flush_suricata()
         except Exception:
             pass
-        time.sleep(max(2, min(int(interval), 60)))
+        time.sleep(max(2, min(int(interval), 600)))
 
 # Start poller thread
 polling_thread = threading.Thread(target=background_poller, daemon=True)

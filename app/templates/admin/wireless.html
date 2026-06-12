@@ -6,31 +6,39 @@
 {% block content %}
 <style>
     .stat-pill { border:none; border-radius:.9rem; box-shadow:0 4px 14px rgba(0,0,0,.1); }
-    .stat-pill .v { font-size:1.8rem; font-weight:700; line-height:1; }
-    .stat-pill .l { font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; opacity:.7; }
+    .stat-pill .v { font-size:1.7rem; font-weight:700; line-height:1; }
+    .stat-pill .l { font-size:.7rem; text-transform:uppercase; letter-spacing:.05em; opacity:.7; }
+    .sig-bar { height:.5rem; border-radius:1rem; background:var(--bs-border-color); overflow:hidden; min-width:60px; }
+    .sig-bar > div { height:100%; border-radius:1rem; }
 </style>
 
-<div class="row g-3 mb-4">
-    <div class="col-md-4 col-6"><div class="card stat-pill"><div class="card-body d-flex justify-content-between align-items-center">
-        <div><div class="v">{{ wifi|length }}</div><div class="l">{{ t('wl.wifi_aps') }}</div></div>
-        <i class="fas fa-wifi fa-2x text-primary opacity-50"></i>
-    </div></div></div>
-    <div class="col-md-4 col-6"><div class="card stat-pill"><div class="card-body d-flex justify-content-between align-items-center">
-        <div><div class="v">{{ ble|length }}</div><div class="l">{{ t('wl.ble_devices') }}</div></div>
-        <i class="fab fa-bluetooth-b fa-2x text-info opacity-50"></i>
-    </div></div></div>
-    <div class="col-md-4 col-12"><div class="card stat-pill"><div class="card-body">
-        <div class="l mb-2">{{ t('wl.fleet_scan') }}</div>
+{% set secured = wifi | selectattr('encryption') | rejectattr('encryption','equalto','Open') | list %}
+{% set band24 = wifi | selectattr('band','equalto','2.4GHz') | list %}
+{% set band5 = wifi | selectattr('band','equalto','5GHz') | list %}
+
+<!-- KPIs -->
+<div class="row g-3 mb-3">
+    <div class="col-md col-6"><div class="card stat-pill"><div class="card-body text-center py-3">
+        <div class="v text-primary">{{ wifi|length }}</div><div class="l"><i class="fas fa-wifi me-1"></i>{{ t('wl.wifi_aps') }}</div></div></div></div>
+    <div class="col-md col-6"><div class="card stat-pill"><div class="card-body text-center py-3">
+        <div class="v text-info">{{ ble|length }}</div><div class="l"><i class="fab fa-bluetooth-b me-1"></i>{{ t('wl.ble_devices') }}</div></div></div></div>
+    <div class="col-md col-6"><div class="card stat-pill"><div class="card-body text-center py-3">
+        <div class="v">{{ band24|length }}</div><div class="l">2.4 GHz</div></div></div></div>
+    <div class="col-md col-6"><div class="card stat-pill"><div class="card-body text-center py-3">
+        <div class="v">{{ band5|length }}</div><div class="l">5 GHz</div></div></div></div>
+    <div class="col-md col-6"><div class="card stat-pill"><div class="card-body text-center py-3">
+        <div class="v text-success">{{ secured|length }}</div><div class="l">{{ t('wl.security') }}</div></div></div></div>
+    <div class="col-md col-12"><div class="card stat-pill"><div class="card-body py-2">
+        <div class="l mb-1 text-center">{{ t('wl.fleet_scan') }}</div>
         <div class="d-flex gap-2">
-            <button class="btn btn-sm btn-outline-primary flex-fill" onclick="fleetScan('scan_wifi')"><i class="fas fa-wifi me-1"></i> {{ t('wl.scan_wifi') }}</button>
-            <button class="btn btn-sm btn-outline-info flex-fill" onclick="fleetScan('scan_ble')"><i class="fab fa-bluetooth-b me-1"></i> {{ t('wl.scan_ble') }}</button>
-        </div>
-    </div></div></div>
+            <button class="btn btn-sm btn-outline-primary flex-fill" onclick="fleetScan('scan_wifi')"><i class="fas fa-wifi me-1"></i>{{ t('wl.scan_wifi') }}</button>
+            <button class="btn btn-sm btn-outline-info flex-fill" onclick="fleetScan('scan_ble')"><i class="fab fa-bluetooth-b me-1"></i>{{ t('wl.scan_ble') }}</button>
+        </div></div></div></div>
 </div>
 
 <ul class="nav nav-tabs mb-3" role="tablist">
-    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-wifi"><i class="fas fa-wifi me-1"></i> WiFi</button></li>
-    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-ble"><i class="fab fa-bluetooth-b me-1"></i> BLE</button></li>
+    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-wifi"><i class="fas fa-wifi me-1"></i> WiFi <span class="badge bg-secondary">{{ wifi|length }}</span></button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-ble"><i class="fab fa-bluetooth-b me-1"></i> BLE <span class="badge bg-secondary">{{ ble|length }}</span></button></li>
 </ul>
 
 <div class="tab-content">
@@ -39,21 +47,30 @@
         <div class="card shadow-sm border-0" style="border-radius:1rem; overflow:hidden;">
             <div class="table-responsive"><table class="table table-hover align-middle mb-0">
                 <thead class="table-light"><tr>
-                    <th>{{ t('wl.ssid') }}</th><th>{{ t('wl.bssid') }}</th><th>{{ t('wl.channel') }}</th><th>{{ t('wl.signal') }}</th><th>{{ t('wl.security') }}</th><th>{{ t('fleet.col_probe') }}</th><th>{{ t('lbl.last_seen') }}</th>
+                    <th>{{ t('wl.ssid') }}</th><th>{{ t('wl.bssid') }}</th><th>Band</th><th>{{ t('wl.channel') }}</th>
+                    <th style="min-width:140px;">{{ t('wl.signal') }}</th><th>{{ t('wl.security') }}</th><th>{{ t('fleet.col_probe') }}</th><th>{{ t('lbl.last_seen') }}</th>
                 </tr></thead>
                 <tbody>
                     {% for ap in wifi %}
+                    {% set raw = (((ap.signal + 90) / 60 * 100) if ap.signal is not none else 0) %}
+                    {% set pct = 0 if raw < 0 else (100 if raw > 100 else raw) %}
                     <tr>
-                        <td><strong>{{ ap.ssid or '(hidden)' }}</strong></td>
+                        <td><strong>{{ ap.ssid or '(hidden)' }}</strong>{% if not ap.ssid %} <span class="badge bg-dark">hidden</span>{% endif %}</td>
                         <td><code class="small">{{ ap.bssid }}</code></td>
+                        <td>{% if ap.band %}<span class="badge" style="background:{{ '#0d6efd' if ap.band=='2.4GHz' else '#6f42c1' }};">{{ ap.band }}</span>{% else %}—{% endif %}</td>
                         <td>{{ ap.channel or '—' }}</td>
-                        <td><span class="badge bg-{{ ap.signal_color }}">{{ ap.signal|round(0)|int if ap.signal is not none else '—' }} dBm</span></td>
-                        <td>{{ ap.encryption or '—' }}</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="sig-bar flex-fill"><div class="bg-{{ ap.signal_color }}" style="width:{{ pct|round }}%;"></div></div>
+                                <small class="text-muted">{{ ap.signal|round(0)|int if ap.signal is not none else '—' }} dBm</small>
+                            </div>
+                        </td>
+                        <td>{% if ap.encryption and ap.encryption != 'Open' %}<span class="badge bg-success">{{ ap.encryption }}</span>{% else %}<span class="badge bg-danger">Open</span>{% endif %}</td>
                         <td><small class="text-muted">{{ ap.probe.probe_name if ap.probe else '—' }}</small></td>
                         <td><small>{{ ap.last_seen.strftime('%Y-%m-%d %H:%M') if ap.last_seen else '—' }}</small></td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="7" class="text-center text-muted py-5"><i class="fas fa-wifi fa-2x mb-2 opacity-25 d-block"></i>No WiFi networks discovered yet. Run a WiFi scan from a probe.</td></tr>
+                    <tr><td colspan="8" class="text-center text-muted py-5"><i class="fas fa-wifi fa-2x mb-2 opacity-25 d-block"></i>{{ t('wl.empty_wifi') }}</td></tr>
                     {% endfor %}
                 </tbody>
             </table></div>
@@ -70,14 +87,14 @@
                 <tbody>
                     {% for d in ble %}
                     <tr>
-                        <td><strong>{{ d.name or '(unknown)' }}</strong></td>
+                        <td><strong>{{ d.name or '(unknown)' }}</strong>{% if not d.name %} <span class="badge bg-secondary">anon</span>{% endif %}</td>
                         <td><code class="small">{{ d.address }}</code></td>
-                        <td>{{ d.rssi if d.rssi is not none else '—' }}</td>
+                        <td>{% if d.rssi is not none %}<span class="badge bg-info text-dark">{{ d.rssi }} dBm</span>{% else %}—{% endif %}</td>
                         <td><small class="text-muted">{{ d.probe.probe_name if d.probe else '—' }}</small></td>
                         <td><small>{{ d.last_seen.strftime('%Y-%m-%d %H:%M') if d.last_seen else '—' }}</small></td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="5" class="text-center text-muted py-5"><i class="fab fa-bluetooth-b fa-2x mb-2 opacity-25 d-block"></i>No BLE devices discovered yet. Run a BLE scan from a probe.</td></tr>
+                    <tr><td colspan="5" class="text-center text-muted py-5"><i class="fab fa-bluetooth-b fa-2x mb-2 opacity-25 d-block"></i>{{ t('wl.empty_ble') }}</td></tr>
                     {% endfor %}
                 </tbody>
             </table></div>
@@ -105,7 +122,6 @@ async function fleetScan(type) {
         toast.textContent = 'Failed to queue scan.'; toast.classList.remove('d-none');
     }
 }
-
 scarletAutoRefresh(15);
 </script>
 {% endblock %}

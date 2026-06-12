@@ -17,6 +17,7 @@ class WifiNetwork(db.Model):
     bssid = Column(String, nullable=False)
     ssid = Column(String, nullable=True)
     channel = Column(Integer, nullable=True)
+    band = Column(String, nullable=True)         # 2.4GHz / 5GHz
     signal = Column(Float, nullable=True)        # dBm
     encryption = Column(String, nullable=True)
 

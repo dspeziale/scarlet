@@ -189,6 +189,12 @@
                             <p>{{ t('nav.threat_intel') }}</p>
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a href="{{ url_for('admin.sensors') }}" class="nav-link {% if request.endpoint == 'admin.sensors' %}active{% endif %}">
+                            <i class="nav-icon fas fa-gauge"></i>
+                            <p>{{ t('nav.sensors') }}</p>
+                        </a>
+                    </li>
 
                     <li class="nav-item">
                         <a href="{{ url_for('admin.guide') }}" class="nav-link {% if request.endpoint == 'admin.guide' %}active{% endif %}">
@@ -269,7 +275,7 @@
     <footer class="app-footer">
         <div class="float-end d-none d-sm-inline">
             <strong>{{ brand }} Command Center</strong>
-            <span class="badge bg-danger ms-1">v1.4.8</span>
+            <span class="badge bg-danger ms-1">v1.5.0</span>
         </div>
         &copy; 2026. <strong>DS Consulting</strong>. {{ t('footer.rights') }}
     </footer>

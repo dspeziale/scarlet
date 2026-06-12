@@ -85,6 +85,10 @@ def scan_wifi(interface=None):
         if res.returncode != 0:
             return {"networks": [], "note": (res.stderr or 'iw scan failed').strip()[-200:]}
         nets = _parse_iw_scan(res.stdout)
+        for n in nets:
+            ch = n.get("channel")
+            n["band"] = ("2.4GHz" if (ch and ch <= 14) else ("5GHz" if ch else None))
+            n["hidden"] = not bool(n.get("ssid"))
         return {"networks": nets, "note": f"{len(nets)} access points on {iface}."}
     except Exception as e:
         return {"networks": [], "note": f"WiFi scan error: {e}"}
