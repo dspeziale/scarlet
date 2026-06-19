@@ -117,6 +117,11 @@
             <label class="form-label">Priority <span class="text-muted small">(1=high, 10=low)</span></label>
             <input type="number" class="form-control" id="d-priority" value="5" min="1" max="10">
           </div>
+          <div class="col-12 d-none" id="iface-row">
+            <label class="form-label fw-semibold">Scheda di rete (cattura IDS) <span class="text-danger">*</span></label>
+            <select class="form-select" id="d-interface"></select>
+            <div class="form-text" id="iface-help"></div>
+          </div>
           <div class="col-12">
             <label class="form-label fw-semibold">Parameters</label>
             <div id="param-hints" class="text-muted small mb-1"></div>
@@ -312,22 +317,44 @@ async function showResult(taskId, taskType, probe) {
 // ── Dispatch ──────────────────────────────────────────────────────────────
 // Task types whose "target" is naturally a subnet/host the probe can see.
 const SUBNET_TARGETED = new Set(['network_discovery', 'service_detection', 'os_fingerprinting']);
+// Task types that capture on a network interface — need a card selector.
+const IDS_IFACE_TASKS = new Set(['ids_start', 'ids_restart', 'config_update']);
 // Last value we auto-filled — lets us refresh it without clobbering manual edits.
 let _lastAutofill = '';
 
 function probeById(id) { return _probes.find(p => p.id === id); }
+function probeInterfaces(probe) { return (probe && probe.interfaces) || []; }
 
-// Build the proposed parameters for (taskType, probe), using the probe's subnets.
+function populateIfaceSelect(probe) {
+  const sel = document.getElementById('d-interface');
+  const ifaces = probeInterfaces(probe);
+  sel.innerHTML = ifaces.length
+    ? ifaces.map(i => {
+        const ip = (i.addresses || []).filter(a => a.family === 'ipv4').map(a => a.address).join(', ');
+        return `<option value="${i.name}">${i.name}${ip ? ` — ${ip}` : ''}</option>`;
+      }).join('')
+    : '<option value="">nessuna interfaccia segnalata</option>';
+}
+
+// Build the proposed parameters for (taskType, probe).
 function proposedParams(taskType, probe) {
   const fallback = PARAM_HINTS[taskType] || '{}';
+
+  if (IDS_IFACE_TASKS.has(taskType)) {
+    const sel = document.getElementById('d-interface');
+    const iface = (sel && sel.value) || (probeInterfaces(probe)[0] || {}).name || '';
+    if (taskType === 'config_update') {
+      return JSON.stringify({ interface: iface, bpf_filter: '', capture_mode: 'af-packet' });
+    }
+    return JSON.stringify(iface ? { interface: iface } : {});
+  }
+
   if (!probe) return fallback;
   const subnets = probe.subnets || [];
   if (taskType === 'network_discovery' && subnets.length) {
     return JSON.stringify({ target: subnets[0], timeout: 60 });
   }
   if (SUBNET_TARGETED.has(taskType) && subnets.length) {
-    // service/os scans target a host — seed with the subnet so the operator
-    // only has to narrow it down to a single address.
     const obj = JSON.parse(fallback);
     obj.target = subnets[0];
     return JSON.stringify(obj);
@@ -340,16 +367,31 @@ function refreshParamEditor() {
   const probe = probeById(document.getElementById('d-probe').value);
   const editor = document.getElementById('param-editor');
   const hints = document.getElementById('param-hints');
+  const ifaceRow = document.getElementById('iface-row');
+
+  // Interface selector — only for IDS capture tasks.
+  if (IDS_IFACE_TASKS.has(taskType)) {
+    ifaceRow.classList.remove('d-none');
+    populateIfaceSelect(probe);
+    const ifaces = probeInterfaces(probe);
+    document.getElementById('iface-help').textContent = ifaces.length
+      ? '' : (probe ? 'La sonda non ha ancora segnalato interfacce — attendi un heartbeat.'
+                    : 'Seleziona una sonda per scegliere la scheda.');
+  } else {
+    ifaceRow.classList.add('d-none');
+  }
 
   const proposed = proposedParams(taskType, probe);
 
-  // Show detected subnets for subnet-targeted scans, otherwise the example.
+  // Hints area.
   if (SUBNET_TARGETED.has(taskType)) {
     const subnets = (probe && probe.subnets) || [];
     hints.innerHTML = subnets.length
       ? `Subnet viste dalla sonda: ${subnets.map(s => `<code>${s}</code>`).join(' ')}`
       : (probe ? 'La sonda non ha ancora segnalato subnet — attendi un heartbeat.'
                : 'Seleziona una sonda per proporre la sua subnet.');
+  } else if (IDS_IFACE_TASKS.has(taskType)) {
+    hints.textContent = 'La scheda scelta sopra viene inserita nei parametri.';
   } else {
     hints.textContent = 'Example: ' + (PARAM_HINTS[taskType] || '{}');
   }
@@ -361,6 +403,16 @@ function refreshParamEditor() {
     _lastAutofill = proposed;
   }
 }
+
+// Picking a card explicitly injects it into the params, preserving other fields.
+document.getElementById('d-interface').addEventListener('change', () => {
+  const editor = document.getElementById('param-editor');
+  let obj = {};
+  try { obj = JSON.parse(editor.value || '{}'); } catch { obj = {}; }
+  obj.interface = document.getElementById('d-interface').value;
+  editor.value = JSON.stringify(obj);
+  _lastAutofill = editor.value;
+});
 
 document.getElementById('d-type').addEventListener('change', refreshParamEditor);
 document.getElementById('d-probe').addEventListener('change', refreshParamEditor);
@@ -379,6 +431,12 @@ document.getElementById('btn-dispatch').addEventListener('click', async () => {
   const priority  = parseInt(document.getElementById('d-priority').value) || 5;
 
   if (!probeId) { errEl.textContent = 'Select a probe.'; errEl.classList.remove('d-none'); return; }
+
+  if (taskType === 'ids_start' && !document.getElementById('d-interface').value) {
+    errEl.textContent = 'Scegli una scheda di rete per avviare l\'IDS.';
+    errEl.classList.remove('d-none');
+    return;
+  }
 
   let params = {};
   try { params = JSON.parse(document.getElementById('param-editor').value || '{}'); }
