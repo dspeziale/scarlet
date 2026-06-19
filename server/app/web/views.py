@@ -76,3 +76,8 @@ def tenant_audit():
     return render_template("tenant/audit.html")
 
 
+@web_bp.get("/tenant/settings")
+def tenant_settings():
+    return render_template("tenant/settings.html")
+
+

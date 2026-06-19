@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, JSON, String, Text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.extensions import db
@@ -90,8 +90,12 @@ class Probe(db.Model):
     network_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     # Operator-supplied metadata (editable by the tenant admin).
-    location: Mapped[str | None] = mapped_column(String(255))   # posizione geografica
-    contact: Mapped[str | None] = mapped_column(String(255))    # referente
+    location: Mapped[str | None] = mapped_column(String(255))      # indirizzo
+    latitude: Mapped[float | None] = mapped_column(Float)          # coordinata
+    longitude: Mapped[float | None] = mapped_column(Float)         # coordinata
+    contact_name: Mapped[str | None] = mapped_column(String(120))  # referente
+    contact_email: Mapped[str | None] = mapped_column(String(255))
+    telegram_id: Mapped[str | None] = mapped_column(String(64))    # opzionale
     notes: Mapped[str | None] = mapped_column(Text)
 
     registration_token_id: Mapped[str | None] = mapped_column(
@@ -129,7 +133,11 @@ class Probe(db.Model):
             "ids_interface": self.ids_interface,
             "network_updated_at": self.network_updated_at.isoformat() if self.network_updated_at else None,
             "location": self.location,
-            "contact": self.contact,
+            "latitude": self.latitude,
+            "longitude": self.longitude,
+            "contact_name": self.contact_name,
+            "contact_email": self.contact_email,
+            "telegram_id": self.telegram_id,
             "notes": self.notes,
         }
 

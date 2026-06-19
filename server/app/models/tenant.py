@@ -19,6 +19,15 @@ class Tenant(db.Model):
     plan: Mapped[str] = mapped_column(String(30), nullable=False, default="free")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     max_probes: Mapped[int] = mapped_column(default=5, nullable=False)
+
+    # Per-tenant notification settings (Telegram bot + Gmail SMTP).
+    notify_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    telegram_bot_token: Mapped[str | None] = mapped_column(String(120))
+    telegram_chat_id: Mapped[str | None] = mapped_column(String(64))   # default chat
+    gmail_address: Mapped[str | None] = mapped_column(String(255))
+    gmail_app_password: Mapped[str | None] = mapped_column(String(255))
+    notify_email: Mapped[str | None] = mapped_column(String(255))      # default recipient
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
     )
@@ -43,4 +52,16 @@ class Tenant(db.Model):
             "is_active": self.is_active,
             "max_probes": self.max_probes,
             "created_at": self.created_at.isoformat() if self.created_at else None,
+            "notify_enabled": self.notify_enabled,
+        }
+
+    def notification_settings_dict(self) -> dict:
+        """Notification config with secrets masked (never expose token/password)."""
+        return {
+            "notify_enabled": self.notify_enabled,
+            "telegram_bot_token_set": bool(self.telegram_bot_token),
+            "telegram_chat_id": self.telegram_chat_id,
+            "gmail_address": self.gmail_address,
+            "gmail_app_password_set": bool(self.gmail_app_password),
+            "notify_email": self.notify_email,
         }

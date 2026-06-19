@@ -185,17 +185,69 @@ def probe_task_result(probe_id: str, assignment_id: str):
         result_payload = {"raw": str(result_payload)}
 
     try:
-        TaskService().submit_result(
+        result = TaskService().submit_result(
             assignment_id=assignment_id,
             probe_id=probe_id,
             status=status,
             result_data=result_payload,
         )
         log.info("task_result_stored", assignment_id=assignment_id, status=status)
+        # Populate device inventory from network-discovery style results.
+        if status == "completed" and isinstance(result_payload, dict):
+            _ingest_discovery(result, probe_id, result_payload)
     except Exception as exc:
         log.warning("task_result_store_failed", assignment_id=assignment_id, error=str(exc))
 
     return jsonify({"ok": True}), 200
+
+
+# Task types whose nmap output feeds the device inventory.
+_DISCOVERY_TASKS = {"network_discovery", "service_detection", "os_fingerprinting"}
+
+
+def _ingest_discovery(result, probe_id: str, result_payload: dict) -> None:
+    """Parse nmap output from a discovery task result and upsert device inventory."""
+    try:
+        task = result.assignment.task if result and result.assignment else None
+        if not task or task.task_type not in _DISCOVERY_TASKS:
+            return
+        output = result_payload.get("output")
+        if not output:
+            return
+        from app.services.nmap_parser import parse_nmap_hosts
+        from app.services.telemetry_service import TelemetryService
+        devices = parse_nmap_hosts(output)
+        if not devices:
+            return
+        counts = TelemetryService().upsert_devices(result.tenant_id, probe_id, devices)
+        log.info("discovery_devices_ingested", probe_id=probe_id, **counts)
+        # Notify the tenant when previously-unseen devices appear.
+        if counts.get("added"):
+            _notify_new_devices(result.tenant_id, probe_id, counts["added"])
+    except Exception as exc:
+        log.warning("discovery_ingest_failed", probe_id=probe_id, error=str(exc))
+
+
+def _notify_new_devices(tenant_id: str, probe_id: str, added: int) -> None:
+    """Best-effort: alert the tenant/probe referente about new devices."""
+    try:
+        from app.extensions import db
+        from app.models.tenant import Tenant
+        from app.models.probe import Probe
+        from app.services.notification_service import NotificationService
+        tenant = db.session.get(Tenant, tenant_id)
+        if not tenant or not tenant.notify_enabled:
+            return
+        probe = db.session.get(Probe, probe_id)
+        pname = probe.name or probe.hostname if probe else probe_id
+        NotificationService().notify_tenant(
+            tenant,
+            subject="SOC Seattle — Nuovi dispositivi rilevati",
+            message=f"La sonda '{pname}' ha rilevato {added} nuovo/i dispositivo/i in rete.",
+            probe=probe,
+        )
+    except Exception as exc:
+        log.warning("notify_new_devices_failed", probe_id=probe_id, error=str(exc))
 
 
 # ── Probe: IDS config ───────────────────────────────────────────────────────
@@ -360,7 +412,9 @@ def update_probe(probe_id: str):
     user = g.current_user
     body = request.get_json(silent=True) or {}
     # Only forward keys actually present, so omitted fields are not wiped.
-    fields = {k: body[k] for k in ("name", "location", "contact", "notes") if k in body}
+    _editable = ("name", "location", "latitude", "longitude",
+                 "contact_name", "contact_email", "telegram_id", "notes")
+    fields = {k: body[k] for k in _editable if k in body}
     try:
         probe = _svc.update_probe(
             probe_id, user.tenant_id, user.is_superadmin, **fields

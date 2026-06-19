@@ -28,7 +28,11 @@ NEW_COLUMNS = {
     "ids_interface": "VARCHAR(64)",
     "network_updated_at": "TIMESTAMP",
     "location": "VARCHAR(255)",
-    "contact": "VARCHAR(255)",
+    "latitude": "DOUBLE PRECISION",
+    "longitude": "DOUBLE PRECISION",
+    "contact_name": "VARCHAR(120)",
+    "contact_email": "VARCHAR(255)",
+    "telegram_id": "VARCHAR(64)",
     "notes": "TEXT",
 }
 

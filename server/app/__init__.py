@@ -90,8 +90,20 @@ _SCHEMA_ADDITIONS: dict[str, dict[str, str]] = {
         "ids_interface": "VARCHAR(64)",
         "network_updated_at": "TIMESTAMP",
         "location": "VARCHAR(255)",
-        "contact": "VARCHAR(255)",
+        "latitude": "DOUBLE PRECISION",
+        "longitude": "DOUBLE PRECISION",
+        "contact_name": "VARCHAR(120)",
+        "contact_email": "VARCHAR(255)",
+        "telegram_id": "VARCHAR(64)",
         "notes": "TEXT",
+    },
+    "tenants": {
+        "notify_enabled": "BOOLEAN",
+        "telegram_bot_token": "VARCHAR(120)",
+        "telegram_chat_id": "VARCHAR(64)",
+        "gmail_address": "VARCHAR(255)",
+        "gmail_app_password": "VARCHAR(255)",
+        "notify_email": "VARCHAR(255)",
     },
 }
 

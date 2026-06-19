@@ -38,6 +38,25 @@ class TenantService:
         log.info("tenant_created", tenant_id=tenant.id, name=name)
         return tenant
 
+    NOTIFY_FIELDS = {
+        "notify_enabled", "telegram_bot_token", "telegram_chat_id",
+        "gmail_address", "gmail_app_password", "notify_email",
+    }
+
+    def update_notifications(self, tenant_id: str, **kwargs) -> Tenant:
+        """Update per-tenant notification settings (secrets included)."""
+        tenant = self._repo.get_by_id(tenant_id)
+        if not tenant:
+            raise ValueError("Tenant not found")
+        for k, v in kwargs.items():
+            if k in self.NOTIFY_FIELDS:
+                setattr(tenant, k, v)
+        # Audit without leaking secrets.
+        record_audit("tenant.update_notifications", resource_type="tenant",
+                     resource_id=tenant_id, payload={"fields": list(kwargs.keys())})
+        db.session.commit()
+        return tenant
+
     def update_tenant(self, tenant_id: str, **kwargs) -> Tenant:
         tenant = self._repo.get_by_id(tenant_id)
         if not tenant:

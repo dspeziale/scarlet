@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Notifiche — SOC Seattle{% endblock %}
+{% block page_title %}Impostazioni Notifiche{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="/dashboard">Home</a></li>
+  <li class="breadcrumb-item active">Notifiche</li>
+{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm" style="max-width: 720px;">
+  <div class="card-header"><h5 class="mb-0"><i class="bi bi-bell me-2"></i>Canali di notifica del tenant</h5></div>
+  <div class="card-body">
+    <p class="text-muted small">
+      Le credenziali sono memorizzate per il tenant. I destinatari predefiniti vengono usati
+      quando una sonda non ha un referente proprio (email / Telegram ID nella scheda della sonda).
+    </p>
+
+    <div class="form-check form-switch mb-3">
+      <input class="form-check-input" type="checkbox" id="notify-enabled">
+      <label class="form-check-label" for="notify-enabled">Notifiche abilitate</label>
+    </div>
+
+    <h6 class="text-muted mt-3"><i class="bi bi-telegram me-1"></i>Telegram</h6>
+    <div class="mb-2">
+      <label class="form-label">Bot Token</label>
+      <input type="password" class="form-control" id="tg-token" placeholder="(lascia vuoto per non modificare)" autocomplete="off">
+      <div class="form-text" id="tg-token-status"></div>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Chat ID predefinito</label>
+      <input type="text" class="form-control" id="tg-chat" placeholder="es. 123456789">
+    </div>
+
+    <h6 class="text-muted mt-3"><i class="bi bi-envelope me-1"></i>Gmail (SMTP)</h6>
+    <div class="mb-2">
+      <label class="form-label">Indirizzo Gmail mittente</label>
+      <input type="email" class="form-control" id="gm-address" placeholder="account@gmail.com">
+    </div>
+    <div class="mb-2">
+      <label class="form-label">App Password</label>
+      <input type="password" class="form-control" id="gm-password" placeholder="(lascia vuoto per non modificare)" autocomplete="off">
+      <div class="form-text" id="gm-password-status">Usa una <em>App Password</em> Google, non la password dell'account.</div>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Email destinatario predefinito</label>
+      <input type="email" class="form-control" id="notify-email" placeholder="referente@azienda.it">
+    </div>
+
+    <div id="settings-result" class="d-none alert"></div>
+
+    <div class="d-flex gap-2">
+      <button class="btn btn-primary" id="btn-save"><i class="bi bi-save me-1"></i>Salva</button>
+      <button class="btn btn-outline-secondary" id="btn-test"><i class="bi bi-send me-1"></i>Invia test</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function msg(ok, text) {
+  const el = document.getElementById('settings-result');
+  el.className = 'alert d-block ' + (ok ? 'alert-success' : 'alert-danger');
+  el.textContent = text;
+}
+
+async function loadSettings() {
+  const resp = await fetch('/api/v1/tenant/notifications', { headers: apiHeaders() });
+  if (!resp.ok) { msg(false, 'Impossibile caricare le impostazioni (serve TenantAdmin).'); return; }
+  const s = await resp.json();
+  document.getElementById('notify-enabled').checked = !!s.notify_enabled;
+  document.getElementById('tg-chat').value = s.telegram_chat_id || '';
+  document.getElementById('gm-address').value = s.gmail_address || '';
+  document.getElementById('notify-email').value = s.notify_email || '';
+  document.getElementById('tg-token-status').textContent =
+    s.telegram_bot_token_set ? '✓ token configurato' : 'nessun token impostato';
+  document.getElementById('gm-password-status').textContent =
+    (s.gmail_app_password_set ? '✓ app password configurata. ' : '') + 'Usa una App Password Google.';
+}
+
+document.getElementById('btn-save').addEventListener('click', async () => {
+  const payload = {
+    notify_enabled: document.getElementById('notify-enabled').checked,
+    telegram_chat_id: document.getElementById('tg-chat').value.trim(),
+    gmail_address: document.getElementById('gm-address').value.trim(),
+    notify_email: document.getElementById('notify-email').value.trim(),
+  };
+  const tok = document.getElementById('tg-token').value.trim();
+  const pw = document.getElementById('gm-password').value.trim();
+  if (tok) payload.telegram_bot_token = tok;
+  if (pw) payload.gmail_app_password = pw;
+
+  const resp = await fetch('/api/v1/tenant/notifications', {
+    method: 'PUT', headers: apiHeaders(), body: JSON.stringify(payload),
+  });
+  if (resp.ok) {
+    document.getElementById('tg-token').value = '';
+    document.getElementById('gm-password').value = '';
+    msg(true, 'Impostazioni salvate.');
+    loadSettings();
+  } else {
+    const d = await resp.json();
+    msg(false, d.message || 'Errore nel salvataggio.');
+  }
+});
+
+document.getElementById('btn-test').addEventListener('click', async () => {
+  const resp = await fetch('/api/v1/tenant/notifications/test', { method: 'POST', headers: apiHeaders() });
+  const d = await resp.json();
+  if (resp.ok) {
+    msg(true, 'Esito test: ' + JSON.stringify(d.results));
+  } else {
+    msg(false, d.message || 'Errore invio test.');
+  }
+});
+
+loadSettings();
+</script>
+{% endblock %}

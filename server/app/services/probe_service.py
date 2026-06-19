@@ -228,7 +228,10 @@ class ProbeService:
         if not is_superadmin and probe.tenant_id != tenant_id:
             raise PermissionError("Cannot edit a probe from another tenant")
 
-        allowed = {"name", "location", "contact", "notes"}
+        allowed = {
+            "name", "location", "latitude", "longitude",
+            "contact_name", "contact_email", "telegram_id", "notes",
+        }
         updates = {k: v for k, v in fields.items() if k in allowed}
         for k, v in updates.items():
             setattr(probe, k, v)
