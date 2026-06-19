@@ -89,13 +89,24 @@
           <div class="col-md-6">
             <label class="form-label fw-semibold">Task Type <span class="text-danger">*</span></label>
             <select class="form-select" id="d-type">
-              <option value="network_discovery">Network Discovery</option>
-              <option value="service_detection">Service Detection</option>
-              <option value="os_fingerprinting">OS Fingerprinting</option>
-              <option value="snmp_inventory">SNMP Inventory</option>
-              <option value="wifi_scan">WiFi Scan</option>
-              <option value="ble_scan">BLE Scan</option>
-              <option value="custom_script">Custom Script</option>
+              <optgroup label="Network">
+                <option value="ping">Ping</option>
+                <option value="network_discovery">Network Discovery (nmap)</option>
+                <option value="service_detection">Service Detection (nmap -sV)</option>
+                <option value="os_fingerprinting">OS Fingerprinting (nmap -A)</option>
+                <option value="snmp_inventory">SNMP Inventory</option>
+                <option value="wifi_scan">WiFi Scan</option>
+                <option value="ble_scan">BLE Scan</option>
+                <option value="custom_script">Custom Script</option>
+              </optgroup>
+              <optgroup label="IDS / Suricata">
+                <option value="ids_start">IDS Start</option>
+                <option value="ids_stop">IDS Stop</option>
+                <option value="ids_restart">IDS Restart</option>
+                <option value="ids_status">IDS Status</option>
+                <option value="ids_rule_deploy">IDS Rule Deploy</option>
+                <option value="config_update">IDS Config Update</option>
+              </optgroup>
             </select>
           </div>
           <div class="col-md-8">
@@ -159,17 +170,27 @@ const TASK_ICON = {
   network_discovery: 'bi-diagram-3', service_detection: 'bi-hdd-stack',
   os_fingerprinting: 'bi-cpu', snmp_inventory: 'bi-router',
   wifi_scan: 'bi-wifi', ble_scan: 'bi-bluetooth',
-  custom_script: 'bi-terminal'
+  custom_script: 'bi-terminal', ping: 'bi-broadcast-pin',
+  ids_start: 'bi-shield-check', ids_stop: 'bi-shield-x',
+  ids_restart: 'bi-arrow-repeat', ids_status: 'bi-shield',
+  ids_rule_deploy: 'bi-shield-lock', config_update: 'bi-sliders',
 };
 
 const PARAM_HINTS = {
   network_discovery:  '{"target":"192.168.1.0/24","timeout":60}',
   service_detection:  '{"target":"192.168.1.1","ports":"1-1024"}',
   os_fingerprinting:  '{"target":"192.168.1.1"}',
-  snmp_inventory:     '{"target":"192.168.1.0/24","community":"public"}',
-  wifi_scan:          '{"duration":30,"band":"2.4+5"}',
+  snmp_inventory:     '{"target":"192.168.1.1","community":"public"}',
+  wifi_scan:          '{"duration":10}',
   ble_scan:           '{"duration":20}',
   custom_script:      '{"script":"#!/bin/bash\\necho hello","timeout":30}',
+  ping:               '{"target":"8.8.8.8","count":4}',
+  ids_start:          '{}',
+  ids_stop:           '{}',
+  ids_restart:        '{}',
+  ids_status:         '{}',
+  ids_rule_deploy:    '{"rules_content":"alert ip any any -> any any (msg:\\"test\\"; sid:1;)","version":"1"}',
+  config_update:      '{"interface":"any","bpf_filter":"","capture_mode":"af-packet"}',
 };
 
 let _probes = [];

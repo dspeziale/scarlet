@@ -28,6 +28,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         procps \
         jq \
         sqlite3 \
+        nmap \
+        snmp \
+        iw \
+        iputils-ping \
     && rm -rf /var/lib/apt/lists/*
 
 # -- Suricata directories

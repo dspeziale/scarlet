@@ -20,9 +20,12 @@ from __future__ import annotations
 
 import json
 import platform as _platform
+import shlex
 import signal
 import socket
+import subprocess
 import sys
+import tempfile
 import time
 import uuid as _uuid
 from pathlib import Path
@@ -166,13 +169,33 @@ class ProbeAgent:
 
     # ── Task handling ─────────────────────────────────────────────────────
 
+    # ── Task helpers ──────────────────────────────────────────────────────
+
+    def _run(self, cmd: list[str], timeout: int = 60) -> tuple[int, str, str]:
+        """Run a subprocess and return (returncode, stdout, stderr)."""
+        proc = subprocess.run(
+            cmd, capture_output=True, text=True, timeout=timeout
+        )
+        return proc.returncode, proc.stdout, proc.stderr
+
+    def _nmap(self, args: list[str], timeout: int = 120) -> dict:
+        """Run nmap and return structured result."""
+        rc, stdout, stderr = self._run(["nmap", "-oN", "-"] + args, timeout=timeout)
+        return {
+            "status": "ok" if rc == 0 else "error",
+            "output": stdout,
+            "stderr": stderr or None,
+        }
+
     def _handle_task(self, task: dict) -> None:
         task_type = task.get("type")
         task_id = task.get("id")
+        payload = task.get("payload") or {}
         log.info("task_received", task_type=task_type, task_id=task_id)
         result = {"status": "ok"}
 
         try:
+            # ── IDS / Suricata tasks ─────────────────────────────────────
             if task_type == "ids_start":
                 ok = self._suricata.start()
                 result = {"status": "ok" if ok else "error", "started": ok}
@@ -188,9 +211,8 @@ class ProbeAgent:
                 result = self._suricata.status()
 
             elif task_type == "ids_rule_deploy":
-                # Rule content embedded in task payload
-                rules_content = task.get("payload", {}).get("rules_content", "")
-                version = task.get("payload", {}).get("version", "")
+                rules_content = payload.get("rules_content", "")
+                version = payload.get("version", "")
                 if rules_content:
                     cfg.SURICATA_RULES_PATH.parent.mkdir(parents=True, exist_ok=True)
                     cfg.SURICATA_RULES_PATH.write_text(rules_content)
@@ -199,24 +221,145 @@ class ProbeAgent:
                     result = {"status": "ok", "version_applied": version}
 
             elif task_type in ("pcap_start", "pcap_stop"):
-                # PCAP capture is handled by Suricata config; just ack
                 result = {"status": "ok", "note": "pcap controlled via suricata config"}
 
             elif task_type == "config_update":
-                ids_cfg = task.get("payload", {})
-                if ids_cfg:
+                if payload:
                     self._suricata.apply_config(
-                        interface=ids_cfg.get("interface", cfg.DEFAULT_INTERFACE),
-                        bpf_filter=ids_cfg.get("bpf_filter", ""),
-                        capture_mode=ids_cfg.get("capture_mode", cfg.DEFAULT_CAPTURE_MODE),
+                        interface=payload.get("interface", cfg.DEFAULT_INTERFACE),
+                        bpf_filter=payload.get("bpf_filter", ""),
+                        capture_mode=payload.get("capture_mode", cfg.DEFAULT_CAPTURE_MODE),
                     )
                     if self._suricata.is_running():
                         self._suricata.restart()
 
+            # ── Network discovery tasks ───────────────────────────────────
+            elif task_type == "network_discovery":
+                target = payload.get("target", "")
+                if not target:
+                    result = {"status": "error", "error": "target required"}
+                else:
+                    timeout_sec = int(payload.get("timeout", 60))
+                    result = self._nmap(
+                        ["-sn", "--host-timeout", f"{timeout_sec}s", target],
+                        timeout=timeout_sec + 10,
+                    )
+
+            elif task_type == "service_detection":
+                target = payload.get("target", "")
+                ports = payload.get("ports", "1-1024")
+                if not target:
+                    result = {"status": "error", "error": "target required"}
+                else:
+                    result = self._nmap(
+                        ["-sV", "--open", "-p", str(ports), target],
+                        timeout=180,
+                    )
+
+            elif task_type == "os_fingerprinting":
+                target = payload.get("target", "")
+                if not target:
+                    result = {"status": "error", "error": "target required"}
+                else:
+                    # -O requires root; fall back to -A (aggressive, works without root)
+                    result = self._nmap(["-A", "--open", target], timeout=120)
+
+            elif task_type == "snmp_inventory":
+                target = payload.get("target", "")
+                community = payload.get("community", "public")
+                if not target:
+                    result = {"status": "error", "error": "target required"}
+                else:
+                    rc, stdout, stderr = self._run(
+                        ["snmpwalk", "-v2c", "-c", community, target],
+                        timeout=30,
+                    )
+                    result = {
+                        "status": "ok" if rc == 0 else "error",
+                        "output": stdout,
+                        "stderr": stderr or None,
+                    }
+
+            elif task_type == "wifi_scan":
+                duration = int(payload.get("duration", 10))
+                rc, stdout, stderr = self._run(
+                    ["iw", "dev"], timeout=10
+                )
+                if rc != 0:
+                    result = {"status": "error", "error": "iw not available or no wireless interfaces"}
+                else:
+                    # Parse interface name from `iw dev` output
+                    iface = None
+                    for line in stdout.splitlines():
+                        line = line.strip()
+                        if line.startswith("Interface "):
+                            iface = line.split()[-1]
+                            break
+                    if not iface:
+                        result = {"status": "error", "error": "no wireless interface found"}
+                    else:
+                        rc2, out2, err2 = self._run(
+                            ["iw", iface, "scan"], timeout=duration + 10
+                        )
+                        result = {
+                            "status": "ok" if rc2 == 0 else "error",
+                            "interface": iface,
+                            "output": out2,
+                            "stderr": err2 or None,
+                        }
+
+            elif task_type == "ble_scan":
+                result = {
+                    "status": "error",
+                    "error": "BLE scanning requires a physical Bluetooth adapter — not available in this container",
+                }
+
+            elif task_type == "custom_script":
+                script = payload.get("script", "")
+                timeout_sec = int(payload.get("timeout", 30))
+                if not script:
+                    result = {"status": "error", "error": "script required"}
+                else:
+                    with tempfile.NamedTemporaryFile(
+                        mode="w", suffix=".sh", delete=False
+                    ) as tmp:
+                        tmp.write(script)
+                        tmp_path = tmp.name
+                    try:
+                        rc, stdout, stderr = self._run(
+                            ["bash", tmp_path], timeout=timeout_sec
+                        )
+                        result = {
+                            "status": "ok" if rc == 0 else "error",
+                            "returncode": rc,
+                            "stdout": stdout,
+                            "stderr": stderr or None,
+                        }
+                    finally:
+                        Path(tmp_path).unlink(missing_ok=True)
+
+            elif task_type == "ping":
+                target = payload.get("target", "")
+                count = int(payload.get("count", 4))
+                if not target:
+                    result = {"status": "error", "error": "target required"}
+                else:
+                    rc, stdout, stderr = self._run(
+                        ["ping", "-c", str(count), target], timeout=30
+                    )
+                    result = {
+                        "status": "ok" if rc == 0 else "error",
+                        "output": stdout,
+                        "reachable": rc == 0,
+                    }
+
             else:
                 log.warning("unknown_task_type", task_type=task_type)
-                result = {"status": "skipped", "reason": "unknown task type"}
+                result = {"status": "error", "error": f"unknown task type: {task_type}"}
 
+        except subprocess.TimeoutExpired:
+            log.warning("task_timeout", task_id=task_id, task_type=task_type)
+            result = {"status": "error", "error": "task timed out"}
         except Exception as exc:
             log.error("task_execution_error", task_id=task_id, error=str(exc))
             result = {"status": "error", "error": str(exc)}
