@@ -52,6 +52,8 @@ class Config:
         "font-src": ["'self'", "cdn.jsdelivr.net", "fonts.gstatic.com"],
         # connect-src governs XHR/fetch and devtools source-map (.map) requests.
         "connect-src": ["'self'", "cdn.jsdelivr.net", "vercel.live"],
+        # frame-src: Vercel live-feedback iframe (preview deployments only).
+        "frame-src": ["'self'", "vercel.live"],
     }
 
     # ── Probe registration tokens ──────────────────────────────────────────

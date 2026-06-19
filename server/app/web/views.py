@@ -10,6 +10,12 @@ def index():
     return redirect(url_for("web.dashboard"))
 
 
+@web_bp.get("/favicon.ico")
+def favicon():
+    """No favicon asset — return 204 to silence the browser's 404 request."""
+    return ("", 204)
+
+
 @web_bp.get("/login")
 def login_page():
     return render_template("auth/login.html")

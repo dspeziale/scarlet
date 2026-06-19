@@ -70,8 +70,51 @@ def create_app(env: str | None = None) -> Flask:
     from app.middleware.correlation import CorrelationIdMiddleware
     app.wsgi_app = CorrelationIdMiddleware(app.wsgi_app)  # type: ignore[assignment]
 
+    # ── Lightweight schema self-heal ───────────────────────────────────────
+    # The deployment provisions schema via db.create_all() (seed.py), which
+    # creates missing tables but never adds new columns to existing ones.
+    # Add idempotently the columns introduced after first deploy so the app
+    # doesn't 500 on a DB that predates them. Best-effort: never fatal.
+    if not app.testing:
+        _ensure_schema(app)
+
     log.info("app_started", env=env or "default")
     return app
+
+
+# Columns added after the initial schema, keyed by table. Dialect-portable types.
+_SCHEMA_ADDITIONS: dict[str, dict[str, str]] = {
+    "probes": {
+        "interfaces": "JSON",
+        "subnets": "JSON",
+        "ids_interface": "VARCHAR(64)",
+        "network_updated_at": "TIMESTAMP",
+    },
+}
+
+
+def _ensure_schema(app: Flask) -> None:
+    """Add missing columns to existing tables (idempotent, best-effort)."""
+    from sqlalchemy import inspect, text
+    from app.extensions import db
+
+    try:
+        with app.app_context():
+            inspector = inspect(db.engine)
+            tables = set(inspector.get_table_names())
+            for table, columns in _SCHEMA_ADDITIONS.items():
+                if table not in tables:
+                    continue  # fresh DB — create_all/seed will build it fully
+                existing = {c["name"] for c in inspector.get_columns(table)}
+                missing = {n: t for n, t in columns.items() if n not in existing}
+                if not missing:
+                    continue
+                with db.engine.begin() as conn:
+                    for name, sql_type in missing.items():
+                        conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {sql_type}"))
+                log.info("schema_self_heal", table=table, added=list(missing))
+    except Exception as exc:  # pragma: no cover — never block startup
+        log.warning("schema_self_heal_failed", error=str(exc))
 
 
 def _register_blueprints(app: Flask) -> None:
