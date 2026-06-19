@@ -74,6 +74,9 @@ class UserService:
             user.password_hash = hash_password(kwargs.pop("password"))
 
         allowed_fields = {"first_name", "last_name", "is_active", "email"}
+        # Only a superadmin may move a user between tenants.
+        if calling_user.is_superadmin:
+            allowed_fields = allowed_fields | {"tenant_id"}
         for k, v in kwargs.items():
             if k in allowed_fields:
                 setattr(user, k, v)
@@ -103,3 +106,6 @@ class UserService:
 
     def list_users(self, tenant_id: str, limit: int = 100, offset: int = 0) -> list[User]:
         return self._user_repo.list_by_tenant(tenant_id, limit=limit, offset=offset)
+
+    def list_all_users(self, limit: int = 200, offset: int = 0) -> list[User]:
+        return self._user_repo.list_all(limit=limit, offset=offset)

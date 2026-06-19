@@ -15,13 +15,18 @@ _svc = UserService()
 @require_role(SUPERADMIN, TENANT_ADMIN)
 def list_users():
     user = g.current_user
-    tenant_id = request.args.get("tenant_id") or user.tenant_id
-    # Non-superadmin can only see their own tenant
-    if not user.is_superadmin:
-        tenant_id = user.tenant_id
     limit = int(request.args.get("limit", 50))
     offset = int(request.args.get("offset", 0))
-    users = _svc.list_users(tenant_id, limit=limit, offset=offset)
+
+    # SuperAdmin with scope=all gets every user across tenants (candidate pool
+    # for assigning a tenant admin). Everyone else is scoped to a tenant.
+    if user.is_superadmin and request.args.get("scope") == "all":
+        users = _svc.list_all_users(limit=limit, offset=offset)
+    else:
+        tenant_id = request.args.get("tenant_id") or user.tenant_id
+        if not user.is_superadmin:
+            tenant_id = user.tenant_id
+        users = _svc.list_users(tenant_id, limit=limit, offset=offset)
     return jsonify([u.to_dict() for u in users]), 200
 
 

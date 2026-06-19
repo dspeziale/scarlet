@@ -27,6 +27,10 @@ class UserRepository(BaseRepository[User]):
         )
         return list(db.session.execute(stmt).scalars())
 
+    def list_all(self, limit: int = 200, offset: int = 0) -> list[User]:
+        stmt = select(User).limit(limit).offset(offset)
+        return list(db.session.execute(stmt).scalars())
+
 
 class RoleRepository(BaseRepository[Role]):
     model = Role

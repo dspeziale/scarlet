@@ -63,11 +63,19 @@
         <ul class="list-group mb-3" id="admin-list"><li class="list-group-item text-muted">Loading…</li></ul>
 
         <hr>
-        <h6 class="text-muted">Promuovi un utente esistente del tenant</h6>
+        <h6 class="text-muted">Promuovi un utente già in questo tenant</h6>
         <div class="input-group mb-3">
           <select class="form-select" id="promote-select"><option value="">Nessun utente promovibile</option></select>
           <button class="btn btn-outline-primary" id="btn-promote">Promuovi a TenantAdmin</button>
         </div>
+
+        <hr>
+        <h6 class="text-muted">Associa un utente esistente (da qualsiasi tenant)</h6>
+        <div class="input-group mb-1">
+          <select class="form-select" id="assign-select"><option value="">Nessun utente disponibile</option></select>
+          <button class="btn btn-outline-primary" id="btn-assign">Associa come TenantAdmin</button>
+        </div>
+        <div class="form-text mb-3">L'utente verrà <strong>spostato</strong> in questo tenant e gli verrà assegnato il ruolo TenantAdmin.</div>
 
         <hr>
         <h6 class="text-muted">Crea un nuovo TenantAdmin</h6>
@@ -190,7 +198,10 @@ async function openAdminModal(tenantId) {
 async function refreshAdmins(tenantId) {
   const list = document.getElementById('admin-list');
   const promote = document.getElementById('promote-select');
+  const assign = document.getElementById('assign-select');
   list.innerHTML = '<li class="list-group-item text-muted">Loading…</li>';
+
+  // Users currently in this tenant
   const resp = await fetch(`/api/v1/users?tenant_id=${tenantId}`, { headers: apiHeaders() });
   if (!resp.ok) { list.innerHTML = '<li class="list-group-item text-danger">Errore nel caricamento utenti</li>'; return; }
   const users = await resp.json();
@@ -207,6 +218,19 @@ async function refreshAdmins(tenantId) {
   promote.innerHTML = nonAdmins.length
     ? '<option value="">Seleziona utente…</option>' + nonAdmins.map(u => `<option value="${u.id}">${esc(u.username)} (${esc(u.email)})</option>`).join('')
     : '<option value="">Nessun utente promovibile</option>';
+
+  // All users across tenants — candidates to move into this tenant.
+  const allResp = await fetch('/api/v1/users?scope=all&limit=200', { headers: apiHeaders() });
+  if (allResp.ok) {
+    const all = await allResp.json();
+    const candidates = all.filter(u => !u.is_superadmin && u.tenant_id !== tenantId);
+    assign.innerHTML = candidates.length
+      ? '<option value="">Seleziona utente…</option>' + candidates.map(u => {
+          const where = u.tenant_name ? `tenant: ${esc(u.tenant_name)}` : 'senza tenant';
+          return `<option value="${u.id}">${esc(u.username)} (${esc(u.email)}) — ${where}</option>`;
+        }).join('')
+      : '<option value="">Nessun utente disponibile</option>';
+  }
 }
 
 function adminMsg(ok, msg) {
@@ -225,6 +249,24 @@ document.getElementById('btn-promote').addEventListener('click', async () => {
   const data = await resp.json();
   if (resp.ok) { adminMsg(true, 'Utente promosso a TenantAdmin.'); refreshAdmins(tenantId); }
   else { adminMsg(false, data.message || 'Errore'); }
+});
+
+document.getElementById('btn-assign').addEventListener('click', async () => {
+  const tenantId = document.getElementById('admin-tenant-id').value;
+  const userId = document.getElementById('assign-select').value;
+  if (!userId) { adminMsg(false, 'Seleziona un utente.'); return; }
+  // 1) move the user into this tenant
+  const mv = await fetch(`/api/v1/users/${userId}`, {
+    method: 'PATCH', headers: apiHeaders(), body: JSON.stringify({ tenant_id: tenantId }),
+  });
+  if (!mv.ok) { const d = await mv.json(); adminMsg(false, d.message || 'Errore nello spostamento'); return; }
+  // 2) grant TenantAdmin
+  const rl = await fetch(`/api/v1/users/${userId}/roles`, {
+    method: 'POST', headers: apiHeaders(), body: JSON.stringify({ role: 'TenantAdmin' }),
+  });
+  const data = await rl.json();
+  if (rl.ok) { adminMsg(true, 'Utente associato al tenant come TenantAdmin.'); refreshAdmins(tenantId); }
+  else { adminMsg(false, data.message || 'Spostato ma errore nell\'assegnazione ruolo'); }
 });
 
 document.getElementById('btn-create-admin').addEventListener('click', async () => {
