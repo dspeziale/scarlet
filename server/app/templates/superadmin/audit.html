@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Global Audit — SuperAdmin{% endblock %}
+{% block page_title %}Global Audit Log{% endblock %}
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0"><i class="bi bi-journal-text me-2"></i>Global Audit</h5>
+    <div>
+      <input type="text" class="form-control form-control-sm d-inline-block w-auto" id="filter-tenant" placeholder="Filter tenant_id">
+    </div>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-sm table-hover mb-0">
+      <thead class="table-light">
+        <tr><th>Time</th><th>Tenant</th><th>User</th><th>Action</th><th>Resource</th><th>IP</th></tr>
+      </thead>
+      <tbody id="audit-body"><tr><td colspan="6" class="text-center py-3 text-muted">Loading…</td></tr></tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+async function loadAudit(tenantId) {
+  let url = '/api/v1/audit?limit=200';
+  if (tenantId) url += '&tenant_id=' + tenantId;
+  const resp = await fetch(url, { headers: apiHeaders() });
+  const tbody = document.getElementById('audit-body');
+  if (!resp.ok) return;
+  const logs = await resp.json();
+  tbody.innerHTML = logs.length === 0
+    ? '<tr><td colspan="6" class="text-center text-muted">No records</td></tr>'
+    : logs.map(l => `<tr>
+        <td class="font-monospace small">${new Date(l.timestamp).toLocaleString()}</td>
+        <td class="font-monospace small">${l.tenant_id ? l.tenant_id.slice(0,8)+'…' : '—'}</td>
+        <td class="font-monospace small">${l.user_id ? l.user_id.slice(0,8)+'…' : '—'}</td>
+        <td><span class="badge text-bg-secondary">${l.action}</span></td>
+        <td>${l.resource_type || '—'}</td>
+        <td>${l.ip || '—'}</td>
+      </tr>`).join('');
+}
+document.getElementById('filter-tenant').addEventListener('input', e => loadAudit(e.target.value));
+loadAudit();
+</script>
+{% endblock %}

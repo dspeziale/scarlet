@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Tenants — SuperAdmin{% endblock %}
+{% block page_title %}Tenant Management{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="/dashboard">Home</a></li>
+  <li class="breadcrumb-item active">Tenants</li>
+{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0"><i class="bi bi-building me-2"></i>All Tenants</h5>
+    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalTenant">
+      <i class="bi bi-plus-circle me-1"></i>New Tenant
+    </button>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0" id="tenant-table">
+      <thead class="table-light">
+        <tr><th>Name</th><th>Slug</th><th>Plan</th><th>Max Probes</th><th>Active</th><th>Created</th></tr>
+      </thead>
+      <tbody><tr><td colspan="6" class="text-center py-3 text-muted">Loading…</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="modal fade" id="modalTenant" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">New Tenant</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div class="mb-3"><label class="form-label">Name</label><input type="text" class="form-control" id="t-name"></div>
+        <div class="mb-3"><label class="form-label">Plan</label>
+          <select class="form-select" id="t-plan"><option value="free">Free</option><option value="basic">Basic</option><option value="pro">Pro</option><option value="enterprise">Enterprise</option></select>
+        </div>
+        <div class="mb-3"><label class="form-label">Max Probes</label><input type="number" class="form-control" id="t-max-probes" value="5"></div>
+        <div class="mb-3"><label class="form-label">Description</label><input type="text" class="form-control" id="t-desc"></div>
+        <div id="t-error" class="alert alert-danger d-none"></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" id="btn-create-tenant">Create</button></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function loadTenants() {
+  const resp = await fetch('/api/v1/tenants', { headers: apiHeaders() });
+  const tbody = document.querySelector('#tenant-table tbody');
+  if (!resp.ok) { tbody.innerHTML = '<tr><td colspan="6" class="text-danger text-center">Not authorized</td></tr>'; return; }
+  const tenants = await resp.json();
+  tbody.innerHTML = tenants.length === 0
+    ? '<tr><td colspan="6" class="text-center text-muted">No tenants</td></tr>'
+    : tenants.map(t => `<tr>
+        <td>${t.name}</td>
+        <td class="font-monospace">${t.slug}</td>
+        <td><span class="badge text-bg-info">${t.plan}</span></td>
+        <td>${t.max_probes}</td>
+        <td>${t.is_active ? '<i class="bi bi-check-circle text-success"></i>' : '<i class="bi bi-x-circle text-danger"></i>'}</td>
+        <td>${new Date(t.created_at).toLocaleDateString()}</td>
+      </tr>`).join('');
+}
+
+document.getElementById('btn-create-tenant').addEventListener('click', async () => {
+  const err = document.getElementById('t-error');
+  const resp = await fetch('/api/v1/tenants', {
+    method: 'POST', headers: apiHeaders(),
+    body: JSON.stringify({
+      name: document.getElementById('t-name').value,
+      plan: document.getElementById('t-plan').value,
+      max_probes: parseInt(document.getElementById('t-max-probes').value),
+      description: document.getElementById('t-desc').value,
+    }),
+  });
+  const data = await resp.json();
+  if (resp.ok) { bootstrap.Modal.getInstance(document.getElementById('modalTenant')).hide(); loadTenants(); }
+  else { err.textContent = data.message; err.classList.remove('d-none'); }
+});
+loadTenants();
+</script>
+{% endblock %}

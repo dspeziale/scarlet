@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Users — SOC Seattle{% endblock %}
+{% block page_title %}User Management{% endblock %}
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-header d-flex justify-content-between">
+    <h5 class="mb-0"><i class="bi bi-people me-2"></i>Users</h5>
+    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalUser"><i class="bi bi-plus-circle me-1"></i>Add User</button>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead class="table-light"><tr><th>Email</th><th>Username</th><th>Name</th><th>Roles</th><th>Active</th></tr></thead>
+      <tbody id="user-body"><tr><td colspan="5" class="text-center py-3 text-muted">Loading…</td></tr></tbody>
+    </table>
+  </div>
+</div>
+<div class="modal fade" id="modalUser" tabindex="-1">
+  <div class="modal-dialog"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title">Add User</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+      <div class="mb-2"><label class="form-label">Email</label><input type="email" class="form-control" id="u-email"></div>
+      <div class="mb-2"><label class="form-label">Username</label><input type="text" class="form-control" id="u-username"></div>
+      <div class="mb-2"><label class="form-label">Password</label><input type="password" class="form-control" id="u-password"></div>
+      <div class="mb-2"><label class="form-label">First Name</label><input type="text" class="form-control" id="u-first"></div>
+      <div class="mb-2"><label class="form-label">Last Name</label><input type="text" class="form-control" id="u-last"></div>
+      <div class="mb-2"><label class="form-label">Role</label>
+        <select class="form-select" id="u-role"><option value="ReadOnly">ReadOnly</option><option value="Operator">Operator</option><option value="TenantAdmin">TenantAdmin</option></select>
+      </div>
+      <div id="u-error" class="alert alert-danger d-none"></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" id="btn-add-user">Add</button></div>
+  </div></div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+async function loadUsers() {
+  const resp = await fetch('/api/v1/users', { headers: apiHeaders() });
+  const tbody = document.getElementById('user-body');
+  if (!resp.ok) return;
+  const users = await resp.json();
+  tbody.innerHTML = users.map(u => `<tr>
+    <td>${u.email}</td><td>${u.username}</td>
+    <td>${[u.first_name,u.last_name].filter(Boolean).join(' ')||'—'}</td>
+    <td>${(u.roles||[]).map(r=>`<span class="badge text-bg-info">${r}</span>`).join(' ')}</td>
+    <td>${u.is_active?'✓':'✗'}</td>
+  </tr>`).join('') || '<tr><td colspan="5" class="text-center text-muted">No users</td></tr>';
+}
+document.getElementById('btn-add-user').addEventListener('click', async () => {
+  const err = document.getElementById('u-error');
+  const resp = await fetch('/api/v1/users', {
+    method: 'POST', headers: apiHeaders(),
+    body: JSON.stringify({
+      email: document.getElementById('u-email').value,
+      username: document.getElementById('u-username').value,
+      password: document.getElementById('u-password').value,
+      first_name: document.getElementById('u-first').value,
+      last_name: document.getElementById('u-last').value,
+      roles: [document.getElementById('u-role').value],
+    }),
+  });
+  const data = await resp.json();
+  if (resp.ok) { bootstrap.Modal.getInstance(document.getElementById('modalUser')).hide(); loadUsers(); }
+  else { err.textContent = data.message; err.classList.remove('d-none'); }
+});
+loadUsers();
+</script>
+{% endblock %}

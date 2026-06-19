@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — SOC Seattle</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@4.0.0-beta2/dist/css/adminlte.min.css">
+  <style>
+    body { background: #343a40; }
+    .login-card { max-width: 380px; margin: 10vh auto; }
+    .brand-logo { font-size: 2rem; color: #007bff; }
+  </style>
+</head>
+<body>
+<div class="login-card card shadow">
+  <div class="card-body p-4">
+    <div class="text-center mb-4">
+      <span class="brand-logo"><i class="bi bi-shield-lock-fill"></i></span>
+      <h4 class="mt-2 fw-bold">SOC Seattle</h4>
+      <p class="text-muted small">Sign in to continue</p>
+    </div>
+    <div id="login-error" class="alert alert-danger d-none"></div>
+    <form id="login-form">
+      <div class="mb-3">
+        <label class="form-label">Email</label>
+        <input type="email" class="form-control" id="email" autocomplete="username" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Password</label>
+        <input type="password" class="form-control" id="password" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="btn btn-primary w-100" id="btn-login">
+        <span id="btn-text">Sign In</span>
+        <span id="btn-spinner" class="spinner-border spinner-border-sm d-none"></span>
+      </button>
+    </form>
+  </div>
+</div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<script>
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const errEl = document.getElementById('login-error');
+  const spinner = document.getElementById('btn-spinner');
+  const btnText = document.getElementById('btn-text');
+  errEl.classList.add('d-none');
+  spinner.classList.remove('d-none');
+  btnText.textContent = 'Signing in…';
+
+  try {
+    const resp = await fetch('/api/v1/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: document.getElementById('email').value,
+        password: document.getElementById('password').value,
+      }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.message || 'Login failed');
+    localStorage.setItem('soc_access_token', data.access_token);
+    localStorage.setItem('soc_refresh_token', data.refresh_token);
+    window.location = '/dashboard';
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.classList.remove('d-none');
+  } finally {
+    spinner.classList.add('d-none');
+    btnText.textContent = 'Sign In';
+  }
+});
+</script>
+</body>
+</html>

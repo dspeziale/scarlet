@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Stats — SuperAdmin{% endblock %}
+{% block page_title %}Platform Statistics{% endblock %}
+{% block content %}
+<div class="row g-3" id="stats-cards"></div>
+{% endblock %}
+{% block extra_js %}
+<script>
+async function loadStats() {
+  const [tenantsR, auditR] = await Promise.all([
+    fetch('/api/v1/tenants?limit=1000', { headers: apiHeaders() }),
+    fetch('/api/v1/audit?limit=1', { headers: apiHeaders() }),
+  ]);
+  const tenants = tenantsR.ok ? await tenantsR.json() : [];
+  document.getElementById('stats-cards').innerHTML = `
+    <div class="col-md-3"><div class="info-box"><span class="info-box-icon text-bg-primary"><i class="bi bi-building"></i></span><div class="info-box-content"><span class="info-box-text">Total Tenants</span><span class="info-box-number">${tenants.length}</span></div></div></div>
+    <div class="col-md-3"><div class="info-box"><span class="info-box-icon text-bg-success"><i class="bi bi-check-circle"></i></span><div class="info-box-content"><span class="info-box-text">Active Tenants</span><span class="info-box-number">${tenants.filter(t=>t.is_active).length}</span></div></div></div>
+  `;
+}
+loadStats();
+</script>
+{% endblock %}

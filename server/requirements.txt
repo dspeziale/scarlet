@@ -1,0 +1,38 @@
+# Core
+flask==3.0.3
+flask-sqlalchemy==3.1.1
+flask-migrate==4.0.7
+flask-jwt-extended==4.6.0
+flask-limiter==3.7.0
+flask-talisman==1.1.0
+flask-cors==4.0.1
+
+# Database
+sqlalchemy==2.0.31
+alembic==1.13.2
+psycopg2-binary==2.9.9
+
+# Validation
+pydantic==2.8.2
+marshmallow==3.21.3
+
+# Security
+argon2-cffi==23.1.0
+cryptography==42.0.8
+pyotp==2.9.0
+
+# Crypto (X25519 / Ed25519 / AES-GCM / HKDF)
+PyNaCl==1.5.0
+
+# Logging
+structlog==24.4.0
+python-json-logger==2.0.7
+
+# Utils
+python-dotenv==1.0.1
+python-ulid==2.7.0
+shortuuid==1.0.13
+arrow==1.3.0
+
+# WSGI (Docker / local — not used by Vercel)
+gunicorn==22.0.0

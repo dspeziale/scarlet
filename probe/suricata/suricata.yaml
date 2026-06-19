@@ -1,0 +1,307 @@
+%YAML 1.1
+---
+# SOC Seattle — Suricata 7 configuration
+# Interface and rule file are managed dynamically by the probe agent.
+# This file provides the baseline; the agent rewrites %INTERFACE% and %RULE_FILES%.
+
+vars:
+  address-groups:
+    HOME_NET: "[192.168.0.0/16,10.0.0.0/8,172.16.0.0/12]"
+    EXTERNAL_NET: "!$HOME_NET"
+    HTTP_SERVERS: "$HOME_NET"
+    SMTP_SERVERS: "$HOME_NET"
+    SQL_SERVERS: "$HOME_NET"
+    DNS_SERVERS: "$HOME_NET"
+    TELNET_SERVERS: "$HOME_NET"
+    AIM_SERVERS: "$EXTERNAL_NET"
+    DC_SERVERS: "$HOME_NET"
+    DNP3_SERVER: "$HOME_NET"
+    DNP3_CLIENT: "$HOME_NET"
+    MODBUS_CLIENT: "$HOME_NET"
+    MODBUS_SERVER: "$HOME_NET"
+    ENIP_CLIENT: "$HOME_NET"
+    ENIP_SERVER: "$HOME_NET"
+
+  port-groups:
+    HTTP_PORTS: "80"
+    SHELLCODE_PORTS: "!80"
+    ORACLE_PORTS: 1521
+    SSH_PORTS: 22
+    DNP3_PORTS: 20000
+    MODBUS_PORTS: 502
+    FILE_DATA_PORTS: "[$HTTP_PORTS,110,143]"
+    FTP_PORTS: 21
+    VXLAN_PORTS: 4789
+    TEREDO_PORTS: 3544
+
+default-log-dir: /var/log/suricata
+
+stats:
+  enabled: yes
+  interval: 8
+
+outputs:
+  - fast:
+      enabled: no
+      filename: fast.log
+      append: yes
+
+  - eve-log:
+      enabled: yes
+      filetype: regular
+      filename: eve.json
+      pcap-file: false
+      community-id: true
+      community-id-seed: 0
+      types:
+        - alert:
+            payload: yes
+            payload-buffer-size: 4kb
+            payload-printable: yes
+            packet: yes
+            metadata: yes
+            http-body: yes
+            http-body-printable: yes
+            tagged-packets: yes
+        - anomaly:
+            enabled: yes
+            types:
+              decode: no
+              stream: no
+              applayer: yes
+        - http:
+            extended: yes
+        - dns:
+            version: 2
+            requests: yes
+            responses: yes
+        - tls:
+            extended: yes
+            session-resumption: no
+        - files:
+            force-magic: no
+        - smtp:
+            extended: yes
+        - dnp3:
+            enabled: false
+        - ftp:
+            enabled: yes
+        - rdp:
+            enabled: yes
+        - nfs:
+            enabled: yes
+        - smb:
+            enabled: yes
+        - tftp:
+            enabled: yes
+        - ikev2:
+            enabled: yes
+        - krb5:
+            enabled: yes
+        - dhcp:
+            enabled: yes
+            extended: yes
+        - ssh:
+            enabled: yes
+        - stats:
+            totals: yes
+            threads: no
+            deltas: no
+        - flow
+        - netflow
+
+  - pcap-log:
+      enabled: no
+      filename: log.pcap
+      limit: 1000mb
+      max-files: 2000
+      compression: none
+      mode: normal
+      use-stream-depth: no
+      honor-pass-rules: no
+
+logging:
+  default-log-level: notice
+  outputs:
+    - console:
+        enabled: no
+    - file:
+        enabled: yes
+        level: info
+        filename: /var/log/suricata/suricata.log
+    - syslog:
+        enabled: no
+
+af-packet:
+  - interface: %INTERFACE%
+    threads: auto
+    cluster-id: 99
+    cluster-type: cluster_flow
+    defrag: yes
+    use-mmap: yes
+    tpacket-v3: yes
+    ring-size: 2048
+    block-size: 32768
+    block-timeout: 10
+    use-emergency-flush: yes
+    buffer-size: 32768
+    disable-promisc: no
+    checksum-checks: kernel
+    bpf-filter: "%BPF_FILTER%"
+    copy-mode: none
+
+pcap:
+  - interface: %INTERFACE%
+    checksum-checks: auto
+    bpf-filter: "%BPF_FILTER%"
+
+app-layer:
+  protocols:
+    rdp:
+      enabled: yes
+    krb5:
+      enabled: yes
+    snmp:
+      enabled: yes
+    tftp:
+      enabled: yes
+    dns:
+      tcp:
+        enabled: yes
+      udp:
+        enabled: yes
+    http2:
+      enabled: yes
+    tls:
+      enabled: yes
+    smtp:
+      enabled: yes
+      mime:
+        decode-mime: yes
+        decode-base64: yes
+        decode-quoted-printable: yes
+        header-value-depth: 2000
+        extract-urls: yes
+        body-md5: no
+      inspected-tracker:
+        content-limit: 100000
+        content-inspect-min-size: 32768
+        content-inspect-window: 4096
+    ftp:
+      enabled: yes
+      memcap: 64mb
+    ssh:
+      enabled: yes
+      hassh: yes
+    http:
+      enabled: yes
+      libhtp:
+        default-config:
+          personality: IDS
+          request-body-limit: 100kb
+          response-body-limit: 100kb
+          double-decode-path: no
+          double-decode-query: no
+    dcerpc:
+      enabled: yes
+    smb:
+      enabled: yes
+      max-read-size: 8mb
+    nfs:
+      enabled: yes
+    ikev2:
+      enabled: yes
+    dhcp:
+      enabled: yes
+    bittorrent-dht:
+      enabled: yes
+    quic:
+      enabled: yes
+
+asn1-max-frames: 256
+
+default-rule-path: /etc/suricata/rules
+rule-files:
+  - /etc/suricata/rules/probe.rules
+
+classification-file: /etc/suricata/classification.config
+reference-config-file: /etc/suricata/reference.config
+
+engine-analysis:
+  rules-fast-pattern: yes
+  rules: yes
+
+detect:
+  profile: medium
+  custom-values:
+    toclient-groups: 3
+    toserver-groups: 25
+  sgh-mpm-context: auto
+  inspection-recursion-limit: 3000
+  prefilter:
+    default: mpm
+  grouping:
+  profiling:
+    grouping:
+      dump-to-disk: false
+      include-rules: false
+      json: true
+
+threading:
+  set-cpu-affinity: no
+  cpu-affinity:
+    - management-cpu-set:
+        cpu: [ 0 ]
+    - receive-cpu-set:
+        cpu: [ 0 ]
+    - worker-cpu-set:
+        cpu: [ "all" ]
+        mode: "balanced"
+  detect-thread-ratio: 1.0
+
+luajit:
+  states: 128
+
+profiling:
+  rules:
+    enabled: yes
+    filename: /var/log/suricata/rule_perf.log
+    append: yes
+    limit: 10
+    json: no
+  keywords:
+    enabled: yes
+    filename: /var/log/suricata/keyword_perf.log
+    append: yes
+  rulegroups:
+    enabled: yes
+    filename: /var/log/suricata/rule_group_perf.log
+    append: yes
+  packets:
+    enabled: yes
+    filename: /var/log/suricata/packet_stats.log
+    append: yes
+    csv:
+      enabled: no
+      filename: /var/log/suricata/packet_stats.csv
+  locks:
+    enabled: no
+    filename: /var/log/suricata/lock_stats.log
+    append: yes
+  pcap-log:
+    enabled: no
+    filename: /var/log/suricata/pcaplog_stats.log
+    append: yes
+
+nfq:
+
+nflog:
+  - group: 2
+    buffer-size: 18432
+  - group: default
+    qthreshold: 1
+    qtimeout: 100
+    max-size: 20000
+
+capture:
+  disable-offloading: true

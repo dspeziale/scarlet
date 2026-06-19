@@ -1,0 +1,346 @@
+"""
+Probe agent entry point.
+
+Boot sequence:
+  1. Load config
+  2. Load or generate cryptographic identity
+  3. Register with server (one-time, uses REGISTRATION_TOKEN)
+  4. Key provisioning handshake (X25519 DH)
+  5. Fetch IDS config from server
+  6. Start Suricata with received config
+  7. Spawn worker threads:
+       - HeartbeatWorker   (heartbeat + task polling)
+       - RuleUpdater        (poll for ruleset changes)
+       - AlertReporter      (tail eve.json, batch-send alerts)
+       - PcapUploader       (watch pcap dir, upload completed files)
+  8. Main thread loops on signal or keyboard interrupt
+"""
+
+from __future__ import annotations
+
+import json
+import platform as _platform
+import signal
+import socket
+import sys
+import time
+import uuid as _uuid
+from pathlib import Path
+from typing import Optional
+
+import httpx
+import structlog
+
+from config import ProbeConfig, cfg
+from crypto_client import ProbeKeys
+from local_queue import LocalQueue
+from suricata_manager import SuricataManager
+from rule_updater import RuleUpdater
+from alert_reporter import AlertReporter
+from pcap_uploader import PcapUploader
+from heartbeat import HeartbeatWorker
+
+structlog.configure(
+    processors=[
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.add_logger_name,
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
+        structlog.processors.JSONRenderer(),
+    ],
+    context_class=dict,
+    logger_factory=structlog.stdlib.LoggerFactory(),
+    wrapper_class=structlog.stdlib.BoundLogger,
+    cache_logger_on_first_use=True,
+)
+
+log = structlog.get_logger("agent.main")
+
+
+class ProbeAgent:
+    def __init__(self) -> None:
+        self.probe_id: str = cfg.PROBE_ID
+        self._keys = ProbeKeys(cfg.KEY_FILE)
+        self._queue = LocalQueue(cfg.QUEUE_DB)
+        self._http = self._make_client()
+        self._suricata = SuricataManager(
+            yaml_template=cfg.SURICATA_YAML_TEMPLATE,
+            yaml_live=cfg.SURICATA_YAML,
+            rules_path=cfg.SURICATA_RULES_PATH,
+            log_dir=cfg.SURICATA_LOG_DIR,
+        )
+        self._workers: list = []
+        self._running = False
+
+    # ── HTTP ─────────────────────────────────────────────────────────────
+
+    def _make_client(self) -> httpx.Client:
+        return httpx.Client(
+            verify=cfg.VERIFY_TLS,
+            timeout=30.0,
+        )
+
+    def _set_auth_header(self, access_token: str) -> None:
+        self._http.headers.update({"Authorization": f"Bearer {access_token}"})
+
+    # ── Registration ─────────────────────────────────────────────────────
+
+    def _load_state(self) -> Optional[dict]:
+        if cfg.STATE_DB.exists():
+            try:
+                return json.loads(cfg.STATE_DB.read_text())
+            except Exception:
+                pass
+        return None
+
+    def _save_state(self, state: dict) -> None:
+        cfg.STATE_DB.parent.mkdir(parents=True, exist_ok=True)
+        cfg.STATE_DB.write_text(json.dumps(state, indent=2))
+
+    def _register(self) -> dict:
+        """POST /api/v1/probes/register — returns {probe_id, access_token, ...}"""
+        if not cfg.REGISTRATION_TOKEN:
+            raise RuntimeError("REGISTRATION_TOKEN is required for first-time registration")
+        hostname = socket.gethostname()
+        try:
+            machine_id = Path("/etc/machine-id").read_text().strip()
+        except Exception:
+            machine_id = str(_uuid.uuid4())
+        payload = {
+            "registration_token": cfg.REGISTRATION_TOKEN,
+            "hostname": hostname,
+            "machine_id": machine_id,
+            "agent_version": cfg.AGENT_VERSION,
+            "platform": _platform.system(),
+            "architecture": _platform.machine(),
+            "sign_public_key": self._keys.sign_public_hex,
+            "exchange_public_key": self._keys.exchange_public_hex,
+        }
+        log.info("registering_probe")
+        resp = self._http.post(
+            f"{cfg.SERVER_URL}/api/v1/probes/register",
+            json=payload,
+            timeout=30,
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+    def _provision_keys(self, probe_id: str) -> dict:
+        """POST /api/v1/probes/<id>/provision — DH handshake."""
+        payload = {
+            "sign_public_key": self._keys.sign_public_hex,
+            "exchange_public_key": self._keys.exchange_public_hex,
+        }
+        resp = self._http.post(
+            f"{cfg.SERVER_URL}/api/v1/probes/{probe_id}/provision",
+            json=payload,
+            timeout=30,
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+    def _authenticate(self) -> str:
+        """POST /api/v1/auth/probe-login — returns JWT access token."""
+        resp = self._http.post(
+            f"{cfg.SERVER_URL}/api/v1/auth/probe-login",
+            json={"probe_id": self.probe_id, "sign_public_key": self._keys.sign_public_hex},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        return resp.json()["access_token"]
+
+    # ── IDS Config ───────────────────────────────────────────────────────
+
+    def _fetch_ids_config(self) -> Optional[dict]:
+        try:
+            resp = self._http.get(
+                f"{cfg.SERVER_URL}/api/v1/probes/{self.probe_id}/ids/config",
+                timeout=15,
+            )
+            if resp.status_code == 200:
+                return resp.json()
+        except Exception as exc:
+            log.warning("fetch_ids_config_failed", error=str(exc))
+        return None
+
+    # ── Task handling ─────────────────────────────────────────────────────
+
+    def _handle_task(self, task: dict) -> None:
+        task_type = task.get("type")
+        task_id = task.get("id")
+        log.info("task_received", task_type=task_type, task_id=task_id)
+        result = {"status": "ok"}
+
+        try:
+            if task_type == "ids_start":
+                ok = self._suricata.start()
+                result = {"status": "ok" if ok else "error", "started": ok}
+
+            elif task_type == "ids_stop":
+                self._suricata.stop()
+
+            elif task_type == "ids_restart":
+                ok = self._suricata.restart()
+                result = {"status": "ok" if ok else "error"}
+
+            elif task_type == "ids_status":
+                result = self._suricata.status()
+
+            elif task_type == "ids_rule_deploy":
+                # Rule content embedded in task payload
+                rules_content = task.get("payload", {}).get("rules_content", "")
+                version = task.get("payload", {}).get("version", "")
+                if rules_content:
+                    cfg.SURICATA_RULES_PATH.parent.mkdir(parents=True, exist_ok=True)
+                    cfg.SURICATA_RULES_PATH.write_text(rules_content)
+                    if self._suricata.is_running():
+                        self._suricata.reload_rules()
+                    result = {"status": "ok", "version_applied": version}
+
+            elif task_type in ("pcap_start", "pcap_stop"):
+                # PCAP capture is handled by Suricata config; just ack
+                result = {"status": "ok", "note": "pcap controlled via suricata config"}
+
+            elif task_type == "config_update":
+                ids_cfg = task.get("payload", {})
+                if ids_cfg:
+                    self._suricata.apply_config(
+                        interface=ids_cfg.get("interface", cfg.DEFAULT_INTERFACE),
+                        bpf_filter=ids_cfg.get("bpf_filter", ""),
+                        capture_mode=ids_cfg.get("capture_mode", cfg.DEFAULT_CAPTURE_MODE),
+                    )
+                    if self._suricata.is_running():
+                        self._suricata.restart()
+
+            else:
+                log.warning("unknown_task_type", task_type=task_type)
+                result = {"status": "skipped", "reason": "unknown task type"}
+
+        except Exception as exc:
+            log.error("task_execution_error", task_id=task_id, error=str(exc))
+            result = {"status": "error", "error": str(exc)}
+
+        # Report result
+        try:
+            self._http.post(
+                f"{cfg.SERVER_URL}/api/v1/probes/{self.probe_id}/tasks/{task_id}/result",
+                json={"result": result},
+                timeout=15,
+            )
+        except Exception:
+            log.warning("task_result_report_failed", task_id=task_id)
+
+    # ── Boot ──────────────────────────────────────────────────────────────
+
+    def start(self) -> None:
+        state = self._load_state()
+
+        if state and state.get("probe_id"):
+            self.probe_id = state["probe_id"]
+            log.info("probe_identity_loaded", probe_id=self.probe_id)
+            # Re-authenticate
+            try:
+                access_token = self._authenticate()
+                self._set_auth_header(access_token)
+            except Exception as exc:
+                log.error("auth_failed", error=str(exc))
+                sys.exit(1)
+        else:
+            # First-time registration
+            reg = self._register()
+            self.probe_id = reg["probe_id"]
+            # Provisioning handshake (DH key exchange)
+            self._provision_keys(self.probe_id)
+            self._set_auth_header(reg.get("access_token", ""))
+            self._save_state({"probe_id": self.probe_id})
+            log.info("probe_registered", probe_id=self.probe_id)
+
+        # IDS config
+        ids_cfg = self._fetch_ids_config()
+        interface = cfg.DEFAULT_INTERFACE
+        bpf_filter = ""
+        capture_mode = cfg.DEFAULT_CAPTURE_MODE
+        if ids_cfg:
+            interface = ids_cfg.get("interface", interface)
+            bpf_filter = ids_cfg.get("bpf_filter", bpf_filter)
+            capture_mode = ids_cfg.get("capture_mode", capture_mode)
+
+        self._suricata.apply_config(interface, bpf_filter, capture_mode)
+        self._suricata.start()
+
+        # Worker threads
+        rule_updater = RuleUpdater(
+            server_url=cfg.SERVER_URL,
+            probe_id=self.probe_id,
+            rules_path=cfg.SURICATA_RULES_PATH,
+            check_interval=cfg.RULE_CHECK_INTERVAL,
+            http_client=self._http,
+            suricata_reload_fn=self._suricata.reload_rules,
+        )
+        alert_reporter = AlertReporter(
+            server_url=cfg.SERVER_URL,
+            probe_id=self.probe_id,
+            eve_log=cfg.SURICATA_EVE_LOG,
+            flush_interval=cfg.ALERT_FLUSH_INTERVAL,
+            http_client=self._http,
+            queue=self._queue,
+        )
+        pcap_uploader = PcapUploader(
+            server_url=cfg.SERVER_URL,
+            probe_id=self.probe_id,
+            pcap_dir=cfg.PCAP_DIR,
+            http_client=self._http,
+            queue=self._queue,
+        )
+        heartbeat = HeartbeatWorker(
+            server_url=cfg.SERVER_URL,
+            probe_id=self.probe_id,
+            interval=cfg.HEARTBEAT_INTERVAL,
+            http_client=self._http,
+            get_ids_status=self._suricata.status,
+            task_handler=self._handle_task,
+        )
+
+        self._workers = [rule_updater, alert_reporter, pcap_uploader, heartbeat]
+        for w in self._workers:
+            w.start()
+
+        self._running = True
+        log.info("probe_agent_ready", probe_id=self.probe_id)
+
+    def stop(self) -> None:
+        log.info("probe_agent_stopping")
+        self._running = False
+        for w in self._workers:
+            if hasattr(w, "shutdown"):
+                w.shutdown()
+        self._suricata.stop()
+        log.info("probe_agent_stopped")
+
+    def run_forever(self) -> None:
+        def _sig_handler(sig, frame):
+            self.stop()
+            sys.exit(0)
+
+        signal.signal(signal.SIGTERM, _sig_handler)
+        signal.signal(signal.SIGINT, _sig_handler)
+
+        while self._running:
+            time.sleep(5)
+
+
+def main() -> None:
+    agent = ProbeAgent()
+    try:
+        agent.start()
+        agent.run_forever()
+    except KeyboardInterrupt:
+        agent.stop()
+    except Exception as exc:
+        log.critical("probe_agent_fatal", error=str(exc))
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

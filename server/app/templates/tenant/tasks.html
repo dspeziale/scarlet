@@ -1,0 +1,366 @@
+{% extends "base.html" %}
+{% block title %}Task Console — SOC Seattle{% endblock %}
+{% block page_title %}Task Console{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="/dashboard">Home</a></li>
+  <li class="breadcrumb-item active">Tasks</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .task-badge { font-size: .75rem; }
+  .result-pre { max-height: 420px; overflow-y: auto; font-size: .8rem;
+                background: var(--bs-body-bg); border: 1px solid var(--bs-border-color);
+                border-radius: .375rem; padding: .75rem; }
+  #param-editor { font-family: monospace; font-size: .85rem; min-height: 100px; }
+  .probe-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+  .dot-online  { background: #198754; }
+  .dot-offline { background: #6c757d; }
+  .task-type-icon { font-size: 1.1rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Toolbar -->
+<div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+  <select id="filter-status" class="form-select form-select-sm" style="width:150px">
+    <option value="">All statuses</option>
+    <option value="queued">Queued</option>
+    <option value="assigned">Assigned</option>
+    <option value="running">Running</option>
+    <option value="completed">Completed</option>
+    <option value="failed">Failed</option>
+    <option value="cancelled">Cancelled</option>
+  </select>
+  <select id="filter-probe" class="form-select form-select-sm" style="width:200px">
+    <option value="">All probes</option>
+  </select>
+  <button class="btn btn-sm btn-outline-secondary" id="btn-refresh" title="Refresh">
+    <i class="bi bi-arrow-clockwise"></i>
+  </button>
+  <span class="text-muted small" id="last-refresh"></span>
+  <div class="ms-auto">
+    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalDispatch">
+      <i class="bi bi-send me-1"></i>Dispatch Task
+    </button>
+  </div>
+</div>
+
+<!-- Task table -->
+<div class="card shadow-sm">
+  <div class="card-body p-0">
+    <table class="table table-hover table-sm mb-0" id="task-table">
+      <thead class="table-light">
+        <tr>
+          <th>Type</th>
+          <th>Name</th>
+          <th>Probe</th>
+          <th>Status</th>
+          <th style="width:50px">Pri</th>
+          <th>Created</th>
+          <th>Completed</th>
+          <th style="width:100px">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="task-tbody">
+        <tr><td colspan="8" class="text-center py-4 text-muted">Loading&hellip;</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── Dispatch modal ──────────────────────────────────────────────────── -->
+<div class="modal fade" id="modalDispatch" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-send me-2"></i>Dispatch Task to Probe</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Probe <span class="text-danger">*</span></label>
+            <select class="form-select" id="d-probe">
+              <option value="">Select probe...</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Task Type <span class="text-danger">*</span></label>
+            <select class="form-select" id="d-type">
+              <option value="network_discovery">Network Discovery</option>
+              <option value="service_detection">Service Detection</option>
+              <option value="os_fingerprinting">OS Fingerprinting</option>
+              <option value="snmp_inventory">SNMP Inventory</option>
+              <option value="wifi_scan">WiFi Scan</option>
+              <option value="ble_scan">BLE Scan</option>
+              <option value="custom_script">Custom Script</option>
+            </select>
+          </div>
+          <div class="col-md-8">
+            <label class="form-label">Name <span class="text-muted small">(optional)</span></label>
+            <input type="text" class="form-control" id="d-name" placeholder="Auto-generated if empty">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Priority <span class="text-muted small">(1=high, 10=low)</span></label>
+            <input type="number" class="form-control" id="d-priority" value="5" min="1" max="10">
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">Parameters</label>
+            <div id="param-hints" class="text-muted small mb-1"></div>
+            <textarea class="form-control" id="param-editor" rows="5">{}</textarea>
+          </div>
+        </div>
+        <div id="dispatch-error" class="alert alert-danger mt-3 d-none"></div>
+        <div id="dispatch-ok" class="alert alert-success mt-3 d-none"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" id="btn-dispatch">
+          <i class="bi bi-send me-1"></i>Send to Probe
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Result modal ───────────────────────────────────────────────────── -->
+<div class="modal fade" id="modalResult" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-clipboard-data me-2"></i>Task Result</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row mb-3 g-2" id="result-meta"></div>
+        <label class="form-label fw-semibold">Result Data</label>
+        <pre class="result-pre" id="result-json">Loading...</pre>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── Constants ────────────────────────────────────────────────────────────
+const STATUS_COLOR = {
+  queued: 'secondary', assigned: 'info', running: 'warning',
+  completed: 'success', failed: 'danger', cancelled: 'dark'
+};
+
+const TASK_ICON = {
+  network_discovery: 'bi-diagram-3', service_detection: 'bi-hdd-stack',
+  os_fingerprinting: 'bi-cpu', snmp_inventory: 'bi-router',
+  wifi_scan: 'bi-wifi', ble_scan: 'bi-bluetooth',
+  custom_script: 'bi-terminal'
+};
+
+const PARAM_HINTS = {
+  network_discovery:  '{"target":"192.168.1.0/24","timeout":60}',
+  service_detection:  '{"target":"192.168.1.1","ports":"1-1024"}',
+  os_fingerprinting:  '{"target":"192.168.1.1"}',
+  snmp_inventory:     '{"target":"192.168.1.0/24","community":"public"}',
+  wifi_scan:          '{"duration":30,"band":"2.4+5"}',
+  ble_scan:           '{"duration":20}',
+  custom_script:      '{"script":"#!/bin/bash\\necho hello","timeout":30}',
+};
+
+let _probes = [];
+let _autoRefresh = null;
+
+// ── Probes ────────────────────────────────────────────────────────────────
+async function loadProbes() {
+  const resp = await fetch('/api/v1/probes', { headers: apiHeaders() });
+  if (!resp.ok) return;
+  _probes = await resp.json();
+
+  const sel = document.getElementById('filter-probe');
+  const dSel = document.getElementById('d-probe');
+  const opts = _probes.map(p =>
+    `<option value="${p.id}">${p.status==='online'?'● ':'○ '}${p.hostname} (${p.status})</option>`
+  ).join('');
+  sel.innerHTML = '<option value="">All probes</option>' + opts;
+  dSel.innerHTML = '<option value="">Select probe...</option>' + opts;
+}
+
+// ── Tasks ─────────────────────────────────────────────────────────────────
+async function loadTasks() {
+  const status  = document.getElementById('filter-status').value;
+  const probeId = document.getElementById('filter-probe').value;
+  let url = '/api/v1/tasks';
+  const params = [];
+  if (status)  params.push('status=' + status);
+  if (probeId) params.push('probe_id=' + probeId);
+  if (params.length) url += '?' + params.join('&');
+
+  const resp = await fetch(url, { headers: apiHeaders() });
+  const tbody = document.getElementById('task-tbody');
+  if (!resp.ok) {
+    tbody.innerHTML = '<tr><td colspan="8" class="text-danger text-center">Error loading tasks</td></tr>';
+    return;
+  }
+  const tasks = await resp.json();
+  document.getElementById('last-refresh').textContent =
+    'Updated ' + new Date().toLocaleTimeString();
+
+  if (tasks.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No tasks</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = tasks.map(t => {
+    const icon   = TASK_ICON[t.task_type] || 'bi-gear';
+    const color  = STATUS_COLOR[t.status] || 'secondary';
+    const asColor= STATUS_COLOR[t.assignment_status] || color;
+    const created  = new Date(t.created_at).toLocaleString();
+    const completed = t.completed_at ? new Date(t.completed_at).toLocaleTimeString() : '&mdash;';
+    const probeLabel = t.probe_hostname || '&mdash;';
+    const canCancel = ['queued','assigned'].includes(t.status);
+    const hasResult = ['completed','failed'].includes(t.status) && t.assignment_id;
+
+    return `<tr>
+      <td><i class="bi ${icon} task-type-icon me-1"></i><small>${t.task_type.replace(/_/g,' ')}</small></td>
+      <td>${t.name || '<span class="text-muted">&mdash;</span>'}</td>
+      <td><small>${probeLabel}</small></td>
+      <td>
+        <span class="badge text-bg-${asColor} task-badge">${t.assignment_status || t.status}</span>
+        ${t.status !== (t.assignment_status||t.status)
+          ? `<span class="badge text-bg-${color} task-badge ms-1">${t.status}</span>`
+          : ''}
+      </td>
+      <td class="text-center">${t.priority}</td>
+      <td><small>${created}</small></td>
+      <td><small>${completed}</small></td>
+      <td>
+        ${hasResult ? `<button class="btn btn-xs btn-sm btn-outline-info py-0 px-1 me-1"
+            onclick="showResult('${t.id}','${t.task_type}','${t.probe_hostname||''}')"
+            title="View result"><i class="bi bi-eye"></i></button>` : ''}
+        ${canCancel ? `<button class="btn btn-xs btn-sm btn-outline-danger py-0 px-1"
+            onclick="cancelTask('${t.id}')" title="Cancel"><i class="bi bi-x-circle"></i></button>` : ''}
+      </td>
+    </tr>`;
+  }).join('');
+
+  // Auto-refresh faster if any task is running/assigned
+  const hasActive = tasks.some(t => ['assigned','running'].includes(t.assignment_status || t.status));
+  scheduleRefresh(hasActive ? 8000 : 30000);
+}
+
+function scheduleRefresh(ms) {
+  if (_autoRefresh) clearTimeout(_autoRefresh);
+  _autoRefresh = setTimeout(loadTasks, ms);
+}
+
+// ── Result modal ──────────────────────────────────────────────────────────
+async function showResult(taskId, taskType, probe) {
+  document.getElementById('result-json').textContent = 'Loading...';
+  document.getElementById('result-meta').innerHTML = '';
+  const modal = new bootstrap.Modal(document.getElementById('modalResult'));
+  modal.show();
+
+  const resp = await fetch(`/api/v1/tasks/${taskId}/result`, { headers: apiHeaders() });
+  if (!resp.ok) {
+    document.getElementById('result-json').textContent = 'Error loading result.';
+    return;
+  }
+  const results = await resp.json();
+  if (!results.length) {
+    document.getElementById('result-json').textContent = 'No result yet.';
+    return;
+  }
+  const r = results[0];
+  document.getElementById('result-meta').innerHTML = `
+    <div class="col-auto"><span class="badge text-bg-${STATUS_COLOR[r.status]||'secondary'}">${r.status}</span></div>
+    <div class="col-auto text-muted small">Probe: <strong>${probe || '&mdash;'}</strong></div>
+    <div class="col-auto text-muted small">Type: <strong>${taskType}</strong></div>
+    <div class="col-auto text-muted small">Received: ${new Date(r.received_at).toLocaleString()}</div>
+    ${r.duration_seconds ? `<div class="col-auto text-muted small">Duration: ${r.duration_seconds.toFixed(1)}s</div>` : ''}
+    ${r.error_message ? `<div class="col-12"><div class="alert alert-danger py-1 px-2 mb-0 small">${r.error_message}</div></div>` : ''}
+  `;
+  document.getElementById('result-json').textContent =
+    JSON.stringify(r.result_data, null, 2) || 'No data.';
+}
+
+// ── Dispatch ──────────────────────────────────────────────────────────────
+document.getElementById('d-type').addEventListener('change', function () {
+  const hint = PARAM_HINTS[this.value] || '{}';
+  document.getElementById('param-hints').textContent = 'Example: ' + hint;
+  if (document.getElementById('param-editor').value.trim() === '{}' ||
+      document.getElementById('param-editor').value.trim() === '') {
+    document.getElementById('param-editor').value = hint;
+  }
+});
+// init hint
+document.getElementById('d-type').dispatchEvent(new Event('change'));
+
+document.getElementById('btn-dispatch').addEventListener('click', async () => {
+  const errEl = document.getElementById('dispatch-error');
+  const okEl  = document.getElementById('dispatch-ok');
+  errEl.classList.add('d-none');
+  okEl.classList.add('d-none');
+
+  const probeId   = document.getElementById('d-probe').value;
+  const taskType  = document.getElementById('d-type').value;
+  const name      = document.getElementById('d-name').value.trim();
+  const priority  = parseInt(document.getElementById('d-priority').value) || 5;
+
+  if (!probeId) { errEl.textContent = 'Select a probe.'; errEl.classList.remove('d-none'); return; }
+
+  let params = {};
+  try { params = JSON.parse(document.getElementById('param-editor').value || '{}'); }
+  catch { errEl.textContent = 'Parameters JSON is invalid.'; errEl.classList.remove('d-none'); return; }
+
+  const btn = document.getElementById('btn-dispatch');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Sending...';
+
+  const resp = await fetch('/api/v1/tasks/dispatch', {
+    method: 'POST',
+    headers: apiHeaders(),
+    body: JSON.stringify({ probe_id: probeId, task_type: taskType,
+                           name, parameters: params, priority }),
+  });
+  const data = await resp.json();
+
+  btn.disabled = false;
+  btn.innerHTML = '<i class="bi bi-send me-1"></i>Send to Probe';
+
+  if (resp.ok) {
+    okEl.textContent = `Task dispatched to ${data.probe_hostname} (${data.assignment_id.slice(0,8)}...)`;
+    okEl.classList.remove('d-none');
+    document.getElementById('d-name').value = '';
+    document.getElementById('param-editor').value = PARAM_HINTS[taskType] || '{}';
+    loadTasks();
+    setTimeout(() => {
+      bootstrap.Modal.getInstance(document.getElementById('modalDispatch'))?.hide();
+      okEl.classList.add('d-none');
+    }, 2000);
+  } else {
+    errEl.textContent = data.message || JSON.stringify(data);
+    errEl.classList.remove('d-none');
+  }
+});
+
+// ── Cancel ────────────────────────────────────────────────────────────────
+async function cancelTask(id) {
+  if (!confirm('Cancel this task?')) return;
+  await fetch(`/api/v1/tasks/${id}`, { method: 'DELETE', headers: apiHeaders() });
+  loadTasks();
+}
+
+// ── Filters ───────────────────────────────────────────────────────────────
+document.getElementById('filter-status').addEventListener('change', loadTasks);
+document.getElementById('filter-probe').addEventListener('change', loadTasks);
+document.getElementById('btn-refresh').addEventListener('click', loadTasks);
+
+// ── Init ──────────────────────────────────────────────────────────────────
+loadProbes().then(loadTasks);
+</script>
+{% endblock %}

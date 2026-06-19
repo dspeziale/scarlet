@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — SOC Seattle{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active">Dashboard</li>{% endblock %}
+
+{% block content %}
+<!-- Stats row -->
+<div class="row g-3 mb-4" id="stats-row">
+  <div class="col-6 col-lg-3">
+    <div class="info-box shadow-sm">
+      <span class="info-box-icon text-bg-primary"><i class="bi bi-hdd-network"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">Probes</span>
+        <span class="info-box-number" id="stat-probes">—</span>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="info-box shadow-sm">
+      <span class="info-box-icon text-bg-success"><i class="bi bi-check-circle"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">Online</span>
+        <span class="info-box-number" id="stat-online">—</span>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="info-box shadow-sm">
+      <span class="info-box-icon text-bg-warning"><i class="bi bi-list-task"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">Active Tasks</span>
+        <span class="info-box-number" id="stat-tasks">—</span>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="info-box shadow-sm">
+      <span class="info-box-icon text-bg-danger"><i class="bi bi-pc-display-horizontal"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">Discovered Devices</span>
+        <span class="info-box-number" id="stat-devices">—</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Probes table -->
+<div class="card shadow-sm">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0"><i class="bi bi-hdd-network me-2"></i>Probes</h5>
+    <a href="/tenant/probes" class="btn btn-sm btn-outline-primary">View all</a>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead class="table-light"><tr><th>Name</th><th>Hostname</th><th>Status</th><th>Last Seen</th></tr></thead>
+      <tbody id="probe-list"><tr><td colspan="4" class="text-center py-3 text-muted">Loading…</td></tr></tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function loadDashboard() {
+  const h = apiHeaders();
+
+  // Probes
+  const pr = await fetch('/api/v1/probes', { headers: h });
+  if (pr.ok) {
+    const probes = await pr.json();
+    document.getElementById('stat-probes').textContent = probes.length;
+    document.getElementById('stat-online').textContent = probes.filter(p => p.status === 'online').length;
+    const tbody = document.getElementById('probe-list');
+    tbody.innerHTML = probes.length === 0
+      ? '<tr><td colspan="4" class="text-center text-muted">No probes registered</td></tr>'
+      : probes.map(p => `
+          <tr>
+            <td>${p.name || '—'}</td>
+            <td>${p.hostname}</td>
+            <td><span class="badge ${p.status==='online'?'text-bg-success':'text-bg-secondary'}">${p.status}</span></td>
+            <td>${p.last_seen ? new Date(p.last_seen).toLocaleString() : '—'}</td>
+          </tr>`).join('');
+  }
+
+  // Tasks
+  const tr = await fetch('/api/v1/tasks?status=running', { headers: h });
+  if (tr.ok) {
+    const tasks = await tr.json();
+    document.getElementById('stat-tasks').textContent = tasks.length;
+  }
+
+  // Devices
+  const dr = await fetch('/api/v1/telemetry/devices?limit=1', { headers: h });
+  if (dr.ok) {
+    // Just show indicator — full count not returned by list endpoint
+    document.getElementById('stat-devices').textContent = '✓';
+  }
+}
+loadDashboard();
+</script>
+{% endblock %}

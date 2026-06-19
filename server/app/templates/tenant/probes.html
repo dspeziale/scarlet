@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}Probes — SOC Seattle{% endblock %}
+{% block page_title %}Probes{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="/dashboard">Home</a></li>
+  <li class="breadcrumb-item active">Probes</li>
+{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm mb-3">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0"><i class="bi bi-hdd-network me-2"></i>Registered Probes</h5>
+    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalToken">
+      <i class="bi bi-plus-circle me-1"></i>Generate Token
+    </button>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0" id="probe-table">
+      <thead class="table-light">
+        <tr><th>Name</th><th>Hostname</th><th>Platform</th><th>Agent</th><th>Status</th><th>Last Seen</th><th>Keys</th></tr>
+      </thead>
+      <tbody><tr><td colspan="7" class="text-center py-3 text-muted">Loading…</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Token modal -->
+<div class="modal fade" id="modalToken" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Generate Registration Token</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div class="mb-3 d-none" id="tenant-select-wrap">
+          <label class="form-label">Tenant</label>
+          <select class="form-select" id="token-tenant"></select>
+        </div>
+        <div class="mb-3"><label class="form-label">Label (optional)</label><input type="text" class="form-control" id="token-label" placeholder="e.g. datacenter-rack-A"></div>
+        <div class="mb-3"><label class="form-label">Expiry (hours)</label><input type="number" class="form-control" id="token-expiry" value="24"></div>
+        <div id="token-result" class="d-none alert alert-success font-monospace"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button class="btn btn-primary" id="btn-gen-token">Generate</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let _isSuperadmin = false;
+
+async function loadProbes() {
+  const resp = await fetch('/api/v1/probes', { headers: apiHeaders() });
+  const tbody = document.querySelector('#probe-table tbody');
+  if (!resp.ok) { tbody.innerHTML = '<tr><td colspan="7" class="text-danger">Error loading probes</td></tr>'; return; }
+  const probes = await resp.json();
+  tbody.innerHTML = probes.length === 0
+    ? '<tr><td colspan="7" class="text-center text-muted">No probes yet</td></tr>'
+    : probes.map(p => `<tr>
+        <td>${p.name || '&mdash;'}</td>
+        <td>${p.hostname}</td>
+        <td>${p.platform || '&mdash;'}</td>
+        <td><span class="badge text-bg-secondary">${p.agent_version || '&mdash;'}</span></td>
+        <td><span class="badge ${p.status==='online'?'text-bg-success':p.status==='offline'?'text-bg-secondary':'text-bg-warning'}">${p.status}</span></td>
+        <td>${p.last_seen ? new Date(p.last_seen).toLocaleString() : '&mdash;'}</td>
+        <td>${p.key_provisioned ? '<i class="bi bi-lock-fill text-success"></i>' : '<i class="bi bi-unlock text-warning"></i>'}</td>
+      </tr>`).join('');
+}
+
+async function initTokenModal() {
+  const me = await fetch('/api/v1/auth/me', { headers: apiHeaders() });
+  if (!me.ok) return;
+  const user = await me.json();
+  _isSuperadmin = !!user.is_superadmin;
+  if (_isSuperadmin) {
+    const wrap = document.getElementById('tenant-select-wrap');
+    wrap.classList.remove('d-none');
+    const sel = document.getElementById('token-tenant');
+    const tr = await fetch('/api/v1/tenants', { headers: apiHeaders() });
+    if (tr.ok) {
+      const tenants = await tr.json();
+      sel.innerHTML = tenants.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+    }
+  }
+}
+
+document.getElementById('btn-gen-token').addEventListener('click', async () => {
+  const body = {
+    label: document.getElementById('token-label').value,
+    expiry_hours: parseInt(document.getElementById('token-expiry').value) || 24,
+  };
+  if (_isSuperadmin) {
+    body.tenant_id = document.getElementById('token-tenant').value;
+  }
+  const resp = await fetch('/api/v1/probe-tokens', {
+    method: 'POST',
+    headers: apiHeaders(),
+    body: JSON.stringify(body),
+  });
+  const data = await resp.json();
+  const el = document.getElementById('token-result');
+  if (resp.ok) {
+    el.textContent = data.token;
+    el.className = 'alert alert-success font-monospace d-block';
+  } else {
+    el.textContent = data.message || JSON.stringify(data);
+    el.className = 'alert alert-danger d-block';
+  }
+});
+
+loadProbes();
+initTokenModal();
+</script>
+{% endblock %}

@@ -1,0 +1,17 @@
+# Probe — non deployato su Vercel (Docker container separato)
+probe/
+
+# Server — build artefacts e file non necessari al Lambda
+server/__pycache__/
+server/**/__pycache__/
+server/*.pyc
+server/.venv/
+server/.env
+server/.env.*
+!server/.env.example
+server/tests/
+server/pytest.ini
+server/migrations/
+server/seed.py
+server/.vscode/
+server/pyrightconfig.json

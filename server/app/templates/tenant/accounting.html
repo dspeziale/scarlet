@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Accounting — SOC Seattle{% endblock %}
+{% block page_title %}Resource Accounting{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="/dashboard">Home</a></li>
+  <li class="breadcrumb-item active">Accounting</li>
+{% endblock %}
+
+{% block content %}
+<div class="row g-3 mb-4" id="monthly-stats"></div>
+<div class="card shadow-sm">
+  <div class="card-header"><h5 class="mb-0"><i class="bi bi-table me-2"></i>Daily Usage</h5></div>
+  <div class="card-body p-0">
+    <table class="table table-sm table-hover mb-0">
+      <thead class="table-light">
+        <tr><th>Date</th><th>Probe</th><th>CPU (s)</th><th>RAM (MB)</th><th>Net In</th><th>Net Out</th><th>Tasks</th></tr>
+      </thead>
+      <tbody id="usage-table"><tr><td colspan="7" class="text-center py-3 text-muted">Loading…</td></tr></tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function formatBytes(b) { return b > 1e6 ? (b/1e6).toFixed(1)+' MB' : b > 1e3 ? (b/1e3).toFixed(1)+' KB' : b+' B'; }
+
+async function loadAccounting() {
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth()+1;
+
+  // Monthly summary
+  const mr = await fetch(`/api/v1/accounting/monthly?year=${y}&month=${m}`, { headers: apiHeaders() });
+  if (mr.ok) {
+    const ms = await mr.json();
+    document.getElementById('monthly-stats').innerHTML = `
+      <div class="col-6 col-lg-3"><div class="info-box"><span class="info-box-icon text-bg-primary"><i class="bi bi-cpu"></i></span><div class="info-box-content"><span class="info-box-text">CPU Seconds</span><span class="info-box-number">${ms.total_cpu_seconds.toFixed(0)}</span></div></div></div>
+      <div class="col-6 col-lg-3"><div class="info-box"><span class="info-box-icon text-bg-info"><i class="bi bi-arrow-down-up"></i></span><div class="info-box-content"><span class="info-box-text">Network In+Out</span><span class="info-box-number">${formatBytes(ms.total_net_in_bytes+ms.total_net_out_bytes)}</span></div></div></div>
+      <div class="col-6 col-lg-3"><div class="info-box"><span class="info-box-icon text-bg-warning"><i class="bi bi-list-task"></i></span><div class="info-box-content"><span class="info-box-text">Total Tasks</span><span class="info-box-number">${ms.total_tasks}</span></div></div></div>
+      <div class="col-6 col-lg-3"><div class="info-box"><span class="info-box-icon text-bg-success"><i class="bi bi-memory"></i></span><div class="info-box-content"><span class="info-box-text">Peak RAM</span><span class="info-box-number">${ms.peak_memory_mb.toFixed(0)} MB</span></div></div></div>
+    `;
+  }
+
+  // Daily usage list
+  const ur = await fetch('/api/v1/accounting/usage?limit=30', { headers: apiHeaders() });
+  const tbody = document.getElementById('usage-table');
+  if (ur.ok) {
+    const rows = await ur.json();
+    tbody.innerHTML = rows.length === 0
+      ? '<tr><td colspan="7" class="text-center text-muted">No data</td></tr>'
+      : rows.map(r => `<tr>
+          <td>${r.period_date}</td>
+          <td class="font-monospace small">${r.probe_id.slice(0,8)}…</td>
+          <td>${r.cpu_seconds.toFixed(1)}</td>
+          <td>${r.memory_mb.toFixed(0)}</td>
+          <td>${formatBytes(r.network_in_bytes)}</td>
+          <td>${formatBytes(r.network_out_bytes)}</td>
+          <td>${r.task_count}</td>
+        </tr>`).join('');
+  }
+}
+loadAccounting();
+</script>
+{% endblock %}

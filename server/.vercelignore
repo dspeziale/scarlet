@@ -1,0 +1,33 @@
+# Build artefacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Dev environment
+.venv/
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+pyrightconfig.json
+
+# Tests — not deployed to Lambda
+tests/
+pytest.ini
+
+# Migrations — run locally against NeonDB, not on Vercel
+migrations/
+
+# Seed script — run manually once
+seed.py
+
+# Docs
+*.md
