@@ -33,6 +33,21 @@ log = structlog.get_logger(__name__)
 _svc = ProbeService()
 
 
+def _persist_network(probe, network: dict | None) -> None:
+    """Store interfaces + subnets reported by a probe (no commit)."""
+    if not isinstance(network, dict):
+        return
+    from datetime import datetime, timezone
+    interfaces = network.get("interfaces")
+    subnets = network.get("subnets")
+    if interfaces is not None:
+        probe.interfaces = interfaces
+    if subnets is not None:
+        probe.subnets = subnets
+    if interfaces is not None or subnets is not None:
+        probe.network_updated_at = datetime.now(timezone.utc)
+
+
 # ── Public: Registration ────────────────────────────────────────────────────
 
 @api_v1_bp.post("/probes/register")
@@ -53,6 +68,7 @@ def probe_register():
         "agent_version": body.get("agent_version"),
         "platform": body.get("platform"),
         "architecture": body.get("architecture"),
+        "network": body.get("network"),
     }
 
     try:
@@ -93,7 +109,7 @@ def probe_provision(probe_id: str):
 
 @api_v1_bp.post("/probes/<probe_id>/heartbeat")
 def probe_heartbeat(probe_id: str):
-    """Probe reports liveness — updates last_seen and status directly."""
+    """Probe reports liveness — updates last_seen, status and network inventory."""
     from datetime import datetime, timezone
     from app.extensions import db
     from app.models.probe import Probe
@@ -107,6 +123,10 @@ def probe_heartbeat(probe_id: str):
 
         probe.last_seen = datetime.now(timezone.utc)
         probe.status = "online"
+
+        body = request.get_json(silent=True) or {}
+        _persist_network(probe, body.get("network"))
+
         db.session.commit()
         return jsonify({"status": probe.status, "probe_id": probe.id}), 200
     except Exception as exc:
@@ -182,12 +202,116 @@ def probe_task_result(probe_id: str, assignment_id: str):
 
 @api_v1_bp.get("/probes/<probe_id>/ids/config")
 def probe_ids_config(probe_id: str):
-    """Return IDS configuration for the probe. Returns defaults if not configured."""
+    """
+    Return IDS configuration for the probe. The interface is whatever was chosen
+    from the console (None until an operator selects a card) — the agent does
+    NOT auto-start Suricata on a default interface.
+    """
     from app.extensions import db
     from app.models.probe import Probe
-    if not db.session.get(Probe, probe_id):
+    probe = db.session.get(Probe, probe_id)
+    if not probe:
         return jsonify(error="not_found"), 404
-    return jsonify({"interface": "any", "bpf_filter": "", "capture_mode": "af-packet"}), 200
+    return jsonify({
+        "interface": probe.ids_interface,
+        "bpf_filter": "",
+        "capture_mode": "af-packet",
+    }), 200
+
+
+# ── Console: IDS control (start only after a card is chosen) ─────────────────
+
+@api_v1_bp.post("/probes/<probe_id>/ids/start")
+@require_role(SUPERADMIN, TENANT_ADMIN, OPERATOR)
+def probe_ids_start(probe_id: str):
+    """
+    Start Suricata on a chosen network interface. The interface MUST be one the
+    probe reported; dispatches an ids_start task carrying it to the agent.
+    """
+    from app.extensions import db
+    from app.models.probe import Probe
+    from app.services.task_service import TaskService
+
+    user = g.current_user
+    probe = db.session.get(Probe, probe_id)
+    if not probe:
+        return jsonify(error="not_found"), 404
+    if not user.is_superadmin and probe.tenant_id != user.tenant_id:
+        return jsonify(error="forbidden"), 403
+    if not probe.enabled:
+        return jsonify(error="forbidden", message="Probe is disabled"), 403
+
+    body = request.get_json(silent=True) or {}
+    interface = body.get("interface")
+    if not interface:
+        return jsonify(error="validation_error", message="interface required — choose a network card"), 400
+
+    available = {i.get("name") for i in (probe.interfaces or [])}
+    if available and interface not in available:
+        return jsonify(
+            error="validation_error",
+            message=f"interface '{interface}' not among reported interfaces: {sorted(available)}",
+        ), 400
+
+    parameters = {
+        "interface": interface,
+        "bpf_filter": body.get("bpf_filter", ""),
+        "capture_mode": body.get("capture_mode", "af-packet"),
+    }
+
+    svc = TaskService()
+    task = svc.create_task(
+        tenant_id=probe.tenant_id,
+        created_by=user.id,
+        task_type="ids_start",
+        parameters=parameters,
+        name=f"Start IDS on {interface} ({probe.hostname})",
+    )
+    assignment = svc.assign_task(task.id, probe_id, probe.tenant_id)
+
+    # Remember the chosen card so /ids/config reflects it.
+    probe.ids_interface = interface
+    db.session.commit()
+
+    return jsonify({
+        "task_id": task.id,
+        "assignment_id": assignment.id,
+        "interface": interface,
+        "status": assignment.status,
+    }), 201
+
+
+@api_v1_bp.post("/probes/<probe_id>/ids/stop")
+@require_role(SUPERADMIN, TENANT_ADMIN, OPERATOR)
+def probe_ids_stop(probe_id: str):
+    """Stop Suricata on the probe — dispatches an ids_stop task."""
+    from app.extensions import db
+    from app.models.probe import Probe
+    from app.services.task_service import TaskService
+
+    user = g.current_user
+    probe = db.session.get(Probe, probe_id)
+    if not probe:
+        return jsonify(error="not_found"), 404
+    if not user.is_superadmin and probe.tenant_id != user.tenant_id:
+        return jsonify(error="forbidden"), 403
+
+    svc = TaskService()
+    task = svc.create_task(
+        tenant_id=probe.tenant_id,
+        created_by=user.id,
+        task_type="ids_stop",
+        parameters={},
+        name=f"Stop IDS ({probe.hostname})",
+    )
+    assignment = svc.assign_task(task.id, probe_id, probe.tenant_id)
+    db.session.commit()
+
+    return jsonify({
+        "task_id": task.id,
+        "assignment_id": assignment.id,
+        "status": assignment.status,
+    }), 201
 
 
 # ── User-authenticated: Management ─────────────────────────────────────────

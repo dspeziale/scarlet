@@ -99,6 +99,16 @@ class ProbeService:
             name=registration_data.get("hostname"),
             status="pending_keys",
         )
+
+        # Network inventory reported at registration (interfaces + subnets).
+        network = registration_data.get("network")
+        if isinstance(network, dict):
+            if network.get("interfaces") is not None:
+                probe.interfaces = network["interfaces"]
+            if network.get("subnets") is not None:
+                probe.subnets = network["subnets"]
+            probe.network_updated_at = datetime.now(timezone.utc)
+
         db.session.add(probe)
 
         # Mark token as used

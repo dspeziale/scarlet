@@ -37,6 +37,7 @@ import structlog
 from config import ProbeConfig, cfg
 from crypto_client import ProbeKeys
 from local_queue import LocalQueue
+from netinfo import collect_network_info
 from suricata_manager import SuricataManager
 from rule_updater import RuleUpdater
 from alert_reporter import AlertReporter
@@ -75,6 +76,11 @@ class ProbeAgent:
         )
         self._workers: list = []
         self._running = False
+        # Network info (interfaces + subnets) collected at boot, reported to server.
+        self._network: dict = {"interfaces": [], "subnets": []}
+        # Capture interface chosen from the server console. Suricata stays OFF
+        # until an ids_start task arrives carrying (or having previously set) it.
+        self._selected_interface: Optional[str] = None
 
     # ── HTTP ─────────────────────────────────────────────────────────────
 
@@ -119,6 +125,7 @@ class ProbeAgent:
             "architecture": _platform.machine(),
             "sign_public_key": self._keys.sign_public_hex,
             "exchange_public_key": self._keys.exchange_public_hex,
+            "network": self._network,
         }
         log.info("registering_probe")
         resp = self._http.post(
@@ -197,8 +204,25 @@ class ProbeAgent:
         try:
             # ── IDS / Suricata tasks ─────────────────────────────────────
             if task_type == "ids_start":
-                ok = self._suricata.start()
-                result = {"status": "ok" if ok else "error", "started": ok}
+                # Suricata can only start once a capture interface is chosen
+                # from the server console. The interface may travel with this
+                # task, or have been set by an earlier config_update.
+                interface = payload.get("interface") or self._selected_interface
+                if not interface:
+                    result = {
+                        "status": "error",
+                        "error": "no capture interface selected — choose a network card from the console first",
+                        "available_interfaces": [i["name"] for i in self._network.get("interfaces", [])],
+                    }
+                else:
+                    self._selected_interface = interface
+                    self._suricata.apply_config(
+                        interface=interface,
+                        bpf_filter=payload.get("bpf_filter", ""),
+                        capture_mode=payload.get("capture_mode", cfg.DEFAULT_CAPTURE_MODE),
+                    )
+                    ok = self._suricata.start()
+                    result = {"status": "ok" if ok else "error", "started": ok, "interface": interface}
 
             elif task_type == "ids_stop":
                 self._suricata.stop()
@@ -225,13 +249,17 @@ class ProbeAgent:
 
             elif task_type == "config_update":
                 if payload:
+                    interface = payload.get("interface") or self._selected_interface or cfg.DEFAULT_INTERFACE
+                    self._selected_interface = interface
                     self._suricata.apply_config(
-                        interface=payload.get("interface", cfg.DEFAULT_INTERFACE),
+                        interface=interface,
                         bpf_filter=payload.get("bpf_filter", ""),
                         capture_mode=payload.get("capture_mode", cfg.DEFAULT_CAPTURE_MODE),
                     )
+                    # Only restart if already running — config_update never starts IDS.
                     if self._suricata.is_running():
                         self._suricata.restart()
+                    result = {"status": "ok", "interface": interface}
 
             # ── Network discovery tasks ───────────────────────────────────
             elif task_type == "network_discovery":
@@ -377,6 +405,10 @@ class ProbeAgent:
     # ── Boot ──────────────────────────────────────────────────────────────
 
     def start(self) -> None:
+        # Read available network interfaces + subnets up front so they can be
+        # reported to the server at registration and on every heartbeat.
+        self._network = collect_network_info()
+
         state = self._load_state()
 
         if state and state.get("probe_id"):
@@ -399,18 +431,15 @@ class ProbeAgent:
             self._save_state({"probe_id": self.probe_id})
             log.info("probe_registered", probe_id=self.probe_id)
 
-        # IDS config
+        # IDS stays OFF at boot. Suricata is only started by an explicit
+        # ids_start task from the server console, after an interface has been
+        # chosen. We still query the server in case a card was already selected
+        # previously (so the console can show it), but we never auto-start.
+        self._suricata.stop()  # clear any stale process/pidfile from a prior run
         ids_cfg = self._fetch_ids_config()
-        interface = cfg.DEFAULT_INTERFACE
-        bpf_filter = ""
-        capture_mode = cfg.DEFAULT_CAPTURE_MODE
-        if ids_cfg:
-            interface = ids_cfg.get("interface", interface)
-            bpf_filter = ids_cfg.get("bpf_filter", bpf_filter)
-            capture_mode = ids_cfg.get("capture_mode", capture_mode)
-
-        self._suricata.apply_config(interface, bpf_filter, capture_mode)
-        self._suricata.start()
+        if ids_cfg and ids_cfg.get("interface"):
+            self._selected_interface = ids_cfg.get("interface")
+        log.info("ids_idle_awaiting_console", selected_interface=self._selected_interface)
 
         # Worker threads
         rule_updater = RuleUpdater(
@@ -443,6 +472,7 @@ class ProbeAgent:
             http_client=self._http,
             get_ids_status=self._suricata.status,
             task_handler=self._handle_task,
+            get_network=lambda: self._network,
         )
 
         self._workers = [rule_updater, alert_reporter, pcap_uploader, heartbeat]

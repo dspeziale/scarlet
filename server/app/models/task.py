@@ -16,6 +16,16 @@ TASK_TYPES = [
     "wifi_scan",
     "ble_scan",
     "custom_script",
+    "ping",
+    # IDS / Suricata control (dispatched from the server console)
+    "ids_start",
+    "ids_stop",
+    "ids_restart",
+    "ids_status",
+    "ids_rule_deploy",
+    "config_update",
+    "pcap_start",
+    "pcap_stop",
 ]
 
 TASK_STATUSES = ["queued", "assigned", "running", "completed", "failed", "cancelled"]

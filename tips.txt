@@ -1,0 +1,4 @@
+./start-probe.sh            # prima volta chiede il token; poi mai più
+./start-probe.sh --renew    # rinnova: nuovo token + re-registrazione pulita
+./start-probe.sh --rebuild  # ribuilda l'immagine
+./start-probe.sh --logs     # segue i log in tempo reale

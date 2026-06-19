@@ -4,9 +4,11 @@
 #   .\start-probe.ps1              (usa immagine esistente o builda se manca)
 #   .\start-probe.ps1 -Rebuild     (ribuilda sempre l'immagine)
 #   .\start-probe.ps1 -Logs        (attacca i log al termine)
+#   .\start-probe.ps1 -Renew       (chiede un nuovo token e re-registra la sonda)
 param(
     [switch]$Rebuild,
-    [switch]$Logs
+    [switch]$Logs,
+    [switch]$Renew
 )
 
 # -- Configurazione fissa
@@ -14,6 +16,8 @@ $SERVER_URL = "https://myscarlet.vercel.app"
 $INTERFACE  = "wlan0"
 $IMAGE      = "soc-probe"
 $CONTAINER  = "soc-probe-local"
+$VOLUME     = "soc-probe-data"
+$TOKEN_FILE = Join-Path $PSScriptRoot ".probe-token"
 
 # -- Colori
 function Info { param($m) Write-Host $m -ForegroundColor Cyan }
@@ -43,14 +47,39 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # -- Registration token
-$REGISTRATION_TOKEN = Read-Host "  REGISTRATION_TOKEN (PRB-XXXXXXXXXXXX)"
-$REGISTRATION_TOKEN = $REGISTRATION_TOKEN.Trim()
-
-if (-not $REGISTRATION_TOKEN.StartsWith("PRB-") -or $REGISTRATION_TOKEN.Length -lt 16) {
-    Err "Token non valido. Deve iniziare con PRB- e avere almeno 16 caratteri."
-    exit 1
+# La sonda persiste la propria identita' nel volume "$VOLUME" (state.db): una volta
+# registrata si riautentica da sola senza riconsumare il token. Qui salviamo il token
+# su disco al primo avvio cosi' negli avvii successivi non viene piu' richiesto.
+function Read-ValidToken {
+    while ($true) {
+        $t = (Read-Host "  REGISTRATION_TOKEN (PRB-XXXXXXXXXXXX)").Trim()
+        if ($t.StartsWith("PRB-") -and $t.Length -ge 16) { return $t }
+        Err "  Token non valido. Deve iniziare con PRB- e avere almeno 16 caratteri."
+    }
 }
-Ok "  Token accettato: $REGISTRATION_TOKEN"
+
+if ($Renew) {
+    Warn "  Rinnovo registrazione: la sonda verra' re-registrata con un nuovo token."
+    $REGISTRATION_TOKEN = Read-ValidToken
+    Set-Content -Path $TOKEN_FILE -Value $REGISTRATION_TOKEN -NoNewline
+    # Azzera l'identita' persistita cosi' l'agent esegue una registrazione pulita.
+    if (docker volume ls -q --filter "name=^${VOLUME}$" 2>$null) {
+        Warn "  Rimozione stato precedente (volume $VOLUME)..."
+        docker rm -f $CONTAINER 2>$null | Out-Null
+        docker volume rm $VOLUME 2>$null | Out-Null
+    }
+    Ok "  Nuovo token salvato: $REGISTRATION_TOKEN"
+}
+elseif (Test-Path $TOKEN_FILE) {
+    $REGISTRATION_TOKEN = (Get-Content -Path $TOKEN_FILE -Raw).Trim()
+    Ok "  Token gia' presente (usa -Renew per rinnovare la registrazione)."
+}
+else {
+    Info "  Prima registrazione di questa sonda."
+    $REGISTRATION_TOKEN = Read-ValidToken
+    Set-Content -Path $TOKEN_FILE -Value $REGISTRATION_TOKEN -NoNewline
+    Ok "  Token salvato: $REGISTRATION_TOKEN"
+}
 Info ""
 
 # -- Stop container precedente
@@ -82,9 +111,8 @@ if ($Rebuild -or -not $imageExists) {
 }
 
 # -- Avvio container
-# soc-probe-data e' un volume named persistente: sopravvive al rebuild del container.
+# $VOLUME e' un volume named persistente: sopravvive al rebuild del container.
 # Se state.db esiste gia', l'agent si riautentica senza consumare il token.
-$VOLUME = "soc-probe-data"
 Info "  Avvio sonda..."
 docker run -d `
     --name $CONTAINER `

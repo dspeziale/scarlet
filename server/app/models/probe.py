@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.extensions import db
@@ -82,6 +82,13 @@ class Probe(db.Model):
     docker_version: Mapped[str | None] = mapped_column(String(30))
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
+    # Network discovery reported by the probe (interfaces + subnets) and the
+    # capture interface chosen from the console for Suricata.
+    interfaces: Mapped[list | None] = mapped_column(JSON)
+    subnets: Mapped[list | None] = mapped_column(JSON)
+    ids_interface: Mapped[str | None] = mapped_column(String(64))
+    network_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
     registration_token_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("probe_registration_tokens.id")
     )
@@ -112,6 +119,10 @@ class Probe(db.Model):
             "platform": self.platform,
             "architecture": self.architecture,
             "enabled": self.enabled,
+            "interfaces": self.interfaces or [],
+            "subnets": self.subnets or [],
+            "ids_interface": self.ids_interface,
+            "network_updated_at": self.network_updated_at.isoformat() if self.network_updated_at else None,
         }
 
 

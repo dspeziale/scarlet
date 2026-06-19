@@ -26,6 +26,7 @@ class HeartbeatWorker(threading.Thread):
         http_client: httpx.Client,
         get_ids_status: Callable[[], dict],
         task_handler: Callable[[dict], None],
+        get_network: Optional[Callable[[], dict]] = None,
     ) -> None:
         super().__init__(name="heartbeat", daemon=True)
         self._hb_url = f"{server_url}/api/v1/probes/{probe_id}/heartbeat"
@@ -35,6 +36,7 @@ class HeartbeatWorker(threading.Thread):
         self._http = http_client
         self._get_ids_status = get_ids_status
         self._task_handler = task_handler
+        self._get_network = get_network
         self._stop = threading.Event()
 
     def run(self) -> None:
@@ -56,6 +58,8 @@ class HeartbeatWorker(threading.Thread):
             "ids_status": self._get_ids_status(),
             "system": _system_metrics(),
         }
+        if self._get_network is not None:
+            payload["network"] = self._get_network()
         resp = self._http.post(self._hb_url, json=payload, timeout=10)
         if resp.status_code not in (200, 204):
             log.warning("heartbeat_non_ok", status=resp.status_code)
