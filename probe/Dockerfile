@@ -32,6 +32,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         snmp \
         iw \
         iputils-ping \
+        bluez \
     && rm -rf /var/lib/apt/lists/*
 
 # -- Suricata directories

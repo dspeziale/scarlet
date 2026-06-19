@@ -194,6 +194,51 @@ class ProbeAgent:
             "stderr": stderr or None,
         }
 
+    def _ble_scan(self, duration: int) -> dict:
+        """
+        Scan for BLE devices using bluetoothctl talking to the host's bluetoothd
+        over the mounted system D-Bus socket. Requires:
+          - a physical Bluetooth controller on the host (powered, unblocked)
+          - the container started with  -v /var/run/dbus:/var/run/dbus
+        """
+        # 1. Is a controller reachable?
+        rc, out, err = self._run(["bluetoothctl", "list"], timeout=10)
+        if rc != 0 or not out.strip():
+            return {
+                "status": "error",
+                "error": "no Bluetooth controller reachable — ensure the host has a "
+                         "powered adapter and the container was started with "
+                         "-v /var/run/dbus:/var/run/dbus",
+                "stderr": err or None,
+            }
+        controller = out.strip().splitlines()[0]
+
+        # 2. Power on + timed LE scan (blocks for `duration` seconds).
+        self._run(["bluetoothctl", "power", "on"], timeout=10)
+        self._run(
+            ["bluetoothctl", "--timeout", str(duration), "scan", "on"],
+            timeout=duration + 15,
+        )
+
+        # 3. Enumerate discovered devices.
+        rc, dev_out, dev_err = self._run(["bluetoothctl", "devices"], timeout=15)
+        devices = []
+        for line in dev_out.splitlines():
+            parts = line.strip().split(" ", 2)
+            if len(parts) >= 2 and parts[0] == "Device":
+                devices.append({
+                    "address": parts[1],
+                    "name": parts[2] if len(parts) > 2 else None,
+                })
+
+        return {
+            "status": "ok",
+            "controller": controller,
+            "duration": duration,
+            "count": len(devices),
+            "devices": devices,
+        }
+
     def _handle_task(self, task: dict) -> None:
         task_type = task.get("type")
         task_id = task.get("id")
@@ -223,6 +268,8 @@ class ProbeAgent:
                     )
                     ok = self._suricata.start()
                     result = {"status": "ok" if ok else "error", "started": ok, "interface": interface}
+                    if not ok:
+                        result["error"] = self._suricata.last_error or "Suricata failed to start (see probe logs)"
 
             elif task_type == "ids_stop":
                 self._suricata.stop()
@@ -337,10 +384,8 @@ class ProbeAgent:
                         }
 
             elif task_type == "ble_scan":
-                result = {
-                    "status": "error",
-                    "error": "BLE scanning requires a physical Bluetooth adapter — not available in this container",
-                }
+                duration = int(payload.get("duration", 10))
+                result = self._ble_scan(duration)
 
             elif task_type == "custom_script":
                 script = payload.get("script", "")

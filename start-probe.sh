@@ -125,6 +125,7 @@ docker run -d \
     --cap-add NET_RAW \
     --network host \
     -v "${VOLUME}:/opt/agent/data" \
+    -v /var/run/dbus:/var/run/dbus \
     -e "SERVER_URL=$SERVER_URL" \
     -e "REGISTRATION_TOKEN=$REGISTRATION_TOKEN" \
     -e "IDS_INTERFACE=$INTERFACE" \

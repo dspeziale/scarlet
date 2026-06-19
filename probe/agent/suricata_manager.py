@@ -36,6 +36,7 @@ class SuricataManager:
         self._interface = "any"
         self._bpf = ""
         self._capture_mode = "af-packet"
+        self._last_error: Optional[str] = None
 
     # ── Config ────────────────────────────────────────────────────────────
 
@@ -72,6 +73,12 @@ class SuricataManager:
             return True
         if not self._yaml.exists():
             self._write_config()
+        # The config references a rule file; create an empty one if no ruleset
+        # has been deployed yet, so Suricata doesn't fail on a missing file.
+        if not self._rules.exists():
+            self._rules.parent.mkdir(parents=True, exist_ok=True)
+            self._rules.write_text("# no rules deployed yet\n")
+            log.info("suricata_empty_ruleset_created", path=str(self._rules))
         cmd = [
             "suricata",
             "-c", str(self._yaml),
@@ -89,11 +96,14 @@ class SuricataManager:
             time.sleep(2)
             if self._proc.poll() is not None:
                 err = self._proc.stderr.read().decode(errors="replace")
+                self._last_error = err.strip()[-1000:] or f"exited with code {self._proc.returncode}"
                 log.error("suricata_start_failed", returncode=self._proc.returncode, stderr=err)
                 return False
+            self._last_error = None
             log.info("suricata_started", pid=self._proc.pid)
             return True
         except FileNotFoundError:
+            self._last_error = "suricata binary not found"
             log.error("suricata_binary_not_found")
             return False
 
@@ -153,6 +163,10 @@ class SuricataManager:
             "interface": self._interface,
             "capture_mode": self._capture_mode,
         }
+
+    @property
+    def last_error(self) -> Optional[str]:
+        return self._last_error
 
     def _pid_from_file(self) -> Optional[int]:
         pid_path = Path("/var/run/suricata.pid")
