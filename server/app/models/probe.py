@@ -89,6 +89,11 @@ class Probe(db.Model):
     ids_interface: Mapped[str | None] = mapped_column(String(64))
     network_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
+    # Operator-supplied metadata (editable by the tenant admin).
+    location: Mapped[str | None] = mapped_column(String(255))   # posizione geografica
+    contact: Mapped[str | None] = mapped_column(String(255))    # referente
+    notes: Mapped[str | None] = mapped_column(Text)
+
     registration_token_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("probe_registration_tokens.id")
     )
@@ -123,6 +128,9 @@ class Probe(db.Model):
             "subnets": self.subnets or [],
             "ids_interface": self.ids_interface,
             "network_updated_at": self.network_updated_at.isoformat() if self.network_updated_at else None,
+            "location": self.location,
+            "contact": self.contact,
+            "notes": self.notes,
         }
 
 

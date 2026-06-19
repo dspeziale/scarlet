@@ -353,6 +353,25 @@ def get_probe(probe_id: str):
         return jsonify(error="not_found", message=str(e)), 404
 
 
+@api_v1_bp.patch("/probes/<probe_id>")
+@require_role(SUPERADMIN, TENANT_ADMIN)
+def update_probe(probe_id: str):
+    """Edit probe metadata: name, location (posizione), contact (referente), notes."""
+    user = g.current_user
+    body = request.get_json(silent=True) or {}
+    # Only forward keys actually present, so omitted fields are not wiped.
+    fields = {k: body[k] for k in ("name", "location", "contact", "notes") if k in body}
+    try:
+        probe = _svc.update_probe(
+            probe_id, user.tenant_id, user.is_superadmin, **fields
+        )
+        return jsonify(probe.to_dict()), 200
+    except PermissionError as e:
+        return jsonify(error="forbidden", message=str(e)), 403
+    except ValueError as e:
+        return jsonify(error="not_found", message=str(e)), 404
+
+
 # ── Token management ────────────────────────────────────────────────────────
 
 @api_v1_bp.post("/probe-tokens")

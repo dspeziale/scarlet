@@ -77,6 +77,31 @@
     </div>
   </div>
 </div>
+
+<!-- Edit probe modal -->
+<div class="modal fade" id="modalEditProbe" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Modifica Probe</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="edit-probe-id">
+        <div class="mb-2"><small class="text-muted">Hostname: <span id="edit-probe-hostname" class="font-monospace"></span></small></div>
+        <div class="mb-3"><label class="form-label">Nome</label><input type="text" class="form-control" id="edit-name" placeholder="Nome descrittivo della sonda"></div>
+        <div class="mb-3"><label class="form-label">Posizione geografica</label><input type="text" class="form-control" id="edit-location" placeholder="es. Sede Milano — Rack A3"></div>
+        <div class="mb-3"><label class="form-label">Referente</label><input type="text" class="form-control" id="edit-contact" placeholder="es. Mario Rossi — mario@azienda.it"></div>
+        <div class="mb-3"><label class="form-label">Note</label><textarea class="form-control" id="edit-notes" rows="3" placeholder="Informazioni aggiuntive"></textarea></div>
+        <div id="edit-result" class="d-none alert"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+        <button class="btn btn-primary" id="btn-save-probe"><i class="bi bi-save me-1"></i>Salva</button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -104,15 +129,19 @@ async function loadProbes() {
     const idsBadge = p.ids_interface
       ? `<span class="badge text-bg-info" title="capture on ${esc(p.ids_interface)}">${esc(p.ids_interface)}</span>`
       : '<span class="badge text-bg-secondary">off</span>';
+    const meta = [p.location, p.contact].filter(Boolean).map(esc).join(' · ');
     return `<tr>
-        <td>${esc(p.name || '—')}</td>
+        <td>${esc(p.name || '—')}${meta ? `<br><small class="text-muted"><i class="bi bi-geo-alt me-1"></i>${meta}</small>` : ''}</td>
         <td>${esc(p.hostname)}</td>
         <td>${subnets}</td>
         <td><span class="badge ${p.status==='online'?'text-bg-success':p.status==='offline'?'text-bg-secondary':'text-bg-warning'}">${esc(p.status)}</span></td>
         <td>${p.last_seen ? new Date(p.last_seen).toLocaleString() : '&mdash;'}</td>
         <td>${p.key_provisioned ? '<i class="bi bi-lock-fill text-success"></i>' : '<i class="bi bi-unlock text-warning"></i>'}</td>
         <td>${idsBadge}
-          <button class="btn btn-outline-primary btn-sm ms-1" onclick="openIdsModal('${p.id}')" ${p.status==='online'?'':'disabled'}>
+          <button class="btn btn-outline-secondary btn-sm ms-1" onclick="openEditProbe('${p.id}')" title="Modifica probe">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <button class="btn btn-outline-primary btn-sm ms-1" onclick="openIdsModal('${p.id}')" title="Gestisci IDS" ${p.status==='online'?'':'disabled'}>
             <i class="bi bi-shield-check"></i>
           </button>
         </td>
@@ -222,6 +251,45 @@ document.getElementById('btn-gen-token').addEventListener('click', async () => {
   } else {
     el.textContent = data.message || JSON.stringify(data);
     el.className = 'alert alert-danger d-block';
+  }
+});
+
+// ── Edit probe ──────────────────────────────────────────────────────────────
+function openEditProbe(probeId) {
+  const p = _probes[probeId];
+  if (!p) return;
+  document.getElementById('edit-probe-id').value = p.id;
+  document.getElementById('edit-probe-hostname').textContent = p.hostname;
+  document.getElementById('edit-name').value = p.name || '';
+  document.getElementById('edit-location').value = p.location || '';
+  document.getElementById('edit-contact').value = p.contact || '';
+  document.getElementById('edit-notes').value = p.notes || '';
+  const res = document.getElementById('edit-result');
+  res.className = 'd-none alert';
+  new bootstrap.Modal(document.getElementById('modalEditProbe')).show();
+}
+
+document.getElementById('btn-save-probe').addEventListener('click', async () => {
+  const id = document.getElementById('edit-probe-id').value;
+  const payload = {
+    name: document.getElementById('edit-name').value.trim(),
+    location: document.getElementById('edit-location').value.trim(),
+    contact: document.getElementById('edit-contact').value.trim(),
+    notes: document.getElementById('edit-notes').value.trim(),
+  };
+  const resp = await fetch(`/api/v1/probes/${id}`, {
+    method: 'PATCH', headers: apiHeaders(), body: JSON.stringify(payload),
+  });
+  const data = await resp.json();
+  const res = document.getElementById('edit-result');
+  if (resp.ok) {
+    res.className = 'alert alert-success d-block';
+    res.textContent = 'Salvato.';
+    loadProbes();
+    setTimeout(() => bootstrap.Modal.getInstance(document.getElementById('modalEditProbe'))?.hide(), 800);
+  } else {
+    res.className = 'alert alert-danger d-block';
+    res.textContent = data.message || JSON.stringify(data);
   }
 });
 

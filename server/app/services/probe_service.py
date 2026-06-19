@@ -218,5 +218,26 @@ class ProbeService:
             raise ValueError("Probe not found")
         return probe
 
+    def update_probe(
+        self, probe_id: str, tenant_id: str | None, is_superadmin: bool, **fields
+    ) -> Probe:
+        """Update operator-editable probe metadata (name, location, contact, notes)."""
+        probe = self._probe_repo.get_by_id(probe_id)
+        if not probe:
+            raise ValueError("Probe not found")
+        if not is_superadmin and probe.tenant_id != tenant_id:
+            raise PermissionError("Cannot edit a probe from another tenant")
+
+        allowed = {"name", "location", "contact", "notes"}
+        updates = {k: v for k, v in fields.items() if k in allowed}
+        for k, v in updates.items():
+            setattr(probe, k, v)
+
+        record_audit("probe.update", resource_type="probe", resource_id=probe_id,
+                     tenant_id=probe.tenant_id, payload=updates)
+        db.session.commit()
+        log.info("probe_updated", probe_id=probe_id, fields=list(updates))
+        return probe
+
     def list_probes(self, tenant_id: str) -> list[Probe]:
         return self._probe_repo.list_by_tenant(tenant_id)

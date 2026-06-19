@@ -89,6 +89,9 @@ _SCHEMA_ADDITIONS: dict[str, dict[str, str]] = {
         "subnets": "JSON",
         "ids_interface": "VARCHAR(64)",
         "network_updated_at": "TIMESTAMP",
+        "location": "VARCHAR(255)",
+        "contact": "VARCHAR(255)",
+        "notes": "TEXT",
     },
 }
 
