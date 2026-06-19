@@ -10,34 +10,80 @@
 <div class="card shadow-sm">
   <div class="card-header d-flex justify-content-between align-items-center">
     <h5 class="mb-0"><i class="bi bi-building me-2"></i>All Tenants</h5>
-    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalTenant">
+    <button class="btn btn-primary btn-sm" id="btn-new-tenant">
       <i class="bi bi-plus-circle me-1"></i>New Tenant
     </button>
   </div>
   <div class="card-body p-0">
     <table class="table table-hover mb-0" id="tenant-table">
       <thead class="table-light">
-        <tr><th>Name</th><th>Slug</th><th>Plan</th><th>Max Probes</th><th>Active</th><th>Created</th></tr>
+        <tr><th>Name</th><th>Slug</th><th>Plan</th><th>Max Probes</th><th>Active</th><th>Created</th><th style="width:120px">Actions</th></tr>
       </thead>
-      <tbody><tr><td colspan="6" class="text-center py-3 text-muted">Loading…</td></tr></tbody>
+      <tbody><tr><td colspan="7" class="text-center py-3 text-muted">Loading…</td></tr></tbody>
     </table>
   </div>
 </div>
 
+<!-- ── Tenant create/edit modal ─────────────────────────────────────────── -->
 <div class="modal fade" id="modalTenant" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">New Tenant</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-header"><h5 class="modal-title" id="tenant-modal-title">New Tenant</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body">
+        <input type="hidden" id="t-id">
         <div class="mb-3"><label class="form-label">Name</label><input type="text" class="form-control" id="t-name"></div>
         <div class="mb-3"><label class="form-label">Plan</label>
           <select class="form-select" id="t-plan"><option value="free">Free</option><option value="basic">Basic</option><option value="pro">Pro</option><option value="enterprise">Enterprise</option></select>
         </div>
         <div class="mb-3"><label class="form-label">Max Probes</label><input type="number" class="form-control" id="t-max-probes" value="5"></div>
         <div class="mb-3"><label class="form-label">Description</label><input type="text" class="form-control" id="t-desc"></div>
+        <div class="mb-3 form-check" id="t-active-wrap" style="display:none;">
+          <input type="checkbox" class="form-check-input" id="t-active" checked>
+          <label class="form-check-label" for="t-active">Active</label>
+        </div>
         <div id="t-error" class="alert alert-danger d-none"></div>
       </div>
-      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" id="btn-create-tenant">Create</button></div>
+      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" id="btn-save-tenant">Create</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Assign / manage admin modal ──────────────────────────────────────── -->
+<div class="modal fade" id="modalAdmin" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-person-gear me-2"></i>Admin — <span id="admin-tenant-name"></span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="admin-tenant-id">
+
+        <h6 class="text-muted">Amministratori attuali</h6>
+        <ul class="list-group mb-3" id="admin-list"><li class="list-group-item text-muted">Loading…</li></ul>
+
+        <hr>
+        <h6 class="text-muted">Promuovi un utente esistente del tenant</h6>
+        <div class="input-group mb-3">
+          <select class="form-select" id="promote-select"><option value="">Nessun utente promovibile</option></select>
+          <button class="btn btn-outline-primary" id="btn-promote">Promuovi a TenantAdmin</button>
+        </div>
+
+        <hr>
+        <h6 class="text-muted">Crea un nuovo TenantAdmin</h6>
+        <div class="row g-2">
+          <div class="col-md-6"><input type="email" class="form-control" id="a-email" placeholder="Email"></div>
+          <div class="col-md-6"><input type="text" class="form-control" id="a-username" placeholder="Username"></div>
+          <div class="col-md-6"><input type="text" class="form-control" id="a-first" placeholder="Nome (opzionale)"></div>
+          <div class="col-md-6"><input type="text" class="form-control" id="a-last" placeholder="Cognome (opzionale)"></div>
+          <div class="col-md-12"><input type="password" class="form-control" id="a-password" placeholder="Password temporanea"></div>
+        </div>
+        <button class="btn btn-success mt-3" id="btn-create-admin"><i class="bi bi-person-plus me-1"></i>Crea admin</button>
+
+        <div id="admin-error" class="alert alert-danger mt-3 d-none"></div>
+        <div id="admin-ok" class="alert alert-success mt-3 d-none"></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Close</button></div>
     </div>
   </div>
 </div>
@@ -45,38 +91,165 @@
 
 {% block extra_js %}
 <script>
+const _tenants = {};
+
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
 async function loadTenants() {
   const resp = await fetch('/api/v1/tenants', { headers: apiHeaders() });
   const tbody = document.querySelector('#tenant-table tbody');
-  if (!resp.ok) { tbody.innerHTML = '<tr><td colspan="6" class="text-danger text-center">Not authorized</td></tr>'; return; }
+  if (!resp.ok) { tbody.innerHTML = '<tr><td colspan="7" class="text-danger text-center">Not authorized</td></tr>'; return; }
   const tenants = await resp.json();
   tbody.innerHTML = tenants.length === 0
-    ? '<tr><td colspan="6" class="text-center text-muted">No tenants</td></tr>'
-    : tenants.map(t => `<tr>
-        <td>${t.name}</td>
-        <td class="font-monospace">${t.slug}</td>
-        <td><span class="badge text-bg-info">${t.plan}</span></td>
-        <td>${t.max_probes}</td>
-        <td>${t.is_active ? '<i class="bi bi-check-circle text-success"></i>' : '<i class="bi bi-x-circle text-danger"></i>'}</td>
-        <td>${new Date(t.created_at).toLocaleDateString()}</td>
-      </tr>`).join('');
+    ? '<tr><td colspan="7" class="text-center text-muted">No tenants</td></tr>'
+    : tenants.map(t => {
+        _tenants[t.id] = t;
+        return `<tr>
+          <td>${esc(t.name)}</td>
+          <td class="font-monospace">${esc(t.slug)}</td>
+          <td><span class="badge text-bg-info">${esc(t.plan)}</span></td>
+          <td>${t.max_probes}</td>
+          <td>${t.is_active ? '<i class="bi bi-check-circle text-success"></i>' : '<i class="bi bi-x-circle text-danger"></i>'}</td>
+          <td>${new Date(t.created_at).toLocaleDateString()}</td>
+          <td>
+            <button class="btn btn-sm btn-outline-secondary py-0 px-1 me-1" onclick="openEditTenant('${t.id}')" title="Modifica tenant"><i class="bi bi-pencil"></i></button>
+            <button class="btn btn-sm btn-outline-primary py-0 px-1" onclick="openAdminModal('${t.id}')" title="Gestisci admin"><i class="bi bi-person-gear"></i></button>
+          </td>
+        </tr>`;
+      }).join('');
 }
 
-document.getElementById('btn-create-tenant').addEventListener('click', async () => {
+// ── Create / edit tenant ────────────────────────────────────────────────────
+const tenantModal = () => bootstrap.Modal.getOrCreateInstance(document.getElementById('modalTenant'));
+
+document.getElementById('btn-new-tenant').addEventListener('click', () => {
+  document.getElementById('tenant-modal-title').textContent = 'New Tenant';
+  document.getElementById('t-id').value = '';
+  document.getElementById('t-name').value = '';
+  document.getElementById('t-plan').value = 'free';
+  document.getElementById('t-max-probes').value = 5;
+  document.getElementById('t-desc').value = '';
+  document.getElementById('t-active-wrap').style.display = 'none';
+  document.getElementById('btn-save-tenant').textContent = 'Create';
+  document.getElementById('t-error').classList.add('d-none');
+  tenantModal().show();
+});
+
+function openEditTenant(id) {
+  const t = _tenants[id];
+  if (!t) return;
+  document.getElementById('tenant-modal-title').textContent = 'Modifica Tenant';
+  document.getElementById('t-id').value = t.id;
+  document.getElementById('t-name').value = t.name;
+  document.getElementById('t-plan').value = t.plan;
+  document.getElementById('t-max-probes').value = t.max_probes;
+  document.getElementById('t-desc').value = t.description || '';
+  document.getElementById('t-active-wrap').style.display = 'block';
+  document.getElementById('t-active').checked = !!t.is_active;
+  document.getElementById('btn-save-tenant').textContent = 'Salva';
+  document.getElementById('t-error').classList.add('d-none');
+  tenantModal().show();
+}
+
+document.getElementById('btn-save-tenant').addEventListener('click', async () => {
   const err = document.getElementById('t-error');
-  const resp = await fetch('/api/v1/tenants', {
-    method: 'POST', headers: apiHeaders(),
-    body: JSON.stringify({
-      name: document.getElementById('t-name').value,
-      plan: document.getElementById('t-plan').value,
-      max_probes: parseInt(document.getElementById('t-max-probes').value),
-      description: document.getElementById('t-desc').value,
-    }),
+  err.classList.add('d-none');
+  const id = document.getElementById('t-id').value;
+  const payload = {
+    name: document.getElementById('t-name').value.trim(),
+    plan: document.getElementById('t-plan').value,
+    max_probes: parseInt(document.getElementById('t-max-probes').value) || 5,
+    description: document.getElementById('t-desc').value,
+  };
+  let url = '/api/v1/tenants', method = 'POST';
+  if (id) {
+    url = `/api/v1/tenants/${id}`; method = 'PATCH';
+    payload.is_active = document.getElementById('t-active').checked;
+  }
+  const resp = await fetch(url, { method, headers: apiHeaders(), body: JSON.stringify(payload) });
+  const data = await resp.json();
+  if (resp.ok) { tenantModal().hide(); loadTenants(); }
+  else { err.textContent = data.message || 'Errore'; err.classList.remove('d-none'); }
+});
+
+// ── Manage admin ──────────────────────────────────────────────────────────
+const adminModal = () => bootstrap.Modal.getOrCreateInstance(document.getElementById('modalAdmin'));
+
+async function openAdminModal(tenantId) {
+  const t = _tenants[tenantId];
+  if (!t) return;
+  document.getElementById('admin-tenant-id').value = tenantId;
+  document.getElementById('admin-tenant-name').textContent = t.name;
+  document.getElementById('admin-error').classList.add('d-none');
+  document.getElementById('admin-ok').classList.add('d-none');
+  ['a-email','a-username','a-first','a-last','a-password'].forEach(i => document.getElementById(i).value = '');
+  adminModal().show();
+  await refreshAdmins(tenantId);
+}
+
+async function refreshAdmins(tenantId) {
+  const list = document.getElementById('admin-list');
+  const promote = document.getElementById('promote-select');
+  list.innerHTML = '<li class="list-group-item text-muted">Loading…</li>';
+  const resp = await fetch(`/api/v1/users?tenant_id=${tenantId}`, { headers: apiHeaders() });
+  if (!resp.ok) { list.innerHTML = '<li class="list-group-item text-danger">Errore nel caricamento utenti</li>'; return; }
+  const users = await resp.json();
+  const admins = users.filter(u => (u.roles || []).includes('TenantAdmin'));
+  const nonAdmins = users.filter(u => !(u.roles || []).includes('TenantAdmin'));
+
+  list.innerHTML = admins.length
+    ? admins.map(u => `<li class="list-group-item d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-person-check text-success me-2"></i>${esc(u.username)} <small class="text-muted">${esc(u.email)}</small></span>
+        <span class="badge text-bg-primary">TenantAdmin</span>
+      </li>`).join('')
+    : '<li class="list-group-item text-muted">Nessun amministratore assegnato</li>';
+
+  promote.innerHTML = nonAdmins.length
+    ? '<option value="">Seleziona utente…</option>' + nonAdmins.map(u => `<option value="${u.id}">${esc(u.username)} (${esc(u.email)})</option>`).join('')
+    : '<option value="">Nessun utente promovibile</option>';
+}
+
+function adminMsg(ok, msg) {
+  const e = document.getElementById('admin-error'), o = document.getElementById('admin-ok');
+  e.classList.add('d-none'); o.classList.add('d-none');
+  const el = ok ? o : e; el.textContent = msg; el.classList.remove('d-none');
+}
+
+document.getElementById('btn-promote').addEventListener('click', async () => {
+  const tenantId = document.getElementById('admin-tenant-id').value;
+  const userId = document.getElementById('promote-select').value;
+  if (!userId) { adminMsg(false, 'Seleziona un utente.'); return; }
+  const resp = await fetch(`/api/v1/users/${userId}/roles`, {
+    method: 'POST', headers: apiHeaders(), body: JSON.stringify({ role: 'TenantAdmin' }),
   });
   const data = await resp.json();
-  if (resp.ok) { bootstrap.Modal.getInstance(document.getElementById('modalTenant')).hide(); loadTenants(); }
-  else { err.textContent = data.message; err.classList.remove('d-none'); }
+  if (resp.ok) { adminMsg(true, 'Utente promosso a TenantAdmin.'); refreshAdmins(tenantId); }
+  else { adminMsg(false, data.message || 'Errore'); }
 });
+
+document.getElementById('btn-create-admin').addEventListener('click', async () => {
+  const tenantId = document.getElementById('admin-tenant-id').value;
+  const payload = {
+    email: document.getElementById('a-email').value.trim(),
+    username: document.getElementById('a-username').value.trim(),
+    password: document.getElementById('a-password').value,
+    first_name: document.getElementById('a-first').value.trim() || null,
+    last_name: document.getElementById('a-last').value.trim() || null,
+    tenant_id: tenantId,
+    roles: ['TenantAdmin'],
+  };
+  if (!payload.email || !payload.username || !payload.password) {
+    adminMsg(false, 'Email, username e password sono obbligatori.'); return;
+  }
+  const resp = await fetch('/api/v1/users', { method: 'POST', headers: apiHeaders(), body: JSON.stringify(payload) });
+  const data = await resp.json();
+  if (resp.ok) {
+    adminMsg(true, `Admin ${esc(data.username)} creato.`);
+    ['a-email','a-username','a-first','a-last','a-password'].forEach(i => document.getElementById(i).value = '');
+    refreshAdmins(tenantId);
+  } else { adminMsg(false, data.message || 'Errore'); }
+});
+
 loadTenants();
 </script>
 {% endblock %}
