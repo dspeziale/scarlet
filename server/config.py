@@ -46,10 +46,12 @@ class Config:
     TALISMAN_FORCE_HTTPS: bool = os.environ.get("FORCE_HTTPS", "false").lower() == "true"
     TALISMAN_CONTENT_SECURITY_POLICY: dict = {
         "default-src": "'self'",
-        "script-src": ["'self'", "cdn.jsdelivr.net", "'unsafe-inline'"],
-        "style-src": ["'self'", "cdn.jsdelivr.net", "'unsafe-inline'"],
+        "script-src": ["'self'", "cdn.jsdelivr.net", "vercel.live", "'unsafe-inline'"],
+        "style-src": ["'self'", "cdn.jsdelivr.net", "fonts.googleapis.com", "'unsafe-inline'"],
         "img-src": ["'self'", "data:", "cdn.jsdelivr.net"],
-        "font-src": ["'self'", "cdn.jsdelivr.net"],
+        "font-src": ["'self'", "cdn.jsdelivr.net", "fonts.gstatic.com"],
+        # connect-src governs XHR/fetch and devtools source-map (.map) requests.
+        "connect-src": ["'self'", "cdn.jsdelivr.net", "vercel.live"],
     }
 
     # ── Probe registration tokens ──────────────────────────────────────────
