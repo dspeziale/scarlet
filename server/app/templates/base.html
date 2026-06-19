@@ -103,6 +103,14 @@
 
       <ul class="navbar-nav ms-auto d-flex align-items-center gap-1">
 
+        <!-- Active tenant indicator -->
+        <li class="nav-item me-2">
+          <span id="tenant-badge" class="badge rounded-pill text-bg-secondary px-3 py-2"
+                title="Tenant attivo" style="font-size:.8rem;">
+            <i class="bi bi-building me-1"></i><span id="tenant-name">…</span>
+          </span>
+        </li>
+
         <!-- Font-size controls -->
         <li class="nav-item fs-ctrl me-1">
           <button id="btn-font-dec" class="btn btn-sm btn-outline-secondary" title="Decrease font size">A−</button>
@@ -284,6 +292,23 @@ async function loadCurrentUser() {
   if (!resp.ok) { window.location = '/login'; return; }
   const user = await resp.json();
   document.getElementById('nav-username').textContent = user.username || user.email;
+
+  // Active-tenant indicator
+  const badge = document.getElementById('tenant-badge');
+  const label = document.getElementById('tenant-name');
+  if (user.is_superadmin) {
+    label.textContent = user.tenant_name ? `${user.tenant_name} (SuperAdmin)` : 'Tutti i tenant (SuperAdmin)';
+    badge.className = 'badge rounded-pill text-bg-danger px-3 py-2';
+    badge.title = 'SuperAdmin — accesso a tutti i tenant';
+  } else if (user.tenant_name) {
+    label.textContent = user.tenant_name;
+    badge.className = 'badge rounded-pill text-bg-primary px-3 py-2';
+    badge.title = `Tenant attivo: ${user.tenant_name}` + (user.tenant_slug ? ` (${user.tenant_slug})` : '');
+  } else {
+    label.textContent = 'Nessun tenant';
+    badge.className = 'badge rounded-pill text-bg-warning px-3 py-2';
+  }
+
   if (user.is_superadmin) {
     document.getElementById('superadmin-section')?.classList.remove('d-none');
   }

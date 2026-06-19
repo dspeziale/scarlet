@@ -141,6 +141,8 @@ class User(db.Model):
         return {
             "id": self.id,
             "tenant_id": self.tenant_id,
+            "tenant_name": self.tenant.name if self.tenant else None,
+            "tenant_slug": self.tenant.slug if self.tenant else None,
             "email": self.email,
             "username": self.username,
             "first_name": self.first_name,
