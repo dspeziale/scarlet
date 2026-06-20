@@ -12,6 +12,23 @@ from app.models.telemetry import DeviceInventory, ServiceInventory, WifiInventor
 log = structlog.get_logger(__name__)
 
 
+def _merge_details(existing: dict | None, scan: dict) -> dict:
+    """Merge new scan info into the stored device details (union of services)."""
+    details = dict(existing or {})
+    for key in ("hostname", "vendor", "os", "mac", "ip"):
+        if scan.get(key):
+            details[key] = scan[key]
+    # Union of services keyed by port/protocol.
+    svc_map = {(s.get("port"), s.get("protocol")): s for s in details.get("services", [])}
+    for s in scan.get("services", []) or []:
+        svc_map[(s.get("port"), s.get("protocol"))] = s
+    if svc_map:
+        details["services"] = [svc_map[k] for k in sorted(svc_map, key=lambda x: (x[0] or 0))]
+    from datetime import datetime, timezone
+    details["last_scan_at"] = datetime.now(timezone.utc).isoformat()
+    return details
+
+
 class TelemetryService:
     def ingest_devices(self, tenant_id: str, probe_id: str, devices: list[dict]) -> list[DeviceInventory]:
         created = []
@@ -52,8 +69,9 @@ class TelemetryService:
                 continue
             device = db.session.execute(stmt).scalars().first()
 
+            now = datetime.now(timezone.utc)
             if device:
-                device.last_seen = datetime.now(timezone.utc)
+                device.last_seen = now
                 if ip and not device.ip:
                     device.ip = ip
                 if d.get("hostname"):
@@ -62,6 +80,7 @@ class TelemetryService:
                     device.vendor = d["vendor"]
                 if d.get("os"):
                     device.os = d["os"]
+                device.details = _merge_details(device.details, d)
                 updated += 1
             else:
                 device = DeviceInventory(
@@ -69,10 +88,17 @@ class TelemetryService:
                     mac=mac, ip=ip,
                     hostname=d.get("hostname"), vendor=d.get("vendor"),
                     device_type=d.get("device_type"), os=d.get("os"),
+                    details=_merge_details(None, d),
                 )
                 db.session.add(device)
                 added += 1
             db.session.flush()
+
+            # Presence history: one sighting per detection.
+            from app.models.telemetry import DeviceSighting
+            db.session.add(DeviceSighting(
+                tenant_id=tenant_id, device_id=device.id, probe_id=probe_id, seen_at=now,
+            ))
 
             # Record any open services tied to this device.
             for s in d.get("services", []) or []:
@@ -146,6 +172,40 @@ class TelemetryService:
             stmt = stmt.where(DeviceInventory.probe_id == probe_id)
         stmt = stmt.order_by(DeviceInventory.last_seen.desc()).limit(limit)
         return list(db.session.execute(stmt).scalars())
+
+    def get_device(self, device_id: str, tenant_id: str | None = None) -> DeviceInventory | None:
+        device = db.session.get(DeviceInventory, device_id)
+        if not device:
+            return None
+        if tenant_id is not None and device.tenant_id != tenant_id:
+            return None
+        return device
+
+    def list_device_services(self, device_id: str) -> list[ServiceInventory]:
+        from sqlalchemy import select
+        stmt = select(ServiceInventory).where(ServiceInventory.device_id == device_id).order_by(ServiceInventory.port)
+        # Deduplicate by (port, protocol, service, version), keep latest.
+        seen, out = set(), []
+        for s in db.session.execute(stmt).scalars():
+            key = (s.port, s.protocol, s.service, s.version)
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(s)
+        return out
+
+    def list_presence(self, device_id: str, day=None) -> list[dict]:
+        """Sightings for a device, optionally limited to a given date (presence history)."""
+        from datetime import datetime, timezone, time as _time
+        from sqlalchemy import select
+        from app.models.telemetry import DeviceSighting
+        stmt = select(DeviceSighting).where(DeviceSighting.device_id == device_id)
+        if day is not None:
+            start = datetime.combine(day, _time.min, tzinfo=timezone.utc)
+            end = datetime.combine(day, _time.max, tzinfo=timezone.utc)
+            stmt = stmt.where(DeviceSighting.seen_at >= start, DeviceSighting.seen_at <= end)
+        stmt = stmt.order_by(DeviceSighting.seen_at.asc()).limit(2000)
+        return [s.to_dict() for s in db.session.execute(stmt).scalars()]
 
     # ── WiFi / BLE listing + upsert ──────────────────────────────────────────
 

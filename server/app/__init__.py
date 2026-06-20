@@ -98,6 +98,9 @@ _SCHEMA_ADDITIONS: dict[str, dict[str, str]] = {
         "telegram_id": "VARCHAR(64)",
         "notes": "TEXT",
     },
+    "device_inventory": {
+        "details": "JSON",
+    },
     "tenants": {
         "notify_enabled": "BOOLEAN",
         "telegram_bot_token": "VARCHAR(120)",

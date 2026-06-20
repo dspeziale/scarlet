@@ -2,6 +2,8 @@
 /api/v1/telemetry  — device/service/wifi/ble inventory ingestion + queries.
 """
 
+from datetime import date
+
 from flask import g, jsonify, request
 
 from app.api.v1 import api_v1_bp
@@ -34,6 +36,36 @@ def list_devices():
     limit = int(request.args.get("limit", 100))
     devices = _svc.list_devices(tenant_id, probe_id=probe_id, limit=limit)
     return jsonify([d.to_dict() for d in devices]), 200
+
+
+@api_v1_bp.get("/telemetry/devices/<device_id>")
+@require_role(SUPERADMIN, TENANT_ADMIN, OPERATOR)
+def get_device(device_id: str):
+    user = g.current_user
+    tenant_id = None if user.is_superadmin else user.tenant_id
+    device = _svc.get_device(device_id, tenant_id)
+    if not device:
+        return jsonify(error="not_found"), 404
+    data = device.to_dict(include_details=True)
+    data["services"] = [s.to_dict() for s in _svc.list_device_services(device_id)]
+    data["presence_today"] = _svc.list_presence(device_id, date.today())
+    return jsonify(data), 200
+
+
+@api_v1_bp.get("/telemetry/devices/<device_id>/presence")
+@require_role(SUPERADMIN, TENANT_ADMIN, OPERATOR)
+def device_presence(device_id: str):
+    user = g.current_user
+    tenant_id = None if user.is_superadmin else user.tenant_id
+    if not _svc.get_device(device_id, tenant_id):
+        return jsonify(error="not_found"), 404
+    day = None
+    if request.args.get("date"):
+        try:
+            day = date.fromisoformat(request.args["date"])
+        except ValueError:
+            return jsonify(error="validation_error", message="date must be YYYY-MM-DD"), 400
+    return jsonify({"sightings": _svc.list_presence(device_id, day)}), 200
 
 
 @api_v1_bp.post("/telemetry/services")

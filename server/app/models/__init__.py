@@ -7,6 +7,7 @@ from app.models.probe import Probe, ProbeRegistrationToken, ProbeKey  # noqa: F4
 from app.models.task import Task, TaskAssignment, TaskResult  # noqa: F401
 from app.models.telemetry import (  # noqa: F401
     DeviceInventory,
+    DeviceSighting,
     ServiceInventory,
     WifiInventory,
     BLEInventory,

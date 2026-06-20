@@ -3,7 +3,7 @@
 import uuid
 from datetime import date, datetime, timezone
 
-from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, JSON, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.extensions import db
@@ -25,13 +25,14 @@ class DeviceInventory(db.Model):
     vendor: Mapped[str | None] = mapped_column(String(120))
     device_type: Mapped[str | None] = mapped_column(String(60))
     os: Mapped[str | None] = mapped_column(String(120))
+    details: Mapped[dict | None] = mapped_column(JSON)  # full parsed scan info
     first_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, nullable=False)
     last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now, nullable=False)
 
     probe: Mapped["Probe"] = relationship("Probe")  # type: ignore[name-defined]
 
-    def to_dict(self) -> dict:
-        return {
+    def to_dict(self, include_details: bool = False) -> dict:
+        d = {
             "id": self.id,
             "tenant_id": self.tenant_id,
             "probe_id": self.probe_id,
@@ -44,6 +45,25 @@ class DeviceInventory(db.Model):
             "first_seen": self.first_seen.isoformat(),
             "last_seen": self.last_seen.isoformat(),
         }
+        if include_details:
+            d["details"] = self.details or {}
+        return d
+
+
+class DeviceSighting(db.Model):
+    """One observation of a device — builds the intra-day presence history."""
+
+    __tablename__ = "device_sightings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id: Mapped[str] = mapped_column(String(36), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True)
+    device_id: Mapped[str] = mapped_column(String(36), ForeignKey("device_inventory.id", ondelete="CASCADE"), nullable=False, index=True)
+    probe_id: Mapped[str] = mapped_column(String(36), ForeignKey("probes.id", ondelete="CASCADE"), nullable=False)
+    seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, nullable=False, index=True)
+
+    def to_dict(self) -> dict:
+        return {"id": self.id, "device_id": self.device_id, "probe_id": self.probe_id,
+                "seen_at": self.seen_at.isoformat()}
 
 
 class ServiceInventory(db.Model):

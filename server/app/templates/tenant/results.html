@@ -39,6 +39,29 @@
     </div></div>
   </div>
 </div>
+
+<!-- Device detail modal -->
+<div class="modal fade" id="modalDevice" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-pc-display me-2"></i><span id="dv-title">Dispositivo</span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-2 mb-3" id="dv-fields"></div>
+        <h6 class="text-muted"><i class="bi bi-hdd-stack me-1"></i>Servizi / porte aperte</h6>
+        <table class="table table-sm"><thead class="table-light"><tr><th>Porta</th><th>Proto</th><th>Servizio</th><th>Versione</th></tr></thead>
+          <tbody id="dv-services"></tbody></table>
+        <h6 class="text-muted mt-3"><i class="bi bi-clock-history me-1"></i>Presenza oggi</h6>
+        <div id="dv-presence" class="small"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -52,7 +75,45 @@ async function loadDevices() {
   const d = await resp.json();
   tbody.innerHTML = d.length === 0
     ? '<tr><td colspan="6" class="text-center text-muted">Nessun dispositivo scoperto</td></tr>'
-    : d.map(x => `<tr><td>${x.ip||'—'}</td><td class="font-monospace">${x.mac||'—'}</td><td>${x.hostname||'—'}</td><td>${x.vendor||'—'}</td><td>${x.os||'—'}</td><td>${dt(x.last_seen)}</td></tr>`).join('');
+    : d.map(x => `<tr>
+        <td>${x.ip ? `<a href="#" onclick="showDevice('${x.id}');return false;" class="fw-semibold">${x.ip}</a>` : `<a href="#" onclick="showDevice('${x.id}');return false;">dettaglio</a>`}</td>
+        <td class="font-monospace">${x.mac||'—'}</td><td>${x.hostname||'—'}</td><td>${x.vendor||'—'}</td><td>${x.os||'—'}</td><td>${dt(x.last_seen)}</td></tr>`).join('');
+}
+
+function dvField(k, v) {
+  return `<div class="col-md-4"><div class="text-muted small text-uppercase">${k}</div><div class="fw-semibold">${v==null||v===''?'—':v}</div></div>`;
+}
+
+async function showDevice(id) {
+  const modal = new bootstrap.Modal(document.getElementById('modalDevice'));
+  modal.show();
+  document.getElementById('dv-fields').innerHTML = '<div class="text-muted">Loading…</div>';
+  document.getElementById('dv-services').innerHTML = '';
+  document.getElementById('dv-presence').innerHTML = '';
+  const r = await fetch(withTenant(`/api/v1/telemetry/devices/${id}`), { headers: apiHeaders() });
+  if (!r.ok) { document.getElementById('dv-fields').innerHTML = '<div class="text-danger">Errore</div>'; return; }
+  const x = await r.json();
+  document.getElementById('dv-title').textContent = x.ip || x.hostname || x.mac || 'Dispositivo';
+  document.getElementById('dv-fields').innerHTML = [
+    dvField('IP', x.ip), dvField('MAC', x.mac), dvField('Hostname', x.hostname),
+    dvField('Vendor', x.vendor), dvField('Sistema operativo', x.os), dvField('Tipo', x.device_type),
+    dvField('Primo contatto', dt(x.first_seen)), dvField('Ultimo contatto', dt(x.last_seen)),
+  ].join('');
+  const svc = x.services || [];
+  document.getElementById('dv-services').innerHTML = svc.length
+    ? svc.map(s => `<tr><td>${s.port??'—'}</td><td>${s.protocol||'—'}</td><td>${s.service||'—'}</td><td>${s.version||'—'}</td></tr>`).join('')
+    : '<tr><td colspan="4" class="text-muted">Nessun servizio rilevato (lancia un Service Detection).</td></tr>';
+  const pres = x.presence_today || [];
+  if (pres.length) {
+    const times = pres.map(p => new Date(p.seen_at).toLocaleTimeString());
+    const first = times[0], last = times[times.length-1];
+    document.getElementById('dv-presence').innerHTML =
+      `<span class="badge text-bg-success">${pres.length} rilevazioni</span> ` +
+      `dalle <b>${first}</b> alle <b>${last}</b><br>` +
+      `<div class="mt-1">${times.map(t=>`<span class="badge text-bg-light border me-1 mb-1">${t}</span>`).join('')}</div>`;
+  } else {
+    document.getElementById('dv-presence').innerHTML = '<span class="text-muted">Nessuna rilevazione oggi.</span>';
+  }
 }
 
 async function loadWifi() {
