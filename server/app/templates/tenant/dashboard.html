@@ -231,10 +231,23 @@ function ppItem(k, v) {
 }
 function closeProbePanel() { document.getElementById('probe-panel').classList.remove('open'); }
 
+// Make the panel exactly as wide as the footer (offset by the sidebar).
+function alignProbePanel() {
+  const ref = document.querySelector('.app-footer') || document.querySelector('.app-main');
+  const panel = document.getElementById('probe-panel');
+  if (!ref || !panel) return;
+  const r = ref.getBoundingClientRect();
+  panel.style.left = r.left + 'px';
+  panel.style.right = 'auto';
+  panel.style.width = r.width + 'px';
+}
+window.addEventListener('resize', alignProbePanel);
+
 async function showProbePanel(probeId) {
   const panel = document.getElementById('probe-panel');
   const body = document.getElementById('pp-body');
   body.innerHTML = '<div class="text-muted">Loading…</div>';
+  alignProbePanel();
   panel.classList.add('open');
   const r = await fetch(`/api/v1/probes/${probeId}`, { headers: apiHeaders() });
   if (!r.ok) { body.innerHTML = '<div class="text-danger">Errore nel caricamento.</div>'; return; }
