@@ -51,7 +51,25 @@
         <div class="rule-list mb-3" id="rule-list"><div class="text-muted">Seleziona una sonda…</div></div>
         <hr>
         <h6 class="text-muted small"><i class="bi bi-cloud-download me-1"></i>Scarica regole da Internet</h6>
-        <input class="form-control form-control-sm mb-1" id="r-url" placeholder="https://rules.emergingthreats.net/open/suricata-7.0/emerging-all.rules">
+        <select class="form-select form-select-sm mb-1" id="r-source">
+          <option value="">— Sorgenti consigliate —</option>
+          <optgroup label="Emerging Threats Open (Suricata 7)">
+            <option value="https://rules.emergingthreats.net/open/suricata-7.0/emerging-all.rules">ET Open — Tutte le regole (grande)</option>
+            <option value="https://rules.emergingthreats.net/open/suricata-7.0/rules/emerging-malware.rules">ET Open — Malware</option>
+            <option value="https://rules.emergingthreats.net/open/suricata-7.0/rules/emerging-exploit.rules">ET Open — Exploit</option>
+            <option value="https://rules.emergingthreats.net/open/suricata-7.0/rules/emerging-trojan.rules">ET Open — Trojan</option>
+            <option value="https://rules.emergingthreats.net/open/suricata-7.0/rules/emerging-scan.rules">ET Open — Scan</option>
+            <option value="https://rules.emergingthreats.net/open/suricata-7.0/rules/emerging-dos.rules">ET Open — DoS</option>
+            <option value="https://rules.emergingthreats.net/open/suricata-7.0/rules/emerging-policy.rules">ET Open — Policy</option>
+            <option value="https://rules.emergingthreats.net/open/suricata-7.0/rules/emerging-web_server.rules">ET Open — Web Server</option>
+          </optgroup>
+          <optgroup label="abuse.ch (threat intel)">
+            <option value="https://sslbl.abuse.ch/blacklist/sslblacklist.rules">abuse.ch — SSL Blacklist</option>
+            <option value="https://feodotracker.abuse.ch/downloads/feodotracker.rules">abuse.ch — Feodo Tracker (C2)</option>
+            <option value="https://sslbl.abuse.ch/blacklist/ja3_fingerprints.rules">abuse.ch — JA3 Fingerprints</option>
+          </optgroup>
+        </select>
+        <input class="form-control form-control-sm mb-1" id="r-url" placeholder="…oppure incolla un URL .rules">
         <button class="btn btn-sm btn-outline-success mb-2" id="btn-import-rules"><i class="bi bi-download me-1"></i>Importa nel catalogo</button>
         <div id="import-result" class="d-none alert py-1 px-2 small"></div>
 
@@ -185,6 +203,10 @@ document.getElementById('btn-add-rule').addEventListener('click', async () => {
     document.getElementById('r-msg').value = '';
     loadRules();
   }
+});
+
+document.getElementById('r-source').addEventListener('change', function () {
+  if (this.value) document.getElementById('r-url').value = this.value;
 });
 
 document.getElementById('btn-import-rules').addEventListener('click', async () => {

@@ -48,6 +48,26 @@ def _persist_network(probe, network: dict | None) -> None:
         probe.network_updated_at = datetime.now(timezone.utc)
 
 
+def _record_usage(probe, system: dict | None, delta_seconds: float) -> None:
+    """Accumulate resource accounting from heartbeat system metrics (no commit)."""
+    if not isinstance(system, dict):
+        return
+    try:
+        cpu_pct = float(system.get("cpu_pct", 0) or 0)
+        mem_used = float(system.get("mem_used_mb", 0) or 0)
+        disk_total = float(system.get("disk_total_gb", 0) or 0)
+        disk_free = float(system.get("disk_free_gb", 0) or 0)
+        metrics = {
+            "cpu_seconds": (cpu_pct / 100.0) * delta_seconds,
+            "memory_mb": mem_used,
+            "disk_mb": max(0.0, (disk_total - disk_free) * 1024.0),
+        }
+        from app.services.accounting_service import AccountingService
+        AccountingService().record_usage(probe.tenant_id, probe.id, metrics)
+    except Exception as exc:  # never break the heartbeat over accounting
+        log.warning("usage_record_failed", probe_id=probe.id, error=str(exc))
+
+
 # ── Public: Registration ────────────────────────────────────────────────────
 
 @api_v1_bp.post("/probes/register")
@@ -121,11 +141,21 @@ def probe_heartbeat(probe_id: str):
         if not probe.enabled:
             return jsonify(error="probe_disabled"), 403
 
-        probe.last_seen = datetime.now(timezone.utc)
+        now = datetime.now(timezone.utc)
+        # Seconds since previous heartbeat — used to accumulate CPU-seconds.
+        prev = probe.last_seen
+        delta = 0.0
+        if prev is not None:
+            if prev.tzinfo is None:
+                prev = prev.replace(tzinfo=timezone.utc)
+            delta = max(0.0, min((now - prev).total_seconds(), 300.0))
+
+        probe.last_seen = now
         probe.status = "online"
 
         body = request.get_json(silent=True) or {}
         _persist_network(probe, body.get("network"))
+        _record_usage(probe, body.get("system"), delta)
 
         db.session.commit()
         return jsonify({"status": probe.status, "probe_id": probe.id}), 200
@@ -173,6 +203,7 @@ def probe_tasks_pending(probe_id: str):
 def probe_task_result(probe_id: str, assignment_id: str):
     """Probe reports the result of an executed task."""
     from app.services.task_service import TaskService
+    from app.extensions import db
 
     body = request.get_json(silent=True) or {}
     result_payload = body.get("result", {})
@@ -192,6 +223,13 @@ def probe_task_result(probe_id: str, assignment_id: str):
             result_data=result_payload,
         )
         log.info("task_result_stored", assignment_id=assignment_id, status=status)
+        # Count the task in resource accounting.
+        try:
+            from app.services.accounting_service import AccountingService
+            AccountingService().record_usage(result.tenant_id, probe_id, {"task_count": 1})
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
         # Populate device inventory from network-discovery style results.
         if status == "completed" and isinstance(result_payload, dict):
             _ingest_discovery(result, probe_id, result_payload)

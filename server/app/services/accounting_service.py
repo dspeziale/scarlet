@@ -29,31 +29,30 @@ class AccountingService:
                 tenant_id=tenant_id,
                 probe_id=probe_id,
                 period_date=today,
+                cpu_seconds=0, memory_mb=0, network_in_bytes=0,
+                network_out_bytes=0, disk_mb=0, task_count=0,
             )
             db.session.add(record)
 
-        record.cpu_seconds += float(metrics.get("cpu_seconds", 0))
-        record.memory_mb = max(record.memory_mb, float(metrics.get("memory_mb", 0)))
-        record.network_in_bytes += int(metrics.get("network_in_bytes", 0))
-        record.network_out_bytes += int(metrics.get("network_out_bytes", 0))
-        record.disk_mb = max(record.disk_mb, float(metrics.get("disk_mb", 0)))
-        record.task_count += int(metrics.get("task_count", 0))
+        # Coalesce in case any column is still NULL (older rows / defaults).
+        record.cpu_seconds = (record.cpu_seconds or 0) + float(metrics.get("cpu_seconds", 0))
+        record.memory_mb = max(record.memory_mb or 0, float(metrics.get("memory_mb", 0)))
+        record.network_in_bytes = (record.network_in_bytes or 0) + int(metrics.get("network_in_bytes", 0))
+        record.network_out_bytes = (record.network_out_bytes or 0) + int(metrics.get("network_out_bytes", 0))
+        record.disk_mb = max(record.disk_mb or 0, float(metrics.get("disk_mb", 0)))
+        record.task_count = (record.task_count or 0) + int(metrics.get("task_count", 0))
 
         db.session.flush()
         return record
 
-    def get_daily_summary(self, tenant_id: str, period_date: date) -> list[dict]:
-        stmt = (
-            select(UsageAccounting)
-            .where(
-                UsageAccounting.tenant_id == tenant_id,
-                UsageAccounting.period_date == period_date,
-            )
-        )
+    def get_daily_summary(self, tenant_id: str | None, period_date: date) -> list[dict]:
+        stmt = select(UsageAccounting).where(UsageAccounting.period_date == period_date)
+        if tenant_id is not None:
+            stmt = stmt.where(UsageAccounting.tenant_id == tenant_id)
         rows = db.session.execute(stmt).scalars().all()
         return [r.to_dict() for r in rows]
 
-    def get_monthly_summary(self, tenant_id: str, year: int, month: int) -> dict:
+    def get_monthly_summary(self, tenant_id: str | None, year: int, month: int) -> dict:
         stmt = (
             select(
                 func.sum(UsageAccounting.cpu_seconds).label("total_cpu_seconds"),
@@ -64,11 +63,12 @@ class AccountingService:
                 func.max(UsageAccounting.disk_mb).label("peak_disk_mb"),
             )
             .where(
-                UsageAccounting.tenant_id == tenant_id,
                 func.extract("year", UsageAccounting.period_date) == year,
                 func.extract("month", UsageAccounting.period_date) == month,
             )
         )
+        if tenant_id is not None:
+            stmt = stmt.where(UsageAccounting.tenant_id == tenant_id)
         row = db.session.execute(stmt).one()
         return {
             "tenant_id": tenant_id,
@@ -82,8 +82,10 @@ class AccountingService:
             "peak_disk_mb": float(row.peak_disk_mb or 0),
         }
 
-    def list_usage(self, tenant_id: str, probe_id: str | None = None, limit: int = 30) -> list[UsageAccounting]:
-        stmt = select(UsageAccounting).where(UsageAccounting.tenant_id == tenant_id)
+    def list_usage(self, tenant_id: str | None, probe_id: str | None = None, limit: int = 30) -> list[UsageAccounting]:
+        stmt = select(UsageAccounting)
+        if tenant_id is not None:
+            stmt = stmt.where(UsageAccounting.tenant_id == tenant_id)
         if probe_id:
             stmt = stmt.where(UsageAccounting.probe_id == probe_id)
         stmt = stmt.order_by(UsageAccounting.period_date.desc()).limit(limit)
