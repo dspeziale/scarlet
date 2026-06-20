@@ -19,6 +19,18 @@
   .g-slate  { background: linear-gradient(135deg,#475569,#64748b); }
   #probe-map { height: 360px; border-radius: .5rem; z-index: 0; }
   .chart-box { position: relative; height: 260px; }
+
+  /* Probe detail panel docked above the footer */
+  #probe-panel {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 1040;
+    transform: translateY(100%); transition: transform .25s ease;
+    background: var(--bs-body-bg); border-top: 3px solid #3b82f6;
+    box-shadow: 0 -8px 24px rgba(0,0,0,.18); max-height: 55vh; overflow-y: auto;
+  }
+  #probe-panel.open { transform: translateY(0); }
+  #probe-panel .pp-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap: .5rem 1.5rem; }
+  #probe-panel .pp-item .k { font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; color: var(--bs-secondary-color); }
+  #probe-panel .pp-item .v { font-weight: 600; word-break: break-word; }
 </style>
 {% endblock %}
 
@@ -93,6 +105,18 @@
     </table>
   </div>
 </div>
+
+<!-- Probe detail panel (docked to footer, opened from the map) -->
+<div id="probe-panel">
+  <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
+    <h6 class="mb-0"><i class="bi bi-hdd-network me-2"></i><span id="pp-title">Sonda</span></h6>
+    <div>
+      <a id="pp-edit" class="btn btn-sm btn-outline-secondary me-1" href="/tenant/probes"><i class="bi bi-pencil me-1"></i>Modifica</a>
+      <button class="btn btn-sm btn-outline-danger" onclick="closeProbePanel()"><i class="bi bi-x-lg"></i></button>
+    </div>
+  </div>
+  <div class="p-3"><div class="pp-grid" id="pp-body"></div></div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -126,8 +150,8 @@ function renderMap(probes) {
     const color = p.status === 'online' ? '#10b981' : p.status === 'offline' ? '#64748b' : '#f59e0b';
     const marker = L.circleMarker([p.lat, p.lon], {
       radius: 9, color: '#fff', weight: 2, fillColor: color, fillOpacity: .9
-    }).bindPopup(`<b>${p.name}</b><br>${p.hostname}<br>Stato: ${p.status}` +
-      (p.location ? `<br>${p.location}` : '') + (p.ids_interface ? `<br>IDS: ${p.ids_interface}` : ''));
+    });
+    marker.on('click', () => showProbePanel(p.id));
     _markers.addLayer(marker);
     pts.push([p.lat, p.lon]);
   });
@@ -199,6 +223,43 @@ function renderProbeTable(probes) {
         <td>${p.ids_interface ? `<span class="badge text-bg-info">${p.ids_interface}</span>` : '<span class="badge text-bg-secondary">off</span>'}</td>
         <td>${statusBadge(p.status)}</td>
       </tr>`).join('');
+}
+
+// ── Probe detail panel ───────────────────────────────────────────────────────
+function ppItem(k, v) {
+  return `<div class="pp-item"><div class="k">${k}</div><div class="v">${v == null || v === '' ? '—' : v}</div></div>`;
+}
+function closeProbePanel() { document.getElementById('probe-panel').classList.remove('open'); }
+
+async function showProbePanel(probeId) {
+  const panel = document.getElementById('probe-panel');
+  const body = document.getElementById('pp-body');
+  body.innerHTML = '<div class="text-muted">Loading…</div>';
+  panel.classList.add('open');
+  const r = await fetch(`/api/v1/probes/${probeId}`, { headers: apiHeaders() });
+  if (!r.ok) { body.innerHTML = '<div class="text-danger">Errore nel caricamento.</div>'; return; }
+  const p = await r.json();
+  document.getElementById('pp-title').textContent = p.name || p.hostname;
+  const subnets = (p.subnets || []).join(', ');
+  const ifaces = (p.interfaces || []).map(i => i.name).join(', ');
+  const coords = (p.latitude != null && p.longitude != null) ? `${p.latitude}, ${p.longitude}` : null;
+  body.innerHTML = [
+    ppItem('Stato', `<span class="badge ${p.status==='online'?'text-bg-success':p.status==='offline'?'text-bg-secondary':'text-bg-warning'}">${p.status}</span>`),
+    ppItem('Hostname', p.hostname),
+    ppItem('Indirizzo', p.location),
+    ppItem('Coordinate', coords),
+    ppItem('Referente', p.contact_name),
+    ppItem('Email', p.contact_email),
+    ppItem('Telegram ID', p.telegram_id),
+    ppItem('IDS', p.ids_interface ? `<span class="badge text-bg-info">${p.ids_interface}</span>` : 'off'),
+    ppItem('Subnet', subnets),
+    ppItem('Interfacce', ifaces),
+    ppItem('Piattaforma', [p.platform, p.architecture].filter(Boolean).join(' / ')),
+    ppItem('Agent', p.agent_version),
+    ppItem('Ultimo contatto', p.last_seen ? new Date(p.last_seen).toLocaleString() : null),
+    ppItem('Chiavi', p.key_provisioned ? 'provisioned' : 'no'),
+    ppItem('Note', p.notes),
+  ].join('');
 }
 
 async function loadDashboard() {

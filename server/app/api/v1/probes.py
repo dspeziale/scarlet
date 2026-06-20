@@ -61,6 +61,8 @@ def _record_usage(probe, system: dict | None, delta_seconds: float) -> None:
             "cpu_seconds": (cpu_pct / 100.0) * delta_seconds,
             "memory_mb": mem_used,
             "disk_mb": max(0.0, (disk_total - disk_free) * 1024.0),
+            "network_in_bytes": int(system.get("net_in_bytes", 0) or 0),
+            "network_out_bytes": int(system.get("net_out_bytes", 0) or 0),
         }
         from app.services.accounting_service import AccountingService
         AccountingService().record_usage(probe.tenant_id, probe.id, metrics)

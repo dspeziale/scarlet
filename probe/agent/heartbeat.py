@@ -41,6 +41,7 @@ class HeartbeatWorker(threading.Thread):
         # Tasks run in their own threads so a long scan never blocks heartbeats.
         self._inflight: set = set()
         self._inflight_lock = threading.Lock()
+        self._last_net: tuple[int, int] | None = None  # (bytes_recv, bytes_sent)
 
     def run(self) -> None:
         log.info("heartbeat_started", interval=self._interval)
@@ -56,10 +57,12 @@ class HeartbeatWorker(threading.Thread):
         self._stop.set()
 
     def _beat(self) -> None:
+        system = _system_metrics()
+        system.update(self._net_delta())
         payload = {
             "status": "online",
             "ids_status": self._get_ids_status(),
-            "system": _system_metrics(),
+            "system": system,
         }
         if self._get_network is not None:
             payload["network"] = self._get_network()
@@ -68,6 +71,23 @@ class HeartbeatWorker(threading.Thread):
             log.warning("heartbeat_non_ok", status=resp.status_code)
         else:
             log.debug("heartbeat_sent")
+
+    def _net_delta(self) -> dict:
+        """Bytes received/sent since the previous heartbeat (cumulative diff)."""
+        try:
+            import psutil
+            io = psutil.net_io_counters()
+            cur = (io.bytes_recv, io.bytes_sent)
+        except Exception:
+            return {}
+        prev = self._last_net
+        self._last_net = cur
+        if prev is None:
+            return {"net_in_bytes": 0, "net_out_bytes": 0}
+        return {
+            "net_in_bytes": max(0, cur[0] - prev[0]),
+            "net_out_bytes": max(0, cur[1] - prev[1]),
+        }
 
     def _poll_tasks(self) -> None:
         resp = self._http.get(self._task_url, timeout=10)
