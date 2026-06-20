@@ -283,11 +283,18 @@ class TelemetryService:
                     select(WifiInventory).where(
                         WifiInventory.probe_id == probe_id, WifiInventory.bssid == bssid)
                 ).scalars().first()
+            extra = {k: v for k, v in n.items() if k not in
+                     ("ssid", "bssid", "channel", "encryption", "signal", "frequency", "vendor", "standard")}
             if row:
                 row.ssid = n.get("ssid") or row.ssid
                 row.channel = n.get("channel") if n.get("channel") is not None else row.channel
                 row.encryption = n.get("encryption") or row.encryption
                 row.signal = n.get("signal") if n.get("signal") is not None else row.signal
+                row.frequency = n.get("frequency") if n.get("frequency") is not None else row.frequency
+                row.standard = n.get("standard") or row.standard
+                if n.get("vendor"):
+                    row.vendor = n["vendor"]
+                row.details = {**(row.details or {}), **extra}
                 row.seen_at = datetime.now(timezone.utc)
                 updated += 1
             else:
@@ -295,6 +302,8 @@ class TelemetryService:
                     tenant_id=tenant_id, probe_id=probe_id,
                     ssid=n.get("ssid"), bssid=bssid, channel=n.get("channel"),
                     encryption=n.get("encryption"), signal=n.get("signal"),
+                    frequency=n.get("frequency"), vendor=n.get("vendor"),
+                    standard=n.get("standard"), details=extra,
                 ))
                 added += 1
         db.session.commit()
@@ -312,10 +321,21 @@ class TelemetryService:
                     select(BLEInventory).where(
                         BLEInventory.probe_id == probe_id, BLEInventory.address == addr)
                 ).scalars().first()
+            _COLS = ("address", "name", "manufacturer", "rssi", "tx_power",
+                     "appearance", "device_class", "paired", "uuids")
+            extra = {k: v for k, v in d.items() if k not in _COLS}
             if row:
                 row.name = d.get("name") or row.name
                 row.manufacturer = d.get("manufacturer") or row.manufacturer
                 row.rssi = d.get("rssi") if d.get("rssi") is not None else row.rssi
+                row.tx_power = d.get("tx_power") if d.get("tx_power") is not None else row.tx_power
+                row.appearance = d.get("appearance") or row.appearance
+                row.device_class = d.get("device_class") or row.device_class
+                if d.get("paired") is not None:
+                    row.paired = d.get("paired")
+                if d.get("uuids"):
+                    row.services = d.get("uuids")
+                row.details = {**(row.details or {}), **extra}
                 row.seen_at = datetime.now(timezone.utc)
                 updated += 1
             else:
@@ -323,6 +343,9 @@ class TelemetryService:
                     tenant_id=tenant_id, probe_id=probe_id,
                     address=addr, name=d.get("name"),
                     manufacturer=d.get("manufacturer"), rssi=d.get("rssi"),
+                    tx_power=d.get("tx_power"), appearance=d.get("appearance"),
+                    device_class=d.get("device_class"), paired=d.get("paired"),
+                    services=d.get("uuids") or [], details=extra,
                 ))
                 added += 1
         db.session.commit()

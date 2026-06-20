@@ -3,7 +3,7 @@
 import uuid
 from datetime import date, datetime, timezone
 
-from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, JSON, String
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, JSON, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.extensions import db
@@ -101,8 +101,12 @@ class WifiInventory(db.Model):
     ssid: Mapped[str | None] = mapped_column(String(64))
     bssid: Mapped[str | None] = mapped_column(String(20))
     channel: Mapped[int | None] = mapped_column(Integer)
-    encryption: Mapped[str | None] = mapped_column(String(30))
+    encryption: Mapped[str | None] = mapped_column(String(60))
     signal: Mapped[int | None] = mapped_column(Integer)
+    frequency: Mapped[int | None] = mapped_column(Integer)        # MHz
+    vendor: Mapped[str | None] = mapped_column(String(120))       # OUI vendor
+    standard: Mapped[str | None] = mapped_column(String(40))      # 802.11 a/b/g/n/ac/ax
+    details: Mapped[dict | None] = mapped_column(JSON)            # everything else
     seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, nullable=False)
 
     def to_dict(self) -> dict:
@@ -114,6 +118,11 @@ class WifiInventory(db.Model):
             "channel": self.channel,
             "encryption": self.encryption,
             "signal": self.signal,
+            "frequency": self.frequency,
+            "vendor": self.vendor,
+            "standard": self.standard,
+            "seen_at": self.seen_at.isoformat(),
+            "details": self.details or {},
         }
 
 
@@ -127,6 +136,12 @@ class BLEInventory(db.Model):
     name: Mapped[str | None] = mapped_column(String(120))
     manufacturer: Mapped[str | None] = mapped_column(String(120))
     rssi: Mapped[int | None] = mapped_column(Integer)
+    tx_power: Mapped[int | None] = mapped_column(Integer)
+    appearance: Mapped[str | None] = mapped_column(String(60))
+    device_class: Mapped[str | None] = mapped_column(String(40))
+    paired: Mapped[bool | None] = mapped_column(Boolean)
+    services: Mapped[list | None] = mapped_column(JSON)           # advertised UUIDs
+    details: Mapped[dict | None] = mapped_column(JSON)            # everything else
     seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, nullable=False)
 
     def to_dict(self) -> dict:
@@ -137,6 +152,13 @@ class BLEInventory(db.Model):
             "name": self.name,
             "manufacturer": self.manufacturer,
             "rssi": self.rssi,
+            "tx_power": self.tx_power,
+            "appearance": self.appearance,
+            "device_class": self.device_class,
+            "paired": self.paired,
+            "services": self.services or [],
+            "seen_at": self.seen_at.isoformat(),
+            "details": self.details or {},
         }
 
 

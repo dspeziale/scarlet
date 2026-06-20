@@ -104,6 +104,14 @@ _BSS_RE = re.compile(r"^BSS\s+([0-9a-fA-F:]{17})")
 _SIGNAL_RE = re.compile(r"signal:\s*(-?\d+(?:\.\d+)?)\s*dBm")
 _FREQ_RE = re.compile(r"freq:\s*(\d+)")
 _SSID_RE = re.compile(r"SSID:\s*(.*)")
+_LASTSEEN_RE = re.compile(r"last seen:\s*(\d+)\s*ms")
+_BEACON_RE = re.compile(r"beacon interval:\s*(\d+)")
+_DTIM_RE = re.compile(r"DTIM Period\s*(\d+)")
+_COUNTRY_RE = re.compile(r"Country:\s*([A-Z]{2})")
+_WIDTH_RE = re.compile(r"STA channel width:\s*(.+)")
+_STATIONS_RE = re.compile(r"station count:\s*(\d+)")
+_UTIL_RE = re.compile(r"channel utilisation:\s*(\d+)\s*/\s*(\d+)")
+_MAXRATE_RE = re.compile(r"max(?:imum)? RX.*?(\d+(?:\.\d+)?)\s*Mbps", re.IGNORECASE)
 
 
 def _freq_to_channel(freq: int) -> int | None:
@@ -111,40 +119,105 @@ def _freq_to_channel(freq: int) -> int | None:
         return 1 if freq == 2412 else (freq - 2407) // 5
     if 5000 <= freq <= 5900:
         return (freq - 5000) // 5
+    if 5955 <= freq <= 7115:  # 6 GHz (WiFi 6E)
+        return (freq - 5950) // 5
     return None
 
 
+def _band(freq: int | None) -> str | None:
+    if not freq:
+        return None
+    if freq < 2500:
+        return "2.4 GHz"
+    if freq < 5925:
+        return "5 GHz"
+    return "6 GHz"
+
+
 def parse_iw_scan(output: str) -> list[dict]:
-    """Parse `iw <iface> scan` output into wifi network dicts."""
+    """Parse `iw <iface> scan` output into rich wifi network dicts."""
     if not output:
         return []
     nets: list[dict] = []
     cur: dict | None = None
-    enc_seen = False
+
+    def _finalize(n):
+        if not n:
+            return
+        # Encryption summary
+        rsn, wpa, wep = n.pop("_rsn", None), n.pop("_wpa", None), n.pop("_privacy", False)
+        if rsn:
+            n["encryption"] = rsn
+        elif wpa:
+            n["encryption"] = wpa
+        elif wep:
+            n["encryption"] = "WEP"
+        else:
+            n["encryption"] = "Open"
+        # 802.11 standard from capabilities seen
+        caps = n.pop("_caps", set())
+        n["standard"] = ("802.11ax" if "HE" in caps else "802.11ac" if "VHT" in caps
+                         else "802.11n" if "HT" in caps else "802.11")
+        nets.append(n)
+
     for raw in output.splitlines():
         line = raw.strip()
         m = _BSS_RE.match(line)
         if m:
-            if cur:
-                cur["encryption"] = "WPA/WPA2" if enc_seen else "Open"
-                nets.append(cur)
-            cur = {"bssid": m.group(1).lower(), "ssid": None, "signal": None, "channel": None, "encryption": None}
-            enc_seen = False
+            _finalize(cur)
+            cur = {"bssid": m.group(1).lower(), "ssid": None, "signal": None, "channel": None,
+                   "frequency": None, "band": None, "_caps": set()}
             continue
         if cur is None:
             continue
+
         sm = _SIGNAL_RE.search(line)
         if sm:
             cur["signal"] = int(float(sm.group(1)))
         fm = _FREQ_RE.search(line)
-        if fm and cur["channel"] is None:
-            cur["channel"] = _freq_to_channel(int(fm.group(1)))
+        if fm and cur["frequency"] is None:
+            f = int(fm.group(1))
+            cur["frequency"] = f
+            cur["channel"] = _freq_to_channel(f)
+            cur["band"] = _band(f)
         ssm = _SSID_RE.match(line)
         if ssm:
             cur["ssid"] = ssm.group(1).strip() or None
-        if "RSN:" in line or "WPA:" in line or "Privacy" in line:
-            enc_seen = True
-    if cur:
-        cur["encryption"] = "WPA/WPA2" if enc_seen else "Open"
-        nets.append(cur)
+
+        for rgx, key, conv in (
+            (_LASTSEEN_RE, "last_seen_ms", int), (_BEACON_RE, "beacon_interval", int),
+            (_DTIM_RE, "dtim", int), (_COUNTRY_RE, "country", str),
+            (_WIDTH_RE, "channel_width", str), (_STATIONS_RE, "stations", int),
+        ):
+            mm = rgx.search(line)
+            if mm and key not in cur:
+                cur[key] = conv(mm.group(1).strip())
+        um = _UTIL_RE.search(line)
+        if um:
+            cur["channel_util_pct"] = round(int(um.group(1)) / max(1, int(um.group(2))) * 100)
+
+        # Security / capabilities
+        if line.startswith("RSN:"):
+            cur["_rsn"] = "WPA2"
+        if "Authentication suites:" in line and "_rsn" in cur:
+            if "SAE" in line:
+                cur["_rsn"] = "WPA3"
+            elif "802.1X" in line or "EAP" in line:
+                cur["_rsn"] = "WPA2-Enterprise"
+            elif "PSK" in line:
+                cur["_rsn"] = "WPA2-Personal"
+        if line.startswith("WPA:"):
+            cur["_wpa"] = "WPA"
+        if "Privacy" in line:
+            cur["_privacy"] = True
+        if "HT capabilities" in line or "HT Capabilities" in line:
+            cur["_caps"].add("HT")
+        if "VHT capabilities" in line or "VHT Capabilities" in line:
+            cur["_caps"].add("VHT")
+        if "HE capabilities" in line or "HE Capabilities" in line:
+            cur["_caps"].add("HE")
+        if "WPS:" in line:
+            cur["wps"] = True
+
+    _finalize(cur)
     return [n for n in nets if n.get("bssid")]

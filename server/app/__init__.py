@@ -101,6 +101,20 @@ _SCHEMA_ADDITIONS: dict[str, dict[str, str]] = {
     "device_inventory": {
         "details": "JSON",
     },
+    "wifi_inventory": {
+        "frequency": "INTEGER",
+        "vendor": "VARCHAR(120)",
+        "standard": "VARCHAR(40)",
+        "details": "JSON",
+    },
+    "ble_inventory": {
+        "tx_power": "INTEGER",
+        "appearance": "VARCHAR(60)",
+        "device_class": "VARCHAR(40)",
+        "paired": "BOOLEAN",
+        "services": "JSON",
+        "details": "JSON",
+    },
     "tenants": {
         "notify_enabled": "BOOLEAN",
         "telegram_bot_token": "VARCHAR(120)",

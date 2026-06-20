@@ -23,8 +23,8 @@
   <div class="tab-pane fade" id="tab-wifi">
     <div class="card shadow-sm"><div class="card-body p-0">
       <table class="table table-hover mb-0">
-        <thead class="table-light"><tr><th>SSID</th><th>BSSID</th><th>Canale</th><th>Segnale</th><th>Cifratura</th><th>Visto</th><th></th></tr></thead>
-        <tbody id="wifi-body"><tr><td colspan="7" class="text-center py-3 text-muted">Loading…</td></tr></tbody>
+        <thead class="table-light"><tr><th>SSID</th><th>BSSID</th><th>Banda</th><th>Canale</th><th>Std</th><th>Segnale</th><th>Cifratura</th><th>Visto</th><th></th></tr></thead>
+        <tbody id="wifi-body"><tr><td colspan="9" class="text-center py-3 text-muted">Loading…</td></tr></tbody>
       </table>
     </div></div>
   </div>
@@ -33,8 +33,8 @@
   <div class="tab-pane fade" id="tab-ble">
     <div class="card shadow-sm"><div class="card-body p-0">
       <table class="table table-hover mb-0">
-        <thead class="table-light"><tr><th>Indirizzo</th><th>Nome</th><th>Produttore</th><th>RSSI</th><th>Visto</th><th></th></tr></thead>
-        <tbody id="ble-body"><tr><td colspan="6" class="text-center py-3 text-muted">Loading…</td></tr></tbody>
+        <thead class="table-light"><tr><th>Indirizzo</th><th>Nome</th><th>Produttore</th><th>RSSI</th><th>TxPwr</th><th>Classe</th><th>Visto</th><th></th></tr></thead>
+        <tbody id="ble-body"><tr><td colspan="8" class="text-center py-3 text-muted">Loading…</td></tr></tbody>
       </table>
     </div></div>
   </div>
@@ -62,11 +62,41 @@
     </div>
   </div>
 </div>
+
+<!-- Generic WiFi/BLE detail modal -->
+<div class="modal fade" id="modalTel" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title"><i class="bi bi-info-circle me-2"></i><span id="tel-title"></span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body"><table class="table table-sm"><tbody id="tel-body"></tbody></table></div>
+      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button></div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
 function dt(s) { return s ? new Date(s).toLocaleString() : '—'; }
+let _wifiRows = {}, _bleRows = {};
+
+// Generic detail viewer: flattens all fields (incl. nested details) into a table.
+function showTel(obj, kind) {
+  const flat = {};
+  const walk = (o, prefix) => {
+    Object.entries(o || {}).forEach(([k, v]) => {
+      if (k === 'id' || k === 'probe_id' || k === 'tenant_id') return;
+      if (v && typeof v === 'object' && !Array.isArray(v)) walk(v, prefix + k + '.');
+      else flat[prefix + k] = Array.isArray(v) ? (v.join(', ') || '—') : (v === null || v === '' ? '—' : v);
+    });
+  };
+  walk(obj, '');
+  document.getElementById('tel-title').textContent = kind + ' — ' + (obj.ssid || obj.address || obj.bssid || '');
+  document.getElementById('tel-body').innerHTML = Object.entries(flat)
+    .map(([k, v]) => `<tr><th class="text-muted text-nowrap" style="width:38%">${k}</th><td>${String(v)}</td></tr>`).join('');
+  new bootstrap.Modal(document.getElementById('modalTel')).show();
+}
 
 async function loadDevices() {
   const resp = await fetch(withTenant('/api/v1/telemetry/devices'), { headers: apiHeaders() });
@@ -142,10 +172,19 @@ async function loadWifi() {
   const tbody = document.getElementById('wifi-body');
   if (!resp.ok) { tbody.innerHTML = '<tr><td colspan="6" class="text-danger text-center">Errore</td></tr>'; return; }
   const d = await resp.json();
+  _wifiRows = {}; d.forEach(x => _wifiRows[x.id] = x);
   tbody.innerHTML = d.length === 0
-    ? '<tr><td colspan="7" class="text-center text-muted">Nessuna rete WiFi rilevata. Lancia un task <em>wifi_scan</em>.</td></tr>'
-    : d.map(x => `<tr><td>${x.ssid||'<span class="text-muted">(nascosto)</span>'}</td><td class="font-monospace">${x.bssid||'—'}</td><td>${x.channel??'—'}</td><td>${x.signal!=null?x.signal+' dBm':'—'}</td><td>${x.encryption||'—'}</td><td>${dt(x.seen_at)}</td>
-      <td><button class="btn btn-sm btn-outline-danger py-0 px-1" title="Elimina" onclick="delItem('wifi','${x.id}',loadWifi)"><i class="bi bi-trash"></i></button></td></tr>`).join('');
+    ? '<tr><td colspan="9" class="text-center text-muted">Nessuna rete WiFi rilevata. Lancia un task <em>wifi_scan</em>.</td></tr>'
+    : d.map(x => `<tr>
+        <td><a href="#" onclick="showTel(_wifiRows['${x.id}'],'WiFi');return false;" class="fw-semibold">${x.ssid||'(nascosto)'}</a></td>
+        <td class="font-monospace">${x.bssid||'—'}</td>
+        <td>${(x.details&&x.details.band)||'—'}</td>
+        <td>${x.channel??'—'}</td>
+        <td>${x.standard?x.standard.replace('802.11',''):'—'}</td>
+        <td>${x.signal!=null?x.signal+' dBm':'—'}</td>
+        <td>${x.encryption||'—'}</td>
+        <td>${dt(x.seen_at)}</td>
+        <td><button class="btn btn-sm btn-outline-danger py-0 px-1" title="Elimina" onclick="delItem('wifi','${x.id}',loadWifi)"><i class="bi bi-trash"></i></button></td></tr>`).join('');
 }
 
 async function loadBle() {
@@ -153,10 +192,15 @@ async function loadBle() {
   const tbody = document.getElementById('ble-body');
   if (!resp.ok) { tbody.innerHTML = '<tr><td colspan="5" class="text-danger text-center">Errore</td></tr>'; return; }
   const d = await resp.json();
+  _bleRows = {}; d.forEach(x => _bleRows[x.id] = x);
   tbody.innerHTML = d.length === 0
-    ? '<tr><td colspan="6" class="text-center text-muted">Nessun dispositivo BLE rilevato. Lancia un task <em>ble_scan</em>.</td></tr>'
-    : d.map(x => `<tr><td class="font-monospace">${x.address||'—'}</td><td>${x.name||'—'}</td><td>${x.manufacturer||'—'}</td><td>${x.rssi!=null?x.rssi:'—'}</td><td>${dt(x.seen_at)}</td>
-      <td><button class="btn btn-sm btn-outline-danger py-0 px-1" title="Elimina" onclick="delItem('ble','${x.id}',loadBle)"><i class="bi bi-trash"></i></button></td></tr>`).join('');
+    ? '<tr><td colspan="8" class="text-center text-muted">Nessun dispositivo BLE rilevato. Lancia un task <em>ble_scan</em>.</td></tr>'
+    : d.map(x => `<tr>
+        <td class="font-monospace"><a href="#" onclick="showTel(_bleRows['${x.id}'],'BLE');return false;">${x.address||'—'}</a></td>
+        <td>${x.name||'—'}</td><td>${x.manufacturer||'—'}</td>
+        <td>${x.rssi!=null?x.rssi:'—'}</td><td>${x.tx_power!=null?x.tx_power:'—'}</td>
+        <td>${x.device_class||'—'}</td><td>${dt(x.seen_at)}</td>
+        <td><button class="btn btn-sm btn-outline-danger py-0 px-1" title="Elimina" onclick="delItem('ble','${x.id}',loadBle)"><i class="bi bi-trash"></i></button></td></tr>`).join('');
 }
 
 loadDevices(); loadWifi(); loadBle();

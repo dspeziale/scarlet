@@ -62,6 +62,23 @@ structlog.configure(
 log = structlog.get_logger("agent.main")
 
 
+# Common Bluetooth SIG company identifiers (subset) for manufacturer naming.
+_BLE_COMPANIES = {
+    "0x004c": "Apple", "0x0006": "Microsoft", "0x00e0": "Google",
+    "0x0075": "Samsung", "0x0157": "Huawei", "0x038f": "Xiaomi",
+    "0x0001": "Ericsson", "0x000f": "Broadcom", "0x0059": "Nordic Semiconductor",
+    "0x004f": "Garmin", "0x0087": "Garmin", "0x00d2": "Polar",
+    "0x0171": "Amazon", "0x015d": "Fitbit", "0x0822": "Adafruit",
+    "0x05a7": "Sonos", "0x004e": "Bose", "0x0181": "Logitech",
+}
+
+
+def _ble_company(key: str) -> str | None:
+    if not key:
+        return None
+    return _BLE_COMPANIES.get(key.strip().lower())
+
+
 def _timing(payload: dict) -> str:
     """nmap timing template flag, constrained to T2..T5 (default T4)."""
     t = str(payload.get("timing", "T4")).upper().lstrip("-")
@@ -228,16 +245,16 @@ class ProbeAgent:
             timeout=duration + 15,
         )
 
-        # 3. Enumerate discovered devices.
+        # 3. Enumerate discovered devices, then pull full info for each.
         rc, dev_out, dev_err = self._run(["bluetoothctl", "devices"], timeout=15)
         devices = []
         for line in dev_out.splitlines():
             parts = line.strip().split(" ", 2)
             if len(parts) >= 2 and parts[0] == "Device":
-                devices.append({
-                    "address": parts[1],
-                    "name": parts[2] if len(parts) > 2 else None,
-                })
+                addr = parts[1]
+                dev = {"address": addr, "name": parts[2] if len(parts) > 2 else None}
+                dev.update(self._ble_info(addr))
+                devices.append(dev)
 
         return {
             "status": "ok",
@@ -246,6 +263,52 @@ class ProbeAgent:
             "count": len(devices),
             "devices": devices,
         }
+
+    def _ble_info(self, address: str) -> dict:
+        """Parse `bluetoothctl info <mac>` into a rich attribute dict."""
+        rc, out, _ = self._run(["bluetoothctl", "info", address], timeout=8)
+        if rc != 0 or not out:
+            return {}
+        info: dict = {"uuids": []}
+        for raw in out.splitlines():
+            line = raw.strip()
+            if ":" not in line:
+                continue
+            key, _, val = line.partition(":")
+            key, val = key.strip(), val.strip()
+            kl = key.lower()
+            if kl == "name":
+                info["name"] = val
+            elif kl == "alias":
+                info["alias"] = val
+            elif kl == "class":
+                info["device_class"] = val
+            elif kl == "icon":
+                info["icon"] = val
+            elif kl == "appearance":
+                info["appearance"] = val
+            elif kl == "paired":
+                info["paired"] = (val.lower() == "yes")
+            elif kl == "bonded":
+                info["bonded"] = (val.lower() == "yes")
+            elif kl == "trusted":
+                info["trusted"] = (val.lower() == "yes")
+            elif kl == "connected":
+                info["connected"] = (val.lower() == "yes")
+            elif kl == "rssi":
+                try: info["rssi"] = int(val)
+                except ValueError: pass
+            elif kl == "txpower":
+                try: info["tx_power"] = int(val)
+                except ValueError: pass
+            elif kl == "uuid":
+                info["uuids"].append(val)
+            elif kl.startswith("manufacturerdata key"):
+                info["manufacturer_id"] = val
+                info["manufacturer"] = _ble_company(val)
+            elif kl == "modalias":
+                info["modalias"] = val
+        return info
 
     def _traffic_capture(self, interface: str, duration: int,
                          save_pcap: bool = False, max_packets: int = 0) -> dict:
