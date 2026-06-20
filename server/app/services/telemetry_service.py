@@ -137,9 +137,11 @@ class TelemetryService:
         db.session.commit()
         return created
 
-    def list_devices(self, tenant_id: str, probe_id: str | None = None, limit: int = 100) -> list[DeviceInventory]:
+    def list_devices(self, tenant_id: str | None, probe_id: str | None = None, limit: int = 100) -> list[DeviceInventory]:
         from sqlalchemy import select
-        stmt = select(DeviceInventory).where(DeviceInventory.tenant_id == tenant_id)
+        stmt = select(DeviceInventory)
+        if tenant_id is not None:  # None = superadmin, all tenants
+            stmt = stmt.where(DeviceInventory.tenant_id == tenant_id)
         if probe_id:
             stmt = stmt.where(DeviceInventory.probe_id == probe_id)
         stmt = stmt.order_by(DeviceInventory.last_seen.desc()).limit(limit)
@@ -147,16 +149,20 @@ class TelemetryService:
 
     # ── WiFi / BLE listing + upsert ──────────────────────────────────────────
 
-    def list_wifi(self, tenant_id: str, probe_id: str | None = None, limit: int = 200) -> list[WifiInventory]:
+    def list_wifi(self, tenant_id: str | None, probe_id: str | None = None, limit: int = 200) -> list[WifiInventory]:
         from sqlalchemy import select
-        stmt = select(WifiInventory).where(WifiInventory.tenant_id == tenant_id)
+        stmt = select(WifiInventory)
+        if tenant_id is not None:
+            stmt = stmt.where(WifiInventory.tenant_id == tenant_id)
         if probe_id:
             stmt = stmt.where(WifiInventory.probe_id == probe_id)
         return list(db.session.execute(stmt.order_by(WifiInventory.seen_at.desc()).limit(limit)).scalars())
 
-    def list_ble(self, tenant_id: str, probe_id: str | None = None, limit: int = 200) -> list[BLEInventory]:
+    def list_ble(self, tenant_id: str | None, probe_id: str | None = None, limit: int = 200) -> list[BLEInventory]:
         from sqlalchemy import select
-        stmt = select(BLEInventory).where(BLEInventory.tenant_id == tenant_id)
+        stmt = select(BLEInventory)
+        if tenant_id is not None:
+            stmt = stmt.where(BLEInventory.tenant_id == tenant_id)
         if probe_id:
             stmt = stmt.where(BLEInventory.probe_id == probe_id)
         return list(db.session.execute(stmt.order_by(BLEInventory.seen_at.desc()).limit(limit)).scalars())
