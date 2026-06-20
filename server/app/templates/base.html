@@ -317,6 +317,7 @@ async function loadCurrentUser() {
   const resp = await fetch('/api/v1/auth/me', { headers: apiHeaders() });
   if (!resp.ok) { window.location = '/login'; return; }
   const user = await resp.json();
+  window.IS_SUPERADMIN = !!user.is_superadmin;
   document.getElementById('nav-username').textContent = user.username || user.email;
 
   // Active-tenant indicator

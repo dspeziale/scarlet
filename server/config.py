@@ -50,8 +50,9 @@ class Config:
         "style-src": ["'self'", "cdn.jsdelivr.net", "unpkg.com", "fonts.googleapis.com", "'unsafe-inline'"],
         # OpenStreetMap raster tiles for the probe map.
         "img-src": ["'self'", "data:", "cdn.jsdelivr.net", "unpkg.com",
-                    "*.tile.openstreetmap.org", "*.basemaps.cartocdn.com"],
-        "font-src": ["'self'", "cdn.jsdelivr.net", "fonts.gstatic.com"],
+                    "*.tile.openstreetmap.org", "*.basemaps.cartocdn.com",
+                    "vercel.live", "vercel.com"],
+        "font-src": ["'self'", "cdn.jsdelivr.net", "fonts.gstatic.com", "vercel.live"],
         # connect-src governs XHR/fetch and devtools source-map (.map) requests.
         "connect-src": ["'self'", "cdn.jsdelivr.net", "unpkg.com", "vercel.live"],
         # frame-src: Vercel live-feedback iframe (preview deployments only).

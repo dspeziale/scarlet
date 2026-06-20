@@ -38,6 +38,9 @@ class HeartbeatWorker(threading.Thread):
         self._task_handler = task_handler
         self._get_network = get_network
         self._stop = threading.Event()
+        # Tasks run in their own threads so a long scan never blocks heartbeats.
+        self._inflight: set = set()
+        self._inflight_lock = threading.Lock()
 
     def run(self) -> None:
         log.info("heartbeat_started", interval=self._interval)
@@ -68,13 +71,30 @@ class HeartbeatWorker(threading.Thread):
 
     def _poll_tasks(self) -> None:
         resp = self._http.get(self._task_url, timeout=10)
-        if resp.status_code == 200:
-            tasks = resp.json().get("tasks", [])
-            for task in tasks:
-                try:
-                    self._task_handler(task)
-                except Exception as exc:
-                    log.error("task_handler_error", task_id=task.get("id"), error=str(exc))
+        if resp.status_code != 200:
+            return
+        tasks = resp.json().get("tasks", [])
+        for task in tasks:
+            task_id = task.get("id")
+            # Skip tasks already running — the server keeps listing them as
+            # pending until we submit a result, so without this they'd re-run.
+            with self._inflight_lock:
+                if task_id in self._inflight:
+                    continue
+                self._inflight.add(task_id)
+            threading.Thread(
+                target=self._run_task, args=(task,), name=f"task-{task_id}", daemon=True
+            ).start()
+
+    def _run_task(self, task: dict) -> None:
+        task_id = task.get("id")
+        try:
+            self._task_handler(task)
+        except Exception as exc:
+            log.error("task_handler_error", task_id=task_id, error=str(exc))
+        finally:
+            with self._inflight_lock:
+                self._inflight.discard(task_id)
 
 
 def _system_metrics() -> dict:

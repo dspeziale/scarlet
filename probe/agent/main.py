@@ -178,14 +178,14 @@ class ProbeAgent:
 
     # ── Task helpers ──────────────────────────────────────────────────────
 
-    def _run(self, cmd: list[str], timeout: int = 60) -> tuple[int, str, str]:
+    def _run(self, cmd: list[str], timeout: int = 600) -> tuple[int, str, str]:
         """Run a subprocess and return (returncode, stdout, stderr)."""
         proc = subprocess.run(
             cmd, capture_output=True, text=True, timeout=timeout
         )
         return proc.returncode, proc.stdout, proc.stderr
 
-    def _nmap(self, args: list[str], timeout: int = 120) -> dict:
+    def _nmap(self, args: list[str], timeout: int = 1800) -> dict:
         """Run nmap and return structured result."""
         rc, stdout, stderr = self._run(["nmap", "-oN", "-"] + args, timeout=timeout)
         return {
@@ -314,10 +314,11 @@ class ProbeAgent:
                 if not target:
                     result = {"status": "error", "error": "target required"}
                 else:
-                    timeout_sec = int(payload.get("timeout", 60))
+                    # Big default so wide subnet sweeps don't time out. Override via payload.timeout (seconds).
+                    timeout_sec = int(payload.get("timeout", 1800))
                     result = self._nmap(
                         ["-sn", "--host-timeout", f"{timeout_sec}s", target],
-                        timeout=timeout_sec + 10,
+                        timeout=timeout_sec + 60,
                     )
 
             elif task_type == "service_detection":
@@ -326,9 +327,10 @@ class ProbeAgent:
                 if not target:
                     result = {"status": "error", "error": "target required"}
                 else:
+                    timeout_sec = int(payload.get("timeout", 3600))
                     result = self._nmap(
                         ["-sV", "--open", "-p", str(ports), target],
-                        timeout=180,
+                        timeout=timeout_sec,
                     )
 
             elif task_type == "os_fingerprinting":
@@ -337,7 +339,8 @@ class ProbeAgent:
                     result = {"status": "error", "error": "target required"}
                 else:
                     # -O requires root; fall back to -A (aggressive, works without root)
-                    result = self._nmap(["-A", "--open", target], timeout=120)
+                    timeout_sec = int(payload.get("timeout", 2400))
+                    result = self._nmap(["-A", "--open", target], timeout=timeout_sec)
 
             elif task_type == "snmp_inventory":
                 target = payload.get("target", "")
@@ -347,7 +350,7 @@ class ProbeAgent:
                 else:
                     rc, stdout, stderr = self._run(
                         ["snmpwalk", "-v2c", "-c", community, target],
-                        timeout=30,
+                        timeout=int(payload.get("timeout", 300)),
                     )
                     result = {
                         "status": "ok" if rc == 0 else "error",
@@ -389,7 +392,7 @@ class ProbeAgent:
 
             elif task_type == "custom_script":
                 script = payload.get("script", "")
-                timeout_sec = int(payload.get("timeout", 30))
+                timeout_sec = int(payload.get("timeout", 600))
                 if not script:
                     result = {"status": "error", "error": "script required"}
                 else:
@@ -418,7 +421,7 @@ class ProbeAgent:
                     result = {"status": "error", "error": "target required"}
                 else:
                     rc, stdout, stderr = self._run(
-                        ["ping", "-c", str(count), target], timeout=30
+                        ["ping", "-c", str(count), target], timeout=max(60, count * 2 + 30)
                     )
                     result = {
                         "status": "ok" if rc == 0 else "error",

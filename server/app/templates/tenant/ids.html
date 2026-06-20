@@ -190,21 +190,34 @@ document.getElementById('btn-add-rule').addEventListener('click', async () => {
 document.getElementById('btn-import-rules').addEventListener('click', async () => {
   const url = document.getElementById('r-url').value.trim();
   const res = document.getElementById('import-result');
-  if (!url) { return; }
+  const showErr = (m) => { res.className = 'alert alert-danger py-1 px-2 small d-block'; res.textContent = m; };
+  if (!url) { showErr('Inserisci un URL .rules.'); return; }
+
+  // SuperAdmin must pick a tenant — rules belong to a tenant catalog.
+  if (window.IS_SUPERADMIN && !selectedTenantId()) {
+    showErr('Seleziona un tenant dal menu in alto a destra prima di importare.');
+    return;
+  }
   const payload = { url };
   if (selectedTenantId()) payload.tenant_id = selectedTenantId();
+
   const btn = document.getElementById('btn-import-rules');
   btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Scarico…';
-  const r = await fetch('/api/v1/ids/rules/import', { method: 'POST', headers: apiHeaders(), body: JSON.stringify(payload) });
-  const d = await r.json();
-  btn.disabled = false; btn.innerHTML = '<i class="bi bi-download me-1"></i>Importa nel catalogo';
-  if (r.ok) {
-    res.className = 'alert alert-success py-1 px-2 small d-block';
-    res.textContent = `Importate ${d.added} regole (${d.skipped} già presenti, ${d.total} totali nel file).`;
-    if (_probeId) loadRules();
-  } else {
-    res.className = 'alert alert-danger py-1 px-2 small d-block';
-    res.textContent = d.message || 'Errore importazione.';
+  try {
+    const r = await fetch('/api/v1/ids/rules/import', { method: 'POST', headers: apiHeaders(), body: JSON.stringify(payload) });
+    let d = {};
+    try { d = await r.json(); } catch (e) {}
+    if (r.ok) {
+      res.className = 'alert alert-success py-1 px-2 small d-block';
+      res.textContent = `Importate ${d.added} regole (${d.skipped} già presenti, ${d.total} totali nel file).`;
+      if (_probeId) loadRules();
+    } else {
+      showErr(`(${r.status}) ${d.message || 'Errore importazione.'}`);
+    }
+  } catch (e) {
+    showErr('Errore di rete: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.innerHTML = '<i class="bi bi-download me-1"></i>Importa nel catalogo';
   }
 });
 
