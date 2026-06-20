@@ -29,41 +29,46 @@
 </div>
 
 <div class="row g-3">
-  <!-- Live terminals (tabs) -->
-  <div class="col-lg-7">
-    <div class="card shadow-sm h-100">
+  <div class="col-12">
+    <div class="card shadow-sm">
       <div class="card-header pb-0">
         <ul class="nav nav-tabs card-header-tabs" role="tablist">
           <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-alerts" type="button"><i class="bi bi-shield-exclamation me-1"></i>Pacchetti IDS <span class="badge text-bg-danger ms-1" id="alert-count">0</span></button></li>
           <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-traffic" type="button"><i class="bi bi-ethernet me-1"></i>Traffico scheda</button></li>
+          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-rules" type="button"><i class="bi bi-shield-lock me-1"></i>Regole sonda</button></li>
         </ul>
       </div>
       <div class="card-body">
         <div class="tab-content">
+          <!-- IDS alerts -->
           <div class="tab-pane fade show active" id="tab-alerts">
             <div id="ids-term">Seleziona una sonda con IDS attivo…</div>
           </div>
+
+          <!-- Live traffic -->
           <div class="tab-pane fade" id="tab-traffic">
-            <div class="d-flex gap-2 align-items-center mb-2">
+            <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
               <button class="btn btn-sm btn-success" id="btn-sniff-start"><i class="bi bi-play-fill me-1"></i>Avvia cattura</button>
               <button class="btn btn-sm btn-outline-danger" id="btn-sniff-stop" disabled><i class="bi bi-stop-fill me-1"></i>Ferma</button>
+              <div class="form-check ms-2">
+                <input class="form-check-input" type="checkbox" id="sniff-pcap">
+                <label class="form-check-label small" for="sniff-pcap">Salva PCAP (scaricabile)</label>
+              </div>
               <span class="small text-muted" id="sniff-state">tcpdump su tutto il traffico della scheda</span>
             </div>
             <div id="traffic-term">Avvia la cattura per vedere il traffico live…</div>
+            <div class="mt-2 d-flex justify-content-between align-items-center">
+              <h6 class="text-muted small mb-0"><i class="bi bi-file-earmark-binary me-1"></i>PCAP salvati</h6>
+              <button class="btn btn-sm btn-outline-secondary py-0 px-1" id="btn-refresh-pcaps"><i class="bi bi-arrow-clockwise"></i></button>
+            </div>
+            <ul class="list-group list-group-flush small" id="pcap-list"><li class="list-group-item text-muted px-0">—</li></ul>
           </div>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <!-- Rules -->
-  <div class="col-lg-5">
-    <div class="card shadow-sm h-100">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <h6 class="mb-0"><i class="bi bi-shield-lock me-2"></i>Regole attive sulla sonda</h6>
-        <button class="btn btn-sm btn-success" id="btn-save-rules"><i class="bi bi-send me-1"></i>Attiva selezione</button>
-      </div>
-      <div class="card-body">
+          <!-- Rules -->
+          <div class="tab-pane fade" id="tab-rules">
+        <div class="d-flex justify-content-end mb-2">
+          <button class="btn btn-sm btn-success" id="btn-save-rules"><i class="bi bi-send me-1"></i>Attiva selezione</button>
+        </div>
         <div id="rules-result" class="d-none alert py-1 px-2 small"></div>
         <div class="rule-list mb-3" id="rule-list"><div class="text-muted">Seleziona una sonda…</div></div>
         <hr>
@@ -95,10 +100,12 @@
         <input class="form-control form-control-sm mb-1" id="r-msg" placeholder="Descrizione (msg)">
         <textarea class="form-control form-control-sm mb-1" id="r-text" rows="2" placeholder='alert tcp any any -> any any (msg:"..."; sid:1000001;)'></textarea>
         <button class="btn btn-sm btn-outline-primary" id="btn-add-rule">Aggiungi al catalogo</button>
-      </div>
-    </div>
-  </div>
-</div>
+          </div><!-- /#tab-rules -->
+        </div><!-- /.tab-content -->
+      </div><!-- /.card-body -->
+    </div><!-- /.card -->
+  </div><!-- /.col-12 -->
+</div><!-- /.row -->
 {% endblock %}
 
 {% block extra_js %}
@@ -128,7 +135,7 @@ document.getElementById('probe-select').addEventListener('change', function () {
   const ids = opt && opt.dataset.ids;
   document.getElementById('ids-state').textContent = ids ? 'IDS: '+ids : 'IDS non attivo';
   document.getElementById('ids-state').className = 'badge ' + (ids ? 'text-bg-success' : 'text-bg-secondary');
-  if (_probeId) { loadRules(); pollAlerts(); }
+  if (_probeId) { loadRules(); pollAlerts(); loadPcaps(); }
 });
 
 // ── Live alerts ─────────────────────────────────────────────────────────────
@@ -295,14 +302,51 @@ async function startSniff() {
   document.getElementById('btn-sniff-start').disabled = true;
   document.getElementById('btn-sniff-stop').disabled = false;
   document.getElementById('sniff-state').textContent = `cattura su ${iface} (la sonda esegue al prossimo poll)…`;
+  const savePcap = document.getElementById('sniff-pcap').checked;
+  if (savePcap) document.getElementById('sniff-state').textContent += ' — PCAP in salvataggio';
   await fetch('/api/v1/tasks/dispatch', {
     method: 'POST', headers: apiHeaders(),
     body: JSON.stringify({ probe_id: _probeId, task_type: 'traffic_capture',
-      parameters: { interface: iface, duration: 300 }, name: 'Cattura traffico' }),
+      parameters: { interface: iface, duration: 300, save_pcap: savePcap, max_packets: 2000 },
+      name: 'Cattura traffico' }),
   });
   pollTraffic();
   _sniffTimer = setInterval(pollTraffic, 2000);
+  if (savePcap) setTimeout(loadPcaps, 8000);
 }
+
+// ── PCAP captures ─────────────────────────────────────────────────────────────
+function fmtBytes(b) { return b > 1e6 ? (b/1e6).toFixed(1)+' MB' : b > 1e3 ? (b/1e3).toFixed(1)+' KB' : b+' B'; }
+async function loadPcaps() {
+  const ul = document.getElementById('pcap-list');
+  if (!_probeId) { ul.innerHTML = '<li class="list-group-item text-muted px-0">Seleziona una sonda…</li>'; return; }
+  const r = await fetch(`/api/v1/probes/${_probeId}/pcaps`, { headers: apiHeaders() });
+  if (!r.ok) { ul.innerHTML = '<li class="list-group-item text-danger px-0">Errore</li>'; return; }
+  const caps = await r.json();
+  ul.innerHTML = caps.length === 0
+    ? '<li class="list-group-item text-muted px-0">Nessun PCAP salvato</li>'
+    : caps.map(c => `<li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-file-earmark-binary me-1"></i>${esc(c.filename)} <span class="text-muted">(${fmtBytes(c.size_bytes)}${c.packets?', '+c.packets+' pkt':''})</span></span>
+        <span>
+          <a class="btn btn-sm btn-outline-primary py-0 px-1 me-1" href="#" onclick="downloadPcap('${c.id}','${esc(c.filename)}');return false;"><i class="bi bi-download"></i></a>
+          <button class="btn btn-sm btn-outline-danger py-0 px-1" onclick="deletePcap('${c.id}')"><i class="bi bi-trash"></i></button>
+        </span></li>`).join('');
+}
+async function downloadPcap(id, name) {
+  const r = await fetch(`/api/v1/pcaps/${id}/download`, { headers: apiHeaders() });
+  if (!r.ok) { alert('Download non riuscito'); return; }
+  const blob = await r.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name || 'capture.pcap';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(a.href);
+}
+async function deletePcap(id) {
+  if (!confirm('Eliminare questo PCAP?')) return;
+  await fetch(`/api/v1/pcaps/${id}`, { method: 'DELETE', headers: apiHeaders() });
+  loadPcaps();
+}
+document.getElementById('btn-refresh-pcaps').addEventListener('click', loadPcaps);
 
 function stopSniff() {
   _sniffing = false;

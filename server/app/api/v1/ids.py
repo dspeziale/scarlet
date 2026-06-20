@@ -87,6 +87,65 @@ def ids_list_traffic(probe_id: str):
     return jsonify({"lines": [r.to_dict() for r in rows]}), 200
 
 
+@api_v1_bp.post("/probes/<probe_id>/traffic/pcap")
+def ids_upload_pcap(probe_id: str):
+    """Probe uploads a captured pcap (raw bytes) for later download."""
+    probe = _probe_or_none(probe_id)
+    if not probe:
+        return jsonify(error="not_found"), 404
+    data = request.get_data(cache=False)
+    if not data:
+        return jsonify(error="empty"), 400
+    from datetime import datetime, timezone
+    filename = request.headers.get("X-Filename") or f"capture-{datetime.now(timezone.utc):%Y%m%d-%H%M%S}.pcap"
+    try:
+        packets = int(request.headers.get("X-Packet-Count", "")) if request.headers.get("X-Packet-Count") else None
+    except ValueError:
+        packets = None
+    try:
+        cap = _svc.save_pcap(probe.tenant_id, probe_id, filename, data, packets)
+    except Exception as exc:
+        db.session.rollback()
+        log.warning("pcap_save_failed", probe_id=probe_id, error=str(exc))
+        return jsonify(error="save_failed"), 200
+    return jsonify(cap.to_dict()), 201
+
+
+@api_v1_bp.get("/probes/<probe_id>/pcaps")
+@require_role(SUPERADMIN, TENANT_ADMIN, OPERATOR)
+def ids_list_pcaps(probe_id: str):
+    probe = _probe_or_none(probe_id)
+    if not probe:
+        return jsonify(error="not_found"), 404
+    if not _check_probe_access(probe):
+        return jsonify(error="forbidden"), 403
+    tid = None if g.current_user.is_superadmin else g.current_user.tenant_id
+    return jsonify([c.to_dict() for c in _svc.list_pcaps(tid, probe_id)]), 200
+
+
+@api_v1_bp.get("/pcaps/<pcap_id>/download")
+@require_role(SUPERADMIN, TENANT_ADMIN, OPERATOR)
+def ids_download_pcap(pcap_id: str):
+    from flask import Response
+    tid = None if g.current_user.is_superadmin else g.current_user.tenant_id
+    cap = _svc.get_pcap(pcap_id, tid)
+    if not cap:
+        return jsonify(error="not_found"), 404
+    return Response(
+        cap.data, mimetype="application/vnd.tcpdump.pcap",
+        headers={"Content-Disposition": f'attachment; filename="{cap.filename}"'},
+    )
+
+
+@api_v1_bp.delete("/pcaps/<pcap_id>")
+@require_role(SUPERADMIN, TENANT_ADMIN, OPERATOR)
+def ids_delete_pcap(pcap_id: str):
+    tid = None if g.current_user.is_superadmin else g.current_user.tenant_id
+    if not _svc.delete_pcap(pcap_id, tid):
+        return jsonify(error="not_found"), 404
+    return jsonify(message="deleted"), 200
+
+
 @api_v1_bp.get("/probes/<probe_id>/ids/rules")
 def ids_probe_rules(probe_id: str):
     probe = _probe_or_none(probe_id)

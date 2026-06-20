@@ -146,6 +146,50 @@ class IdsService:
         ).order_by(TrafficLine.id.asc()).limit(limit)
         return list(db.session.execute(stmt).scalars())
 
+    # ── PCAP captures ────────────────────────────────────────────────────────
+
+    def save_pcap(self, tenant_id: str, probe_id: str, filename: str, data: bytes, packets: int | None) -> "PcapCapture":
+        from app.models.ids import PcapCapture
+        cap = PcapCapture(
+            tenant_id=tenant_id, probe_id=probe_id, filename=filename,
+            size_bytes=len(data), packets=packets, data=data,
+        )
+        db.session.add(cap)
+        db.session.commit()
+        # keep only the most recent 20 per probe
+        from app.models.ids import PcapCapture as _PC
+        ids = db.session.execute(
+            select(_PC.id).where(_PC.probe_id == probe_id).order_by(_PC.created_at.desc())
+        ).scalars().all()
+        if len(ids) > 20:
+            db.session.execute(delete(_PC).where(_PC.id.in_(ids[20:])))
+            db.session.commit()
+        return cap
+
+    def list_pcaps(self, tenant_id: str | None, probe_id: str | None = None) -> list:
+        from app.models.ids import PcapCapture
+        stmt = select(PcapCapture)
+        if tenant_id is not None:
+            stmt = stmt.where(PcapCapture.tenant_id == tenant_id)
+        if probe_id:
+            stmt = stmt.where(PcapCapture.probe_id == probe_id)
+        return list(db.session.execute(stmt.order_by(PcapCapture.created_at.desc()).limit(50)).scalars())
+
+    def get_pcap(self, pcap_id: str, tenant_id: str | None):
+        from app.models.ids import PcapCapture
+        cap = db.session.get(PcapCapture, pcap_id)
+        if not cap or (tenant_id is not None and cap.tenant_id != tenant_id):
+            return None
+        return cap
+
+    def delete_pcap(self, pcap_id: str, tenant_id: str | None) -> bool:
+        cap = self.get_pcap(pcap_id, tenant_id)
+        if not cap:
+            return False
+        db.session.delete(cap)
+        db.session.commit()
+        return True
+
     # ── Rule catalog ─────────────────────────────────────────────────────────
 
     def list_rules(self, tenant_id: str) -> list[IdsRule]:

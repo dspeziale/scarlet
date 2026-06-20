@@ -247,15 +247,26 @@ class ProbeAgent:
             "devices": devices,
         }
 
-    def _traffic_capture(self, interface: str, duration: int) -> dict:
+    def _traffic_capture(self, interface: str, duration: int,
+                         save_pcap: bool = False, max_packets: int = 0) -> dict:
         """
         Live-capture all traffic on `interface` with tcpdump for `duration`
         seconds, streaming batches of lines to the server as they arrive.
+        If save_pcap, also write a .pcap file and upload it at the end.
         """
         import select as _select
         iface = interface or "any"
         url = f"{cfg.SERVER_URL}/api/v1/probes/{self.probe_id}/traffic"
+
+        pcap_path = None
         cmd = ["tcpdump", "-nn", "-l", "-i", iface]
+        if save_pcap:
+            pcap_path = f"/tmp/capture-{int(time.time())}.pcap"
+            # --print: print parsed packets to stdout even while writing the pcap
+            cmd = ["tcpdump", "-nn", "--print", "-w", pcap_path, "-i", iface]
+            if max_packets > 0:
+                cmd += ["-c", str(max_packets)]
+
         try:
             proc = subprocess.Popen(
                 cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -302,7 +313,40 @@ class ProbeAgent:
                     proc.kill()
                 except Exception:
                     pass
-        return {"status": "ok", "interface": iface, "lines_captured": sent}
+
+        result = {"status": "ok", "interface": iface, "lines_captured": sent}
+        if save_pcap and pcap_path:
+            result.update(self._upload_pcap(pcap_path, iface, sent))
+        return result
+
+    def _upload_pcap(self, pcap_path: str, iface: str, packets: int) -> dict:
+        """Read the written pcap and upload it to the server (bounded for serverless)."""
+        from pathlib import Path
+        p = Path(pcap_path)
+        try:
+            if not p.exists() or p.stat().st_size == 0:
+                return {"pcap_saved": False, "pcap_error": "no packets captured"}
+            data = p.read_bytes()
+            # Vercel serverless limits request bodies (~4.5MB); refuse larger uploads.
+            if len(data) > 4_400_000:
+                return {"pcap_saved": False,
+                        "pcap_error": f"pcap too large ({len(data)//1024} KB) — riduci durata o numero pacchetti"}
+            fname = f"capture-{iface}-{int(time.time())}.pcap"
+            self._http.post(
+                f"{cfg.SERVER_URL}/api/v1/probes/{self.probe_id}/traffic/pcap",
+                content=data,
+                headers={"Content-Type": "application/octet-stream",
+                         "X-Filename": fname, "X-Packet-Count": str(packets)},
+                timeout=60,
+            )
+            return {"pcap_saved": True, "pcap_bytes": len(data), "pcap_filename": fname}
+        except Exception as exc:
+            return {"pcap_saved": False, "pcap_error": str(exc)}
+        finally:
+            try:
+                p.unlink(missing_ok=True)
+            except Exception:
+                pass
 
     def _handle_task(self, task: dict) -> None:
         task_type = task.get("type")
@@ -482,7 +526,11 @@ class ProbeAgent:
             elif task_type == "traffic_capture":
                 interface = payload.get("interface") or self._selected_interface or cfg.DEFAULT_INTERFACE
                 duration = int(payload.get("duration", 120))
-                result = self._traffic_capture(interface, duration)
+                result = self._traffic_capture(
+                    interface, duration,
+                    save_pcap=bool(payload.get("save_pcap", False)),
+                    max_packets=int(payload.get("max_packets", 2000)),
+                )
 
             elif task_type == "ping":
                 target = payload.get("target", "")

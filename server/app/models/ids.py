@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, LargeBinary, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.extensions import db
@@ -64,6 +64,28 @@ class TrafficLine(db.Model):
 
     def to_dict(self) -> dict:
         return {"id": self.id, "line": self.line, "captured_at": self.captured_at.isoformat()}
+
+
+class PcapCapture(db.Model):
+    """A saved pcap file captured from a probe interface, kept in the DB for download."""
+
+    __tablename__ = "pcap_captures"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id: Mapped[str] = mapped_column(String(36), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True)
+    probe_id: Mapped[str] = mapped_column(String(36), ForeignKey("probes.id", ondelete="CASCADE"), nullable=False, index=True)
+    filename: Mapped[str] = mapped_column(String(160), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    packets: Mapped[int | None] = mapped_column(Integer)
+    data: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, nullable=False, index=True)
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id, "probe_id": self.probe_id, "filename": self.filename,
+            "size_bytes": self.size_bytes, "packets": self.packets,
+            "created_at": self.created_at.isoformat(),
+        }
 
 
 class IdsRule(db.Model):
