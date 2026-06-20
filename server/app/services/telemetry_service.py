@@ -92,6 +92,19 @@ class TelemetryService:
                 )
                 db.session.add(device)
                 added += 1
+            # (Re)classify the device type from all available signals.
+            from app.services.device_classifier import classify
+            classify_input = {
+                "vendor": device.vendor, "os": device.os, "hostname": device.hostname,
+                "device_hint": d.get("device_hint") or (device.details or {}).get("device_hint"),
+                "details": device.details,
+            }
+            guessed = classify(classify_input)
+            if guessed and guessed != "unknown":
+                device.device_type = guessed
+            if d.get("device_hint"):
+                device.details = {**(device.details or {}), "device_hint": d["device_hint"]}
+
             db.session.flush()
 
             # Presence history: one sighting per detection.
@@ -206,6 +219,37 @@ class TelemetryService:
             stmt = stmt.where(DeviceSighting.seen_at >= start, DeviceSighting.seen_at <= end)
         stmt = stmt.order_by(DeviceSighting.seen_at.asc()).limit(2000)
         return [s.to_dict() for s in db.session.execute(stmt).scalars()]
+
+    # ── Deletion ─────────────────────────────────────────────────────────────
+
+    def _delete_scoped(self, model, row_id, tenant_id: str | None) -> bool:
+        row = db.session.get(model, row_id)
+        if not row:
+            return False
+        if tenant_id is not None and row.tenant_id != tenant_id:
+            return False
+        db.session.delete(row)
+        db.session.commit()
+        return True
+
+    def delete_device(self, device_id, tenant_id: str | None) -> bool:
+        from sqlalchemy import delete as _delete
+        from app.models.telemetry import DeviceSighting
+        device = db.session.get(DeviceInventory, device_id)
+        if not device or (tenant_id is not None and device.tenant_id != tenant_id):
+            return False
+        # Remove dependents explicitly (SQLite may not enforce FK cascade).
+        db.session.execute(_delete(DeviceSighting).where(DeviceSighting.device_id == device_id))
+        db.session.execute(_delete(ServiceInventory).where(ServiceInventory.device_id == device_id))
+        db.session.delete(device)
+        db.session.commit()
+        return True
+
+    def delete_wifi(self, wifi_id, tenant_id: str | None) -> bool:
+        return self._delete_scoped(WifiInventory, wifi_id, tenant_id)
+
+    def delete_ble(self, ble_id, tenant_id: str | None) -> bool:
+        return self._delete_scoped(BLEInventory, ble_id, tenant_id)
 
     # ── WiFi / BLE listing + upsert ──────────────────────────────────────────
 

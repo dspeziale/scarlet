@@ -245,8 +245,38 @@
 
   <footer class="app-footer">
     <div class="float-end d-none d-sm-inline">v1.0.0</div>
+    <button class="btn btn-sm btn-outline-primary py-0 px-2 me-2" id="btn-sysinfo" title="Stato sistema">
+      <i class="bi bi-activity me-1"></i>Stato sistema
+    </button>
     <strong>SOC Seattle</strong> &copy; 2025
   </footer>
+
+  <!-- System status modal -->
+  <div class="modal fade" id="modalSysinfo" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-activity me-2"></i>Stato del sistema</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-2 mb-3" id="sys-app"></div>
+          <div class="row g-2 mb-3" id="sys-counts"></div>
+          <h6 class="text-muted"><i class="bi bi-hdd-network me-1"></i>Sonde &amp; container</h6>
+          <div class="table-responsive">
+            <table class="table table-sm table-hover">
+              <thead class="table-light"><tr><th>Sonda</th><th>Stato</th><th>Container</th><th>Agent</th><th>Piattaforma</th><th>IDS</th><th>Ultimo contatto</th></tr></thead>
+              <tbody id="sys-probes"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-primary" id="btn-sysinfo-refresh"><i class="bi bi-arrow-clockwise me-1"></i>Aggiorna</button>
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -366,6 +396,55 @@ document.getElementById('btn-logout')?.addEventListener('click', async () => {
   localStorage.removeItem(TOKEN_KEY);
   window.location = '/login';
 });
+
+// ── System status modal ───────────────────────────────────────────────────────
+function sysCard(label, value, color) {
+  return `<div class="col-6 col-md-3"><div class="border rounded p-2 text-center">
+    <div class="fs-5 fw-bold text-${color||'primary'}">${value}</div>
+    <div class="small text-muted text-uppercase">${label}</div></div></div>`;
+}
+async function loadSystemStatus() {
+  const probesBody = document.getElementById('sys-probes');
+  probesBody.innerHTML = '<tr><td colspan="7" class="text-muted">Loading…</td></tr>';
+  const r = await fetch(withTenant('/api/v1/system/status'), { headers: apiHeaders() });
+  if (!r.ok) { probesBody.innerHTML = '<tr><td colspan="7" class="text-danger">Errore</td></tr>'; return; }
+  const d = await r.json();
+  document.getElementById('sys-app').innerHTML = [
+    sysCard('Applicazione', d.app.name, 'dark'),
+    sysCard('Versione', d.app.version, 'primary'),
+    sysCard('Ambiente', d.app.environment, 'info'),
+    sysCard('Ora server', new Date(d.app.server_time).toLocaleTimeString(), 'secondary'),
+  ].join('');
+  const c = d.counts;
+  const cards = [
+    sysCard('Sonde', c.probes_total, 'primary'),
+    sysCard('Online', c.probes_online, 'success'),
+    sysCard('Container attivi', c.containers_running, 'success'),
+    sysCard('Task attivi', c.tasks_active, 'warning'),
+    sysCard('Dispositivi', c.devices, 'info'),
+    sysCard('WiFi', c.wifi, 'info'),
+    sysCard('BLE', c.ble, 'info'),
+    sysCard('Alert 24h', c.alerts_24h, 'danger'),
+  ];
+  if (c.tenants != null) cards.push(sysCard('Tenant', c.tenants, 'dark'), sysCard('Utenti', c.users, 'dark'));
+  document.getElementById('sys-counts').innerHTML = cards.join('');
+  probesBody.innerHTML = d.probes.length === 0
+    ? '<tr><td colspan="7" class="text-muted">Nessuna sonda</td></tr>'
+    : d.probes.map(p => `<tr>
+        <td>${p.name}</td>
+        <td><span class="badge text-bg-${p.status==='online'?'success':p.status==='offline'?'secondary':'warning'}">${p.status}</span></td>
+        <td>${p.container_running?'<i class="bi bi-check-circle-fill text-success"></i> attivo':'<i class="bi bi-x-circle text-secondary"></i> fermo'}</td>
+        <td><span class="badge text-bg-light border">${p.agent_version||'—'}</span></td>
+        <td>${[p.platform,p.architecture].filter(Boolean).join(' / ')||'—'}</td>
+        <td>${p.ids_interface?`<span class="badge text-bg-info">${p.ids_interface}</span>`:'<span class="text-muted">off</span>'}</td>
+        <td>${p.last_seen?new Date(p.last_seen).toLocaleString():'—'}</td>
+      </tr>`).join('');
+}
+document.getElementById('btn-sysinfo')?.addEventListener('click', () => {
+  new bootstrap.Modal(document.getElementById('modalSysinfo')).show();
+  loadSystemStatus();
+});
+document.getElementById('btn-sysinfo-refresh')?.addEventListener('click', loadSystemStatus);
 
 loadCurrentUser();
 </script>

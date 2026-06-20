@@ -13,8 +13,8 @@
   <div class="tab-pane fade show active" id="tab-devices">
     <div class="card shadow-sm"><div class="card-body p-0">
       <table class="table table-hover mb-0">
-        <thead class="table-light"><tr><th>IP</th><th>MAC</th><th>Hostname</th><th>Vendor</th><th>OS</th><th>Last Seen</th></tr></thead>
-        <tbody id="device-body"><tr><td colspan="6" class="text-center py-3 text-muted">Loading…</td></tr></tbody>
+        <thead class="table-light"><tr><th>IP</th><th>MAC</th><th>Hostname</th><th>Tipo</th><th>Vendor</th><th>OS</th><th>Last Seen</th><th></th></tr></thead>
+        <tbody id="device-body"><tr><td colspan="8" class="text-center py-3 text-muted">Loading…</td></tr></tbody>
       </table>
     </div></div>
   </div>
@@ -23,8 +23,8 @@
   <div class="tab-pane fade" id="tab-wifi">
     <div class="card shadow-sm"><div class="card-body p-0">
       <table class="table table-hover mb-0">
-        <thead class="table-light"><tr><th>SSID</th><th>BSSID</th><th>Canale</th><th>Segnale</th><th>Cifratura</th><th>Visto</th></tr></thead>
-        <tbody id="wifi-body"><tr><td colspan="6" class="text-center py-3 text-muted">Loading…</td></tr></tbody>
+        <thead class="table-light"><tr><th>SSID</th><th>BSSID</th><th>Canale</th><th>Segnale</th><th>Cifratura</th><th>Visto</th><th></th></tr></thead>
+        <tbody id="wifi-body"><tr><td colspan="7" class="text-center py-3 text-muted">Loading…</td></tr></tbody>
       </table>
     </div></div>
   </div>
@@ -33,8 +33,8 @@
   <div class="tab-pane fade" id="tab-ble">
     <div class="card shadow-sm"><div class="card-body p-0">
       <table class="table table-hover mb-0">
-        <thead class="table-light"><tr><th>Indirizzo</th><th>Nome</th><th>Produttore</th><th>RSSI</th><th>Visto</th></tr></thead>
-        <tbody id="ble-body"><tr><td colspan="5" class="text-center py-3 text-muted">Loading…</td></tr></tbody>
+        <thead class="table-light"><tr><th>Indirizzo</th><th>Nome</th><th>Produttore</th><th>RSSI</th><th>Visto</th><th></th></tr></thead>
+        <tbody id="ble-body"><tr><td colspan="6" class="text-center py-3 text-muted">Loading…</td></tr></tbody>
       </table>
     </div></div>
   </div>
@@ -74,10 +74,31 @@ async function loadDevices() {
   if (!resp.ok) { tbody.innerHTML = '<tr><td colspan="6" class="text-danger text-center">Errore</td></tr>'; return; }
   const d = await resp.json();
   tbody.innerHTML = d.length === 0
-    ? '<tr><td colspan="6" class="text-center text-muted">Nessun dispositivo scoperto</td></tr>'
+    ? '<tr><td colspan="8" class="text-center text-muted">Nessun dispositivo scoperto</td></tr>'
     : d.map(x => `<tr>
         <td>${x.ip ? `<a href="#" onclick="showDevice('${x.id}');return false;" class="fw-semibold">${x.ip}</a>` : `<a href="#" onclick="showDevice('${x.id}');return false;">dettaglio</a>`}</td>
-        <td class="font-monospace">${x.mac||'—'}</td><td>${x.hostname||'—'}</td><td>${x.vendor||'—'}</td><td>${x.os||'—'}</td><td>${dt(x.last_seen)}</td></tr>`).join('');
+        <td class="font-monospace">${x.mac||'—'}</td><td>${x.hostname||'—'}</td>
+        <td>${deviceTypeBadge(x.device_type)}</td>
+        <td>${x.vendor||'—'}</td><td>${x.os||'—'}</td><td>${dt(x.last_seen)}</td>
+        <td><button class="btn btn-sm btn-outline-danger py-0 px-1" title="Elimina" onclick="delItem('devices','${x.id}',loadDevices)"><i class="bi bi-trash"></i></button></td>
+      </tr>`).join('');
+}
+
+const TYPE_ICON = {router:'bi-router',access_point:'bi-broadcast',switch:'bi-diagram-3',printer:'bi-printer',
+  ip_camera:'bi-camera-video',nas:'bi-hdd-stack',smartphone:'bi-phone',tablet:'bi-tablet',
+  smart_tv:'bi-tv',media_device:'bi-music-note-beamed',voip_phone:'bi-telephone',game_console:'bi-controller',
+  iot:'bi-cpu',server:'bi-server',workstation:'bi-pc-display',network_device:'bi-hdd-network'};
+function deviceTypeBadge(t) {
+  if (!t) return '<span class="text-muted">—</span>';
+  const icon = TYPE_ICON[t] || 'bi-question-circle';
+  return `<span class="badge text-bg-light border"><i class="bi ${icon} me-1"></i>${t.replace(/_/g,' ')}</span>`;
+}
+
+async function delItem(kind, id, reload) {
+  if (!confirm('Eliminare questo elemento?')) return;
+  const r = await fetch(`/api/v1/telemetry/${kind}/${id}`, { method: 'DELETE', headers: apiHeaders() });
+  if (r.ok) reload();
+  else alert('Eliminazione non riuscita.');
 }
 
 function dvField(k, v) {
@@ -122,8 +143,9 @@ async function loadWifi() {
   if (!resp.ok) { tbody.innerHTML = '<tr><td colspan="6" class="text-danger text-center">Errore</td></tr>'; return; }
   const d = await resp.json();
   tbody.innerHTML = d.length === 0
-    ? '<tr><td colspan="6" class="text-center text-muted">Nessuna rete WiFi rilevata. Lancia un task <em>wifi_scan</em>.</td></tr>'
-    : d.map(x => `<tr><td>${x.ssid||'<span class="text-muted">(nascosto)</span>'}</td><td class="font-monospace">${x.bssid||'—'}</td><td>${x.channel??'—'}</td><td>${x.signal!=null?x.signal+' dBm':'—'}</td><td>${x.encryption||'—'}</td><td>${dt(x.seen_at)}</td></tr>`).join('');
+    ? '<tr><td colspan="7" class="text-center text-muted">Nessuna rete WiFi rilevata. Lancia un task <em>wifi_scan</em>.</td></tr>'
+    : d.map(x => `<tr><td>${x.ssid||'<span class="text-muted">(nascosto)</span>'}</td><td class="font-monospace">${x.bssid||'—'}</td><td>${x.channel??'—'}</td><td>${x.signal!=null?x.signal+' dBm':'—'}</td><td>${x.encryption||'—'}</td><td>${dt(x.seen_at)}</td>
+      <td><button class="btn btn-sm btn-outline-danger py-0 px-1" title="Elimina" onclick="delItem('wifi','${x.id}',loadWifi)"><i class="bi bi-trash"></i></button></td></tr>`).join('');
 }
 
 async function loadBle() {
@@ -132,8 +154,9 @@ async function loadBle() {
   if (!resp.ok) { tbody.innerHTML = '<tr><td colspan="5" class="text-danger text-center">Errore</td></tr>'; return; }
   const d = await resp.json();
   tbody.innerHTML = d.length === 0
-    ? '<tr><td colspan="5" class="text-center text-muted">Nessun dispositivo BLE rilevato. Lancia un task <em>ble_scan</em>.</td></tr>'
-    : d.map(x => `<tr><td class="font-monospace">${x.address||'—'}</td><td>${x.name||'—'}</td><td>${x.manufacturer||'—'}</td><td>${x.rssi!=null?x.rssi:'—'}</td><td>${dt(x.seen_at)}</td></tr>`).join('');
+    ? '<tr><td colspan="6" class="text-center text-muted">Nessun dispositivo BLE rilevato. Lancia un task <em>ble_scan</em>.</td></tr>'
+    : d.map(x => `<tr><td class="font-monospace">${x.address||'—'}</td><td>${x.name||'—'}</td><td>${x.manufacturer||'—'}</td><td>${x.rssi!=null?x.rssi:'—'}</td><td>${dt(x.seen_at)}</td>
+      <td><button class="btn btn-sm btn-outline-danger py-0 px-1" title="Elimina" onclick="delItem('ble','${x.id}',loadBle)"><i class="bi bi-trash"></i></button></td></tr>`).join('');
 }
 
 loadDevices(); loadWifi(); loadBle();

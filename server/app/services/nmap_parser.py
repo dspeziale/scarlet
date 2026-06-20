@@ -16,6 +16,12 @@ _HOST_RE = re.compile(r"^Nmap scan report for (?:(?P<name>[^()]+?) \((?P<ip1>[\d
 _MAC_RE = re.compile(r"^MAC Address:\s*(?P<mac>[0-9A-Fa-f:]{17})\s*(?:\((?P<vendor>.*)\))?")
 # "22/tcp   open  ssh     OpenSSH 8.9p1"
 _PORT_RE = re.compile(r"^(?P<port>\d+)/(?P<proto>tcp|udp)\s+open\s+(?P<service>\S+)(?:\s+(?P<version>.*\S))?")
+# OS / device hints from nmap -A / -O
+_OS_DETAILS_RE = re.compile(r"^OS details:\s*(.+)")
+_RUNNING_RE = re.compile(r"^Running:\s*(.+)")
+_DEVICE_TYPE_RE = re.compile(r"^Device type:\s*(.+)")
+_SVC_INFO_DEVICE_RE = re.compile(r"Service Info:.*?Device:\s*([\w\- ]+)", re.IGNORECASE)
+_SVC_INFO_OS_RE = re.compile(r"Service Info:.*?OS:\s*([^;]+)", re.IGNORECASE)
 
 
 def parse_nmap_hosts(output: str) -> list[dict]:
@@ -44,6 +50,8 @@ def parse_nmap_hosts(output: str) -> list[dict]:
                 "hostname": name.strip() if name else None,
                 "mac": None,
                 "vendor": None,
+                "os": None,
+                "device_hint": None,
                 "services": [],
             }
             continue
@@ -58,7 +66,8 @@ def parse_nmap_hosts(output: str) -> list[dict]:
             current["vendor"] = vendor.strip() if vendor else None
             continue
 
-        port = _PORT_RE.match(line.strip())
+        ls = line.strip()
+        port = _PORT_RE.match(ls)
         if port:
             current["services"].append({
                 "port": int(port.group("port")),
@@ -66,6 +75,23 @@ def parse_nmap_hosts(output: str) -> list[dict]:
                 "service": port.group("service"),
                 "version": (port.group("version") or None),
             })
+            continue
+
+        # OS / device-type hints (from nmap -A / -O)
+        om = _OS_DETAILS_RE.match(ls) or _RUNNING_RE.match(ls)
+        if om and not current.get("os"):
+            current["os"] = om.group(1).strip()
+            continue
+        dm = _DEVICE_TYPE_RE.match(ls)
+        if dm:
+            current["device_hint"] = dm.group(1).strip()
+            continue
+        sd = _SVC_INFO_DEVICE_RE.search(ls)
+        if sd and not current.get("device_hint"):
+            current["device_hint"] = sd.group(1).strip()
+        so = _SVC_INFO_OS_RE.search(ls)
+        if so and not current.get("os"):
+            current["os"] = so.group(1).strip()
 
     if current:
         hosts.append(current)

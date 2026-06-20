@@ -86,6 +86,14 @@ class SuricataManager:
             "-D",          # daemonise
             "-v",
         ]
+        # Suricata 8 requires an explicit capture-mode flag on the command line;
+        # the yaml section alone is not enough (without it Suricata prints usage
+        # and exits 1). Derive it from the configured capture mode + interface.
+        iface = self._interface or "any"
+        if self._capture_mode == "pcap":
+            cmd += ["--pcap" if iface == "any" else f"--pcap={iface}"]
+        else:  # af-packet (default)
+            cmd += ["--af-packet" if iface == "any" else f"--af-packet={iface}"]
         log.info("suricata_start", cmd=" ".join(cmd))
         try:
             self._proc = subprocess.Popen(

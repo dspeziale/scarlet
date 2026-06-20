@@ -68,6 +68,36 @@ def device_presence(device_id: str):
     return jsonify({"sightings": _svc.list_presence(device_id, day)}), 200
 
 
+@api_v1_bp.delete("/telemetry/devices/<device_id>")
+@require_role(SUPERADMIN, TENANT_ADMIN, OPERATOR)
+def delete_device(device_id: str):
+    user = g.current_user
+    tenant_id = None if user.is_superadmin else user.tenant_id
+    if not _svc.delete_device(device_id, tenant_id):
+        return jsonify(error="not_found"), 404
+    return jsonify(message="deleted"), 200
+
+
+@api_v1_bp.delete("/telemetry/wifi/<wifi_id>")
+@require_role(SUPERADMIN, TENANT_ADMIN, OPERATOR)
+def delete_wifi(wifi_id: str):
+    user = g.current_user
+    tenant_id = None if user.is_superadmin else user.tenant_id
+    if not _svc.delete_wifi(wifi_id, tenant_id):
+        return jsonify(error="not_found"), 404
+    return jsonify(message="deleted"), 200
+
+
+@api_v1_bp.delete("/telemetry/ble/<ble_id>")
+@require_role(SUPERADMIN, TENANT_ADMIN, OPERATOR)
+def delete_ble(ble_id: str):
+    user = g.current_user
+    tenant_id = None if user.is_superadmin else user.tenant_id
+    if not _svc.delete_ble(ble_id, tenant_id):
+        return jsonify(error="not_found"), 404
+    return jsonify(message="deleted"), 200
+
+
 @api_v1_bp.post("/telemetry/services")
 @require_role(SUPERADMIN, TENANT_ADMIN, OPERATOR)
 def ingest_services():

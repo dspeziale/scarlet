@@ -22,6 +22,69 @@ def _scope(stmt, model, tenant_id):
     return stmt if tenant_id is None else stmt.where(model.tenant_id == tenant_id)
 
 
+@api_v1_bp.get("/system/status")
+@require_role(SUPERADMIN, TENANT_ADMIN, OPERATOR)
+def system_status():
+    """Detailed system/app status: server info, counts and per-probe agent state."""
+    from flask import current_app
+    from datetime import datetime, timedelta, timezone
+    from app.models.tenant import Tenant
+    from app.models.user import User
+    from app.models.ids import IdsAlert
+    from app.models.telemetry import WifiInventory, BLEInventory
+
+    user = g.current_user
+    tenant_id = None if user.is_superadmin else user.tenant_id
+    now = datetime.now(timezone.utc)
+
+    probes = list(db.session.execute(_scope(select(Probe), Probe, tenant_id)).scalars())
+    online = 0
+    probe_rows = []
+    for p in probes:
+        is_online = p.status == "online"
+        if is_online:
+            online += 1
+        # "container running" ≈ heartbeat seen recently
+        running = bool(p.last_seen and (now - (p.last_seen if p.last_seen.tzinfo else p.last_seen.replace(tzinfo=timezone.utc))).total_seconds() < 180)
+        probe_rows.append({
+            "id": p.id, "name": p.name or p.hostname, "hostname": p.hostname,
+            "status": p.status, "container_running": running,
+            "agent_version": p.agent_version, "platform": p.platform,
+            "architecture": p.architecture, "ids_interface": p.ids_interface,
+            "location": p.location, "last_seen": p.last_seen.isoformat() if p.last_seen else None,
+            "key_provisioned": p.key_provisioned,
+        })
+
+    def _count(model):
+        return db.session.execute(_scope(select(func.count(model.id)), model, tenant_id)).scalar_one()
+
+    counts = {
+        "probes_total": len(probes),
+        "probes_online": online,
+        "containers_running": sum(1 for r in probe_rows if r["container_running"]),
+        "devices": _count(DeviceInventory),
+        "wifi": _count(WifiInventory),
+        "ble": _count(BLEInventory),
+        "tasks_active": db.session.execute(_scope(
+            select(func.count(Task.id)).where(Task.status.in_(("queued", "assigned", "running"))),
+            Task, tenant_id)).scalar_one(),
+        "alerts_24h": db.session.execute(_scope(
+            select(func.count(IdsAlert.id)).where(IdsAlert.received_at >= now - timedelta(hours=24)),
+            IdsAlert, tenant_id)).scalar_one(),
+    }
+    app_info = {
+        "name": "SOC Seattle",
+        "version": "1.0.0",
+        "environment": current_app.config.get("ENV") or current_app.config.get("FLASK_ENV") or "production",
+        "server_time": now.isoformat(),
+    }
+    if user.is_superadmin:
+        counts["tenants"] = db.session.execute(select(func.count(Tenant.id))).scalar_one()
+        counts["users"] = db.session.execute(select(func.count(User.id))).scalar_one()
+
+    return jsonify({"app": app_info, "counts": counts, "probes": probe_rows}), 200
+
+
 @api_v1_bp.get("/dashboard/stats")
 @require_role(SUPERADMIN, TENANT_ADMIN, OPERATOR)
 def dashboard_stats():
