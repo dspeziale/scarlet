@@ -202,7 +202,7 @@ function renderProbeTable(probes) {
 }
 
 async function loadDashboard() {
-  const resp = await fetch('/api/v1/dashboard/stats', { headers: apiHeaders() });
+  const resp = await fetch(withTenant('/api/v1/dashboard/stats'), { headers: apiHeaders() });
   if (!resp.ok) return;
   const d = await resp.json();
   renderCards(d.counts);

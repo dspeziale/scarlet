@@ -50,7 +50,13 @@
         <div id="rules-result" class="d-none alert py-1 px-2 small"></div>
         <div class="rule-list mb-3" id="rule-list"><div class="text-muted">Seleziona una sonda…</div></div>
         <hr>
-        <h6 class="text-muted small">Aggiungi regola al catalogo</h6>
+        <h6 class="text-muted small"><i class="bi bi-cloud-download me-1"></i>Scarica regole da Internet</h6>
+        <input class="form-control form-control-sm mb-1" id="r-url" placeholder="https://rules.emergingthreats.net/open/suricata-7.0/emerging-all.rules">
+        <button class="btn btn-sm btn-outline-success mb-2" id="btn-import-rules"><i class="bi bi-download me-1"></i>Importa nel catalogo</button>
+        <div id="import-result" class="d-none alert py-1 px-2 small"></div>
+
+        <hr>
+        <h6 class="text-muted small">Aggiungi regola manualmente</h6>
         <input class="form-control form-control-sm mb-1" id="r-msg" placeholder="Descrizione (msg)">
         <textarea class="form-control form-control-sm mb-1" id="r-text" rows="2" placeholder='alert tcp any any -> any any (msg:"..."; sid:1000001;)'></textarea>
         <button class="btn btn-sm btn-outline-primary" id="btn-add-rule">Aggiungi al catalogo</button>
@@ -67,7 +73,7 @@ let _probeId = null, _sinceId = 0, _paused = false, _timer = null, _count = 0;
 function esc(s){ return String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
 
 async function loadProbes() {
-  const r = await fetch('/api/v1/probes', { headers: apiHeaders() });
+  const r = await fetch(withTenant('/api/v1/probes'), { headers: apiHeaders() });
   if (!r.ok) return;
   const probes = await r.json();
   const sel = document.getElementById('probe-select');
@@ -132,7 +138,7 @@ async function loadRules() {
   const listEl = document.getElementById('rule-list');
   listEl.innerHTML = '<div class="text-muted">Loading…</div>';
   const [catR, asgR] = await Promise.all([
-    fetch('/api/v1/ids/rules', { headers: apiHeaders() }),
+    fetch(withTenant('/api/v1/ids/rules'), { headers: apiHeaders() }),
     fetch(`/api/v1/probes/${_probeId}/ids/rules/assignments`, { headers: apiHeaders() }),
   ]);
   if (!catR.ok) { listEl.innerHTML = '<div class="text-danger">Errore nel catalogo regole</div>'; return; }
@@ -169,14 +175,36 @@ document.getElementById('btn-add-rule').addEventListener('click', async () => {
   const msg = document.getElementById('r-msg').value.trim();
   if (!text) return;
   const sidMatch = text.match(/sid:\s*(\d+)/);
+  const payload = { rule_text: text, msg: msg || null, sid: sidMatch ? parseInt(sidMatch[1]) : null };
+  if (selectedTenantId()) payload.tenant_id = selectedTenantId();
   const r = await fetch('/api/v1/ids/rules', {
-    method: 'POST', headers: apiHeaders(),
-    body: JSON.stringify({ rule_text: text, msg: msg || null, sid: sidMatch ? parseInt(sidMatch[1]) : null }),
+    method: 'POST', headers: apiHeaders(), body: JSON.stringify(payload),
   });
   if (r.ok) {
     document.getElementById('r-text').value = '';
     document.getElementById('r-msg').value = '';
     loadRules();
+  }
+});
+
+document.getElementById('btn-import-rules').addEventListener('click', async () => {
+  const url = document.getElementById('r-url').value.trim();
+  const res = document.getElementById('import-result');
+  if (!url) { return; }
+  const payload = { url };
+  if (selectedTenantId()) payload.tenant_id = selectedTenantId();
+  const btn = document.getElementById('btn-import-rules');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Scarico…';
+  const r = await fetch('/api/v1/ids/rules/import', { method: 'POST', headers: apiHeaders(), body: JSON.stringify(payload) });
+  const d = await r.json();
+  btn.disabled = false; btn.innerHTML = '<i class="bi bi-download me-1"></i>Importa nel catalogo';
+  if (r.ok) {
+    res.className = 'alert alert-success py-1 px-2 small d-block';
+    res.textContent = `Importate ${d.added} regole (${d.skipped} già presenti, ${d.total} totali nel file).`;
+    if (_probeId) loadRules();
+  } else {
+    res.className = 'alert alert-danger py-1 px-2 small d-block';
+    res.textContent = d.message || 'Errore importazione.';
   }
 });
 

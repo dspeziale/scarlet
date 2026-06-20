@@ -121,7 +121,7 @@ const _probes = {};
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
 async function loadProbes() {
-  const resp = await fetch('/api/v1/probes', { headers: apiHeaders() });
+  const resp = await fetch(withTenant('/api/v1/probes'), { headers: apiHeaders() });
   const tbody = document.querySelector('#probe-table tbody');
   if (!resp.ok) { tbody.innerHTML = '<tr><td colspan="7" class="text-danger">Error loading probes</td></tr>'; return; }
   const probes = await resp.json();

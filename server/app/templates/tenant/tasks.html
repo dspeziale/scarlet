@@ -203,7 +203,7 @@ let _autoRefresh = null;
 
 // ── Probes ────────────────────────────────────────────────────────────────
 async function loadProbes() {
-  const resp = await fetch('/api/v1/probes', { headers: apiHeaders() });
+  const resp = await fetch(withTenant('/api/v1/probes'), { headers: apiHeaders() });
   if (!resp.ok) return;
   _probes = await resp.json();
 

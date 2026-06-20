@@ -114,6 +114,23 @@ def ids_create_rule():
     return jsonify(rule.to_dict()), 201
 
 
+@api_v1_bp.post("/ids/rules/import")
+@require_tenant_admin_or_above
+def ids_import_rules():
+    """Download a .rules file from a URL and add its rules to the tenant catalog."""
+    user = g.current_user
+    body = request.get_json(silent=True) or {}
+    tenant_id = body.get("tenant_id") if user.is_superadmin else user.tenant_id
+    url = (body.get("url") or "").strip()
+    if not tenant_id or not url:
+        return jsonify(error="validation_error", message="tenant_id and url required"), 400
+    try:
+        result = _svc.import_rules_from_url(tenant_id, url)
+    except ValueError as e:
+        return jsonify(error="import_failed", message=str(e)), 400
+    return jsonify(result), 200
+
+
 @api_v1_bp.delete("/ids/rules/<rule_id>")
 @require_tenant_admin_or_above
 def ids_delete_rule(rule_id: str):

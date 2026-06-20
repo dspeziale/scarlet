@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import hashlib
+import re
+import urllib.error
+import urllib.request
 from datetime import datetime, timezone
 
 import structlog
@@ -15,6 +18,34 @@ from app.models.probe import Probe
 log = structlog.get_logger(__name__)
 
 _MAX_ALERTS_PER_PROBE = 2000  # ring buffer cap
+
+
+_RULE_ACTIONS = ("alert", "drop", "reject", "pass", "sdrop", "log")
+_SID_RE = re.compile(r"\bsid:\s*(\d+)")
+_MSG_RE = re.compile(r'\bmsg:\s*"([^"]*)"')
+_CLASS_RE = re.compile(r"\bclasstype:\s*([\w-]+)")
+
+
+def parse_rule_lines(content: str) -> list[dict]:
+    """Parse a Suricata .rules file into rule dicts (rule_text, sid, msg, category)."""
+    rules: list[dict] = []
+    for raw in content.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        first = line.split(None, 1)[0].lower()
+        if first not in _RULE_ACTIONS or "sid:" not in line:
+            continue
+        sid_m = _SID_RE.search(line)
+        msg_m = _MSG_RE.search(line)
+        cls_m = _CLASS_RE.search(line)
+        rules.append({
+            "rule_text": line,
+            "sid": int(sid_m.group(1)) if sid_m else None,
+            "msg": msg_m.group(1) if msg_m else None,
+            "category": cls_m.group(1) if cls_m else None,
+        })
+    return rules
 
 
 def _parse_ts(value):
@@ -90,6 +121,45 @@ class IdsService:
         db.session.add(rule)
         db.session.commit()
         return rule
+
+    def import_rules_from_url(self, tenant_id: str, url: str, max_rules: int = 5000) -> dict:
+        """
+        Download a Suricata .rules file from an http(s) URL and add its rules to
+        the tenant catalog. Skips rules whose sid already exists. Returns counts.
+        """
+        if not re.match(r"^https?://", url, re.IGNORECASE):
+            raise ValueError("URL must start with http:// or https://")
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "SOC-Seattle/1.0"})
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                content = resp.read().decode("utf-8", errors="replace")
+        except (urllib.error.URLError, ValueError) as exc:
+            raise ValueError(f"download failed: {exc}") from exc
+
+        parsed = parse_rule_lines(content)
+        if not parsed:
+            return {"added": 0, "skipped": 0, "total": 0}
+
+        existing_sids = {
+            s for (s,) in db.session.execute(
+                select(IdsRule.sid).where(IdsRule.tenant_id == tenant_id, IdsRule.sid.isnot(None))
+            ).all()
+        }
+        added = skipped = 0
+        for r in parsed[:max_rules]:
+            if r["sid"] is not None and r["sid"] in existing_sids:
+                skipped += 1
+                continue
+            db.session.add(IdsRule(
+                tenant_id=tenant_id, rule_text=r["rule_text"],
+                msg=r["msg"], sid=r["sid"], category=r["category"], enabled=True,
+            ))
+            if r["sid"] is not None:
+                existing_sids.add(r["sid"])
+            added += 1
+        db.session.commit()
+        log.info("rules_imported", tenant_id=tenant_id, url=url, added=added, skipped=skipped)
+        return {"added": added, "skipped": skipped, "total": len(parsed)}
 
     def delete_rule(self, tenant_id: str, rule_id: str) -> None:
         rule = db.session.get(IdsRule, rule_id)

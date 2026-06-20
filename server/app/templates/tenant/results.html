@@ -46,7 +46,7 @@
 function dt(s) { return s ? new Date(s).toLocaleString() : '—'; }
 
 async function loadDevices() {
-  const resp = await fetch('/api/v1/telemetry/devices', { headers: apiHeaders() });
+  const resp = await fetch(withTenant('/api/v1/telemetry/devices'), { headers: apiHeaders() });
   const tbody = document.getElementById('device-body');
   if (!resp.ok) { tbody.innerHTML = '<tr><td colspan="6" class="text-danger text-center">Errore</td></tr>'; return; }
   const d = await resp.json();
@@ -56,7 +56,7 @@ async function loadDevices() {
 }
 
 async function loadWifi() {
-  const resp = await fetch('/api/v1/telemetry/wifi', { headers: apiHeaders() });
+  const resp = await fetch(withTenant('/api/v1/telemetry/wifi'), { headers: apiHeaders() });
   const tbody = document.getElementById('wifi-body');
   if (!resp.ok) { tbody.innerHTML = '<tr><td colspan="6" class="text-danger text-center">Errore</td></tr>'; return; }
   const d = await resp.json();
@@ -66,7 +66,7 @@ async function loadWifi() {
 }
 
 async function loadBle() {
-  const resp = await fetch('/api/v1/telemetry/ble', { headers: apiHeaders() });
+  const resp = await fetch(withTenant('/api/v1/telemetry/ble'), { headers: apiHeaders() });
   const tbody = document.getElementById('ble-body');
   if (!resp.ok) { tbody.innerHTML = '<tr><td colspan="5" class="text-danger text-center">Errore</td></tr>'; return; }
   const d = await resp.json();

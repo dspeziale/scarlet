@@ -103,12 +103,19 @@
 
       <ul class="navbar-nav ms-auto d-flex align-items-center gap-1">
 
-        <!-- Active tenant indicator -->
+        <!-- Active tenant indicator (non-superadmin) -->
         <li class="nav-item me-2">
           <span id="tenant-badge" class="badge rounded-pill text-bg-secondary px-3 py-2"
                 title="Tenant attivo" style="font-size:.8rem;">
             <i class="bi bi-building me-1"></i><span id="tenant-name">…</span>
           </span>
+        </li>
+
+        <!-- Tenant switcher (superadmin only) -->
+        <li class="nav-item me-2 d-none" id="tenant-switcher-wrap">
+          <select id="tenant-switcher" class="form-select form-select-sm" style="width:210px" title="Filtra per tenant">
+            <option value="">Tutti i tenant</option>
+          </select>
         </li>
 
         <!-- Font-size controls -->
@@ -289,10 +296,19 @@ document.getElementById('btn-font-inc')?.addEventListener('click', () => {
 });
 
 // ── JWT helpers ───────────────────────────────────────────────────────────────
+const TENANT_KEY = 'soc_tenant_id';
 function getToken() { return localStorage.getItem(TOKEN_KEY); }
 function apiHeaders() {
   return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() };
 }
+
+// Append the superadmin-selected tenant_id to an API URL (no-op for others).
+function withTenant(url) {
+  const t = localStorage.getItem(TENANT_KEY);
+  if (!t) return url;
+  return url + (url.includes('?') ? '&' : '?') + 'tenant_id=' + encodeURIComponent(t);
+}
+function selectedTenantId() { return localStorage.getItem(TENANT_KEY) || ''; }
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
 async function loadCurrentUser() {
@@ -321,7 +337,27 @@ async function loadCurrentUser() {
 
   if (user.is_superadmin) {
     document.getElementById('superadmin-section')?.classList.remove('d-none');
+    await initTenantSwitcher();
   }
+}
+
+async function initTenantSwitcher() {
+  const wrap = document.getElementById('tenant-switcher-wrap');
+  const sel = document.getElementById('tenant-switcher');
+  if (!wrap || !sel) return;
+  const r = await fetch('/api/v1/tenants', { headers: apiHeaders() });
+  if (r.ok) {
+    const tenants = await r.json();
+    sel.innerHTML = '<option value="">Tutti i tenant</option>' +
+      tenants.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+  }
+  sel.value = selectedTenantId();
+  wrap.classList.remove('d-none');
+  document.getElementById('tenant-badge')?.classList.add('d-none');  // switcher replaces badge
+  sel.addEventListener('change', () => {
+    localStorage.setItem(TENANT_KEY, sel.value);
+    window.location.reload();
+  });
 }
 
 document.getElementById('btn-logout')?.addEventListener('click', async () => {
