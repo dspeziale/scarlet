@@ -117,6 +117,15 @@
             <label class="form-label">Priority <span class="text-muted small">(1=high, 10=low)</span></label>
             <input type="number" class="form-control" id="d-priority" value="5" min="1" max="10">
           </div>
+          <div class="col-12 d-none" id="timing-row">
+            <label class="form-label fw-semibold">Effort scansione (nmap timing)</label>
+            <select class="form-select" id="d-timing">
+              <option value="T2">T2 — gentile (lento, discreto)</option>
+              <option value="T3">T3 — normale</option>
+              <option value="T4" selected>T4 — aggressivo (consigliato)</option>
+              <option value="T5">T5 — insane (più veloce, meno affidabile)</option>
+            </select>
+          </div>
           <div class="col-12 d-none" id="iface-row">
             <label class="form-label fw-semibold">Scheda di rete (cattura IDS) <span class="text-danger">*</span></label>
             <select class="form-select" id="d-interface"></select>
@@ -349,16 +358,16 @@ function proposedParams(taskType, probe) {
     return JSON.stringify(iface ? { interface: iface } : {});
   }
 
-  if (!probe) return fallback;
-  const subnets = probe.subnets || [];
-  if (taskType === 'network_discovery' && subnets.length) {
-    return JSON.stringify({ target: subnets[0], timeout: 60 });
-  }
-  if (SUBNET_TARGETED.has(taskType) && subnets.length) {
-    const obj = JSON.parse(fallback);
-    obj.target = subnets[0];
+  if (SUBNET_TARGETED.has(taskType)) {
+    const subnets = (probe && probe.subnets) || [];
+    const timing = (document.getElementById('d-timing') || {}).value || 'T4';
+    let obj;
+    if (taskType === 'network_discovery') obj = { target: subnets[0] || '192.168.1.0/24', timeout: 1800 };
+    else { obj = JSON.parse(fallback); if (subnets.length) obj.target = subnets[0]; }
+    obj.timing = timing;
     return JSON.stringify(obj);
   }
+  if (!probe) return fallback;
   return fallback;
 }
 
@@ -368,6 +377,9 @@ function refreshParamEditor() {
   const editor = document.getElementById('param-editor');
   const hints = document.getElementById('param-hints');
   const ifaceRow = document.getElementById('iface-row');
+
+  // Timing selector — only for nmap scans.
+  document.getElementById('timing-row').classList.toggle('d-none', !SUBNET_TARGETED.has(taskType));
 
   // Interface selector — only for IDS capture tasks.
   if (IDS_IFACE_TASKS.has(taskType)) {
@@ -410,6 +422,16 @@ document.getElementById('d-interface').addEventListener('change', () => {
   let obj = {};
   try { obj = JSON.parse(editor.value || '{}'); } catch { obj = {}; }
   obj.interface = document.getElementById('d-interface').value;
+  editor.value = JSON.stringify(obj);
+  _lastAutofill = editor.value;
+});
+
+// Changing the timing template updates the params (preserving other fields).
+document.getElementById('d-timing').addEventListener('change', () => {
+  const editor = document.getElementById('param-editor');
+  let obj = {};
+  try { obj = JSON.parse(editor.value || '{}'); } catch { obj = {}; }
+  obj.timing = document.getElementById('d-timing').value;
   editor.value = JSON.stringify(obj);
   _lastAutofill = editor.value;
 });

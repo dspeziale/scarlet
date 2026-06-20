@@ -17,6 +17,7 @@ TASK_TYPES = [
     "ble_scan",
     "custom_script",
     "ping",
+    "traffic_capture",
     # IDS / Suricata control (dispatched from the server console)
     "ids_start",
     "ids_stop",

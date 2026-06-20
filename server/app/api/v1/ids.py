@@ -57,6 +57,36 @@ def ids_ingest_alerts(probe_id: str):
     return jsonify({"ingested": n}), 201
 
 
+@api_v1_bp.post("/probes/<probe_id>/traffic")
+def ids_ingest_traffic(probe_id: str):
+    probe = _probe_or_none(probe_id)
+    if not probe:
+        return jsonify(error="not_found"), 404
+    body = request.get_json(silent=True) or {}
+    lines = body.get("lines") or []
+    try:
+        n = _svc.ingest_traffic(probe.tenant_id, probe_id, lines)
+    except Exception as exc:
+        db.session.rollback()
+        log.warning("traffic_ingest_failed", probe_id=probe_id, error=str(exc))
+        return jsonify(error="ingest_failed"), 200
+    return jsonify({"ingested": n}), 201
+
+
+@api_v1_bp.get("/probes/<probe_id>/traffic")
+@require_role(SUPERADMIN, TENANT_ADMIN, OPERATOR)
+def ids_list_traffic(probe_id: str):
+    probe = _probe_or_none(probe_id)
+    if not probe:
+        return jsonify(error="not_found"), 404
+    if not _check_probe_access(probe):
+        return jsonify(error="forbidden"), 403
+    since_id = int(request.args.get("since_id", 0))
+    limit = min(int(request.args.get("limit", 400)), 800)
+    rows = _svc.list_traffic(probe.tenant_id, probe_id, since_id=since_id, limit=limit)
+    return jsonify({"lines": [r.to_dict() for r in rows]}), 200
+
+
 @api_v1_bp.get("/probes/<probe_id>/ids/rules")
 def ids_probe_rules(probe_id: str):
     probe = _probe_or_none(probe_id)

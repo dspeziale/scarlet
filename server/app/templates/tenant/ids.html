@@ -8,10 +8,11 @@
 
 {% block extra_css %}
 <style>
-  #ids-term { background:#0b1020; color:#cbd5e1; font-family: ui-monospace, Menlo, monospace;
-              font-size:.8rem; height:520px; overflow-y:auto; border-radius:.5rem; padding:.75rem; }
+  #ids-term, #traffic-term { background:#0b1020; color:#cbd5e1; font-family: ui-monospace, Menlo, monospace;
+              font-size:.8rem; height:480px; overflow-y:auto; border-radius:.5rem; padding:.75rem; white-space:pre-wrap; word-break:break-all; }
   #ids-term .a-sev1 { color:#fca5a5; } #ids-term .a-sev2 { color:#fdba74; } #ids-term .a-sev3 { color:#fde68a; }
   #ids-term .ts { color:#64748b; } #ids-term .ip { color:#7dd3fc; }
+  #traffic-term .tl { color:#a7f3d0; }
   .rule-list { max-height: 420px; overflow-y:auto; }
 </style>
 {% endblock %}
@@ -28,14 +29,30 @@
 </div>
 
 <div class="row g-3">
-  <!-- Live terminal -->
+  <!-- Live terminals (tabs) -->
   <div class="col-lg-7">
     <div class="card shadow-sm h-100">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <h6 class="mb-0"><i class="bi bi-terminal me-2"></i>Traffico IDS live</h6>
-        <span class="small text-muted" id="alert-count">0 eventi</span>
+      <div class="card-header pb-0">
+        <ul class="nav nav-tabs card-header-tabs" role="tablist">
+          <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-alerts" type="button"><i class="bi bi-shield-exclamation me-1"></i>Pacchetti IDS <span class="badge text-bg-danger ms-1" id="alert-count">0</span></button></li>
+          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-traffic" type="button"><i class="bi bi-ethernet me-1"></i>Traffico scheda</button></li>
+        </ul>
       </div>
-      <div class="card-body"><div id="ids-term">Seleziona una sonda con IDS attivo…</div></div>
+      <div class="card-body">
+        <div class="tab-content">
+          <div class="tab-pane fade show active" id="tab-alerts">
+            <div id="ids-term">Seleziona una sonda con IDS attivo…</div>
+          </div>
+          <div class="tab-pane fade" id="tab-traffic">
+            <div class="d-flex gap-2 align-items-center mb-2">
+              <button class="btn btn-sm btn-success" id="btn-sniff-start"><i class="bi bi-play-fill me-1"></i>Avvia cattura</button>
+              <button class="btn btn-sm btn-outline-danger" id="btn-sniff-stop" disabled><i class="bi bi-stop-fill me-1"></i>Ferma</button>
+              <span class="small text-muted" id="sniff-state">tcpdump su tutto il traffico della scheda</span>
+            </div>
+            <div id="traffic-term">Avvia la cattura per vedere il traffico live…</div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -102,6 +119,8 @@ async function loadProbes() {
 document.getElementById('probe-select').addEventListener('change', function () {
   _probeId = this.value || null;
   _sinceId = 0; _count = 0;
+  if (typeof stopSniff === 'function') stopSniff();
+  document.getElementById('traffic-term').innerHTML = 'Avvia la cattura per vedere il traffico live…';
   const term = document.getElementById('ids-term');
   term.innerHTML = '';
   document.getElementById('alert-count').textContent = '0 eventi';
@@ -242,6 +261,59 @@ document.getElementById('btn-import-rules').addEventListener('click', async () =
     btn.disabled = false; btn.innerHTML = '<i class="bi bi-download me-1"></i>Importa nel catalogo';
   }
 });
+
+// ── Live traffic sniffer (tcpdump) ───────────────────────────────────────────
+let _sniffSince = 0, _sniffTimer = null, _sniffing = false;
+
+async function pollTraffic() {
+  if (!_probeId || !_sniffing) return;
+  try {
+    const r = await fetch(`/api/v1/probes/${_probeId}/traffic?since_id=${_sniffSince}&limit=600`, { headers: apiHeaders() });
+    if (!r.ok) return;
+    const { lines } = await r.json();
+    const term = document.getElementById('traffic-term');
+    if (lines.length && term.textContent.startsWith('Avvia')) term.innerHTML = '';
+    lines.forEach(l => {
+      _sniffSince = Math.max(_sniffSince, l.id);
+      const div = document.createElement('div');
+      div.className = 'tl';
+      div.textContent = l.line;
+      term.appendChild(div);
+    });
+    // keep the buffer light
+    while (term.childElementCount > 2000) term.removeChild(term.firstChild);
+    if (lines.length) term.scrollTop = term.scrollHeight;
+  } catch (e) {}
+}
+
+async function startSniff() {
+  if (!_probeId) { alert('Seleziona prima una sonda.'); return; }
+  const opt = document.getElementById('probe-select').selectedOptions[0];
+  const iface = (opt && opt.dataset.ids) || 'any';
+  document.getElementById('traffic-term').innerHTML = '';
+  _sniffSince = 0; _sniffing = true;
+  document.getElementById('btn-sniff-start').disabled = true;
+  document.getElementById('btn-sniff-stop').disabled = false;
+  document.getElementById('sniff-state').textContent = `cattura su ${iface} (la sonda esegue al prossimo poll)…`;
+  await fetch('/api/v1/tasks/dispatch', {
+    method: 'POST', headers: apiHeaders(),
+    body: JSON.stringify({ probe_id: _probeId, task_type: 'traffic_capture',
+      parameters: { interface: iface, duration: 300 }, name: 'Cattura traffico' }),
+  });
+  pollTraffic();
+  _sniffTimer = setInterval(pollTraffic, 2000);
+}
+
+function stopSniff() {
+  _sniffing = false;
+  if (_sniffTimer) clearInterval(_sniffTimer);
+  document.getElementById('btn-sniff-start').disabled = false;
+  document.getElementById('btn-sniff-stop').disabled = true;
+  document.getElementById('sniff-state').textContent = 'cattura fermata (la sonda termina la finestra in corso)';
+}
+
+document.getElementById('btn-sniff-start').addEventListener('click', startSniff);
+document.getElementById('btn-sniff-stop').addEventListener('click', stopSniff);
 
 loadProbes();
 startTimer();

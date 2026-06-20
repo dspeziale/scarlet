@@ -13,6 +13,6 @@ from app.models.telemetry import (  # noqa: F401
     BLEInventory,
     UsageAccounting,
 )
-from app.models.ids import IdsAlert, IdsRule, ProbeRuleAssignment  # noqa: F401
+from app.models.ids import IdsAlert, IdsRule, ProbeRuleAssignment, TrafficLine  # noqa: F401
 from app.models.audit import AuditLog  # noqa: F401
 from app.models.token_blocklist import TokenBlocklist  # noqa: F401

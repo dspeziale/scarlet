@@ -62,6 +62,14 @@ structlog.configure(
 log = structlog.get_logger("agent.main")
 
 
+def _timing(payload: dict) -> str:
+    """nmap timing template flag, constrained to T2..T5 (default T4)."""
+    t = str(payload.get("timing", "T4")).upper().lstrip("-")
+    if t not in ("T2", "T3", "T4", "T5"):
+        t = "T4"
+    return f"-{t}"
+
+
 class ProbeAgent:
     def __init__(self) -> None:
         self.probe_id: str = cfg.PROBE_ID
@@ -239,6 +247,63 @@ class ProbeAgent:
             "devices": devices,
         }
 
+    def _traffic_capture(self, interface: str, duration: int) -> dict:
+        """
+        Live-capture all traffic on `interface` with tcpdump for `duration`
+        seconds, streaming batches of lines to the server as they arrive.
+        """
+        import select as _select
+        iface = interface or "any"
+        url = f"{cfg.SERVER_URL}/api/v1/probes/{self.probe_id}/traffic"
+        cmd = ["tcpdump", "-nn", "-l", "-i", iface]
+        try:
+            proc = subprocess.Popen(
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                text=True, bufsize=1,
+            )
+        except FileNotFoundError:
+            return {"status": "error", "error": "tcpdump not available"}
+
+        deadline = time.monotonic() + max(5, min(duration, 300))
+        buffer: list[str] = []
+        sent = 0
+
+        def _flush():
+            nonlocal buffer, sent
+            if not buffer:
+                return
+            try:
+                self._http.post(url, json={"lines": buffer}, timeout=10)
+                sent += len(buffer)
+            except Exception:
+                pass
+            buffer = []
+
+        last_flush = time.monotonic()
+        try:
+            while time.monotonic() < deadline:
+                if proc.poll() is not None:
+                    break
+                r, _, _ = _select.select([proc.stdout], [], [], 1.0)
+                if r:
+                    line = proc.stdout.readline()
+                    if line:
+                        buffer.append(line.rstrip())
+                if len(buffer) >= 25 or (buffer and time.monotonic() - last_flush >= 1.0):
+                    _flush()
+                    last_flush = time.monotonic()
+            _flush()
+        finally:
+            try:
+                proc.terminate()
+                proc.wait(timeout=3)
+            except Exception:
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
+        return {"status": "ok", "interface": iface, "lines_captured": sent}
+
     def _handle_task(self, task: dict) -> None:
         task_type = task.get("type")
         task_id = task.get("id")
@@ -317,7 +382,7 @@ class ProbeAgent:
                     # Big default so wide subnet sweeps don't time out. Override via payload.timeout (seconds).
                     timeout_sec = int(payload.get("timeout", 1800))
                     result = self._nmap(
-                        ["-sn", "--host-timeout", f"{timeout_sec}s", target],
+                        [_timing(payload), "-sn", "--host-timeout", f"{timeout_sec}s", target],
                         timeout=timeout_sec + 60,
                     )
 
@@ -329,7 +394,7 @@ class ProbeAgent:
                 else:
                     timeout_sec = int(payload.get("timeout", 3600))
                     result = self._nmap(
-                        ["-sV", "--open", "-p", str(ports), target],
+                        [_timing(payload), "-sV", "--open", "-p", str(ports), target],
                         timeout=timeout_sec,
                     )
 
@@ -340,7 +405,7 @@ class ProbeAgent:
                 else:
                     # -O requires root; fall back to -A (aggressive, works without root)
                     timeout_sec = int(payload.get("timeout", 2400))
-                    result = self._nmap(["-A", "--open", target], timeout=timeout_sec)
+                    result = self._nmap([_timing(payload), "-A", "--open", target], timeout=timeout_sec)
 
             elif task_type == "snmp_inventory":
                 target = payload.get("target", "")
@@ -413,6 +478,11 @@ class ProbeAgent:
                         }
                     finally:
                         Path(tmp_path).unlink(missing_ok=True)
+
+            elif task_type == "traffic_capture":
+                interface = payload.get("interface") or self._selected_interface or cfg.DEFAULT_INTERFACE
+                duration = int(payload.get("duration", 120))
+                result = self._traffic_capture(interface, duration)
 
             elif task_type == "ping":
                 target = payload.get("target", "")

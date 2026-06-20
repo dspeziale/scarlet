@@ -108,6 +108,44 @@ class IdsService:
         ).order_by(IdsAlert.id.asc()).limit(limit)
         return list(db.session.execute(stmt).scalars())
 
+    # ── Live traffic (tcpdump stream) ────────────────────────────────────────
+
+    def ingest_traffic(self, tenant_id: str, probe_id: str, lines: list[str]) -> int:
+        from app.models.ids import TrafficLine
+        count = 0
+        for ln in lines:
+            if not ln:
+                continue
+            db.session.add(TrafficLine(tenant_id=tenant_id, probe_id=probe_id, line=str(ln)[:1000]))
+            count += 1
+        db.session.commit()
+        self._trim_traffic(probe_id)
+        return count
+
+    def _trim_traffic(self, probe_id: str, cap: int = 5000) -> None:
+        from app.models.ids import TrafficLine
+        total = db.session.execute(
+            select(func.count(TrafficLine.id)).where(TrafficLine.probe_id == probe_id)
+        ).scalar_one()
+        if total <= cap:
+            return
+        old = db.session.execute(
+            select(TrafficLine.id).where(TrafficLine.probe_id == probe_id)
+            .order_by(TrafficLine.id.asc()).limit(total - cap)
+        ).scalars().all()
+        if old:
+            db.session.execute(delete(TrafficLine).where(TrafficLine.id.in_(old)))
+            db.session.commit()
+
+    def list_traffic(self, tenant_id: str, probe_id: str, since_id: int = 0, limit: int = 300) -> list:
+        from app.models.ids import TrafficLine
+        stmt = select(TrafficLine).where(
+            TrafficLine.tenant_id == tenant_id,
+            TrafficLine.probe_id == probe_id,
+            TrafficLine.id > since_id,
+        ).order_by(TrafficLine.id.asc()).limit(limit)
+        return list(db.session.execute(stmt).scalars())
+
     # ── Rule catalog ─────────────────────────────────────────────────────────
 
     def list_rules(self, tenant_id: str) -> list[IdsRule]:

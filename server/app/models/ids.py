@@ -51,6 +51,21 @@ class IdsAlert(db.Model):
         }
 
 
+class TrafficLine(db.Model):
+    """A single tcpdump line streamed live from a probe interface (ring buffer)."""
+
+    __tablename__ = "ids_traffic"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id: Mapped[str] = mapped_column(String(36), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True)
+    probe_id: Mapped[str] = mapped_column(String(36), ForeignKey("probes.id", ondelete="CASCADE"), nullable=False, index=True)
+    line: Mapped[str] = mapped_column(Text, nullable=False)
+    captured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, nullable=False, index=True)
+
+    def to_dict(self) -> dict:
+        return {"id": self.id, "line": self.line, "captured_at": self.captured_at.isoformat()}
+
+
 class IdsRule(db.Model):
     """A Suricata rule in the tenant catalog. Can be assigned to probes."""
 
