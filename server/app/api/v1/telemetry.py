@@ -49,6 +49,26 @@ def ingest_services():
     return jsonify({"ingested": len(created)}), 201
 
 
+@api_v1_bp.get("/telemetry/wifi")
+@require_role(SUPERADMIN, TENANT_ADMIN, OPERATOR)
+def list_wifi():
+    user = g.current_user
+    tenant_id = request.args.get("tenant_id") if user.is_superadmin else user.tenant_id
+    probe_id = request.args.get("probe_id")
+    nets = _svc.list_wifi(tenant_id, probe_id=probe_id, limit=int(request.args.get("limit", 200)))
+    return jsonify([n.to_dict() for n in nets]), 200
+
+
+@api_v1_bp.get("/telemetry/ble")
+@require_role(SUPERADMIN, TENANT_ADMIN, OPERATOR)
+def list_ble():
+    user = g.current_user
+    tenant_id = request.args.get("tenant_id") if user.is_superadmin else user.tenant_id
+    probe_id = request.args.get("probe_id")
+    devs = _svc.list_ble(tenant_id, probe_id=probe_id, limit=int(request.args.get("limit", 200)))
+    return jsonify([d.to_dict() for d in devs]), 200
+
+
 @api_v1_bp.post("/telemetry/wifi")
 @require_role(SUPERADMIN, TENANT_ADMIN, OPERATOR)
 def ingest_wifi():

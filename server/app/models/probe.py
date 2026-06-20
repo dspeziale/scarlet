@@ -88,6 +88,7 @@ class Probe(db.Model):
     subnets: Mapped[list | None] = mapped_column(JSON)
     ids_interface: Mapped[str | None] = mapped_column(String(64))
     network_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    ruleset_version: Mapped[str | None] = mapped_column(String(40))  # ETag for /ids/rules
 
     # Operator-supplied metadata (editable by the tenant admin).
     location: Mapped[str | None] = mapped_column(String(255))      # indirizzo

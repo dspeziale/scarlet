@@ -81,3 +81,8 @@ def tenant_settings():
     return render_template("tenant/settings.html")
 
 
+@web_bp.get("/tenant/ids")
+def tenant_ids():
+    return render_template("tenant/ids.html")
+
+

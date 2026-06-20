@@ -3,99 +3,216 @@
 {% block page_title %}Dashboard{% endblock %}
 {% block breadcrumb %}<li class="breadcrumb-item active">Dashboard</li>{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  .stat-card { border: none; border-radius: .75rem; color: #fff; overflow: hidden; }
+  .stat-card .num { font-size: 1.9rem; font-weight: 700; line-height: 1; }
+  .stat-card .lbl { opacity: .9; font-size: .82rem; text-transform: uppercase; letter-spacing: .04em; }
+  .stat-card .bi { font-size: 2.1rem; opacity: .35; }
+  .g-blue   { background: linear-gradient(135deg,#2563eb,#3b82f6); }
+  .g-green  { background: linear-gradient(135deg,#059669,#10b981); }
+  .g-amber  { background: linear-gradient(135deg,#d97706,#f59e0b); }
+  .g-red    { background: linear-gradient(135deg,#dc2626,#ef4444); }
+  .g-purple { background: linear-gradient(135deg,#7c3aed,#a855f7); }
+  .g-teal   { background: linear-gradient(135deg,#0d9488,#14b8a6); }
+  .g-slate  { background: linear-gradient(135deg,#475569,#64748b); }
+  #probe-map { height: 360px; border-radius: .5rem; z-index: 0; }
+  .chart-box { position: relative; height: 260px; }
+</style>
+{% endblock %}
+
 {% block content %}
-<!-- Stats row -->
-<div class="row g-3 mb-4" id="stats-row">
-  <div class="col-6 col-lg-3">
-    <div class="info-box shadow-sm">
-      <span class="info-box-icon text-bg-primary"><i class="bi bi-hdd-network"></i></span>
-      <div class="info-box-content">
-        <span class="info-box-text">Probes</span>
-        <span class="info-box-number" id="stat-probes">—</span>
+<!-- Stat cards -->
+<div class="row g-3 mb-3" id="stat-cards">
+  <div class="col-6 col-xl-3"><div class="card stat-card g-blue shadow-sm"><div class="card-body d-flex justify-content-between align-items-center">
+    <div><div class="num" id="s-probes">—</div><div class="lbl">Sonde</div></div><i class="bi bi-hdd-network"></i></div></div></div>
+  <div class="col-6 col-xl-3"><div class="card stat-card g-green shadow-sm"><div class="card-body d-flex justify-content-between align-items-center">
+    <div><div class="num" id="s-online">—</div><div class="lbl">Online</div></div><i class="bi bi-check-circle"></i></div></div></div>
+  <div class="col-6 col-xl-3"><div class="card stat-card g-amber shadow-sm"><div class="card-body d-flex justify-content-between align-items-center">
+    <div><div class="num" id="s-tasks">—</div><div class="lbl">Task attivi</div></div><i class="bi bi-list-task"></i></div></div></div>
+  <div class="col-6 col-xl-3"><div class="card stat-card g-red shadow-sm"><div class="card-body d-flex justify-content-between align-items-center">
+    <div><div class="num" id="s-alerts">—</div><div class="lbl">Alert 24h</div></div><i class="bi bi-shield-exclamation"></i></div></div></div>
+  <div class="col-6 col-xl-3"><div class="card stat-card g-purple shadow-sm"><div class="card-body d-flex justify-content-between align-items-center">
+    <div><div class="num" id="s-devices">—</div><div class="lbl">Dispositivi</div></div><i class="bi bi-pc-display-horizontal"></i></div></div></div>
+  <div class="col-6 col-xl-3"><div class="card stat-card g-teal shadow-sm"><div class="card-body d-flex justify-content-between align-items-center">
+    <div><div class="num" id="s-wifi">—</div><div class="lbl">Reti WiFi</div></div><i class="bi bi-wifi"></i></div></div></div>
+  <div class="col-6 col-xl-3"><div class="card stat-card g-slate shadow-sm"><div class="card-body d-flex justify-content-between align-items-center">
+    <div><div class="num" id="s-ble">—</div><div class="lbl">Dispositivi BLE</div></div><i class="bi bi-bluetooth"></i></div></div></div>
+  <div class="col-6 col-xl-3"><div class="card stat-card g-blue shadow-sm"><div class="card-body d-flex justify-content-between align-items-center">
+    <div><div class="num" id="s-offline">—</div><div class="lbl">Offline</div></div><i class="bi bi-dash-circle"></i></div></div></div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-lg-7">
+    <div class="card shadow-sm h-100">
+      <div class="card-header"><h6 class="mb-0"><i class="bi bi-geo-alt me-2"></i>Mappa sonde</h6></div>
+      <div class="card-body"><div id="probe-map"></div>
+        <div class="text-muted small mt-2" id="map-note"></div>
       </div>
     </div>
   </div>
-  <div class="col-6 col-lg-3">
-    <div class="info-box shadow-sm">
-      <span class="info-box-icon text-bg-success"><i class="bi bi-check-circle"></i></span>
-      <div class="info-box-content">
-        <span class="info-box-text">Online</span>
-        <span class="info-box-number" id="stat-online">—</span>
-      </div>
-    </div>
-  </div>
-  <div class="col-6 col-lg-3">
-    <div class="info-box shadow-sm">
-      <span class="info-box-icon text-bg-warning"><i class="bi bi-list-task"></i></span>
-      <div class="info-box-content">
-        <span class="info-box-text">Active Tasks</span>
-        <span class="info-box-number" id="stat-tasks">—</span>
-      </div>
-    </div>
-  </div>
-  <div class="col-6 col-lg-3">
-    <div class="info-box shadow-sm">
-      <span class="info-box-icon text-bg-danger"><i class="bi bi-pc-display-horizontal"></i></span>
-      <div class="info-box-content">
-        <span class="info-box-text">Discovered Devices</span>
-        <span class="info-box-number" id="stat-devices">—</span>
-      </div>
+  <div class="col-lg-5">
+    <div class="card shadow-sm h-100">
+      <div class="card-header"><h6 class="mb-0"><i class="bi bi-graph-up me-2"></i>Alert IDS (24h)</h6></div>
+      <div class="card-body"><div class="chart-box"><canvas id="chart-alerts"></canvas></div></div>
     </div>
   </div>
 </div>
 
-<!-- Probes table -->
+<div class="row g-3 mb-3">
+  <div class="col-lg-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-header"><h6 class="mb-0"><i class="bi bi-pie-chart me-2"></i>Stato task</h6></div>
+      <div class="card-body"><div class="chart-box"><canvas id="chart-tasks"></canvas></div></div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-header"><h6 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Top firme alert</h6></div>
+      <div class="card-body"><div class="chart-box"><canvas id="chart-signatures"></canvas></div></div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-header"><h6 class="mb-0"><i class="bi bi-building me-2"></i>Vendor dispositivi</h6></div>
+      <div class="card-body"><div class="chart-box"><canvas id="chart-vendors"></canvas></div></div>
+    </div>
+  </div>
+</div>
+
 <div class="card shadow-sm">
   <div class="card-header d-flex justify-content-between align-items-center">
-    <h5 class="mb-0"><i class="bi bi-hdd-network me-2"></i>Probes</h5>
-    <a href="/tenant/probes" class="btn btn-sm btn-outline-primary">View all</a>
+    <h6 class="mb-0"><i class="bi bi-hdd-network me-2"></i>Sonde</h6>
+    <a href="/tenant/probes" class="btn btn-sm btn-outline-primary">Vedi tutte</a>
   </div>
   <div class="card-body p-0">
     <table class="table table-hover mb-0">
-      <thead class="table-light"><tr><th>Name</th><th>Hostname</th><th>Status</th><th>Last Seen</th></tr></thead>
-      <tbody id="probe-list"><tr><td colspan="4" class="text-center py-3 text-muted">Loading…</td></tr></tbody>
+      <thead class="table-light"><tr><th>Nome</th><th>Hostname</th><th>Posizione</th><th>IDS</th><th>Stato</th></tr></thead>
+      <tbody id="probe-list"><tr><td colspan="5" class="text-center py-3 text-muted">Loading…</td></tr></tbody>
     </table>
   </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script>
-async function loadDashboard() {
-  const h = apiHeaders();
+let _map, _markers, _charts = {};
 
-  // Probes
-  const pr = await fetch('/api/v1/probes', { headers: h });
-  if (pr.ok) {
-    const probes = await pr.json();
-    document.getElementById('stat-probes').textContent = probes.length;
-    document.getElementById('stat-online').textContent = probes.filter(p => p.status === 'online').length;
-    const tbody = document.getElementById('probe-list');
-    tbody.innerHTML = probes.length === 0
-      ? '<tr><td colspan="4" class="text-center text-muted">No probes registered</td></tr>'
-      : probes.map(p => `
-          <tr>
-            <td>${p.name || '—'}</td>
-            <td>${p.hostname}</td>
-            <td><span class="badge ${p.status==='online'?'text-bg-success':'text-bg-secondary'}">${p.status}</span></td>
-            <td>${p.last_seen ? new Date(p.last_seen).toLocaleString() : '—'}</td>
-          </tr>`).join('');
-  }
-
-  // Tasks
-  const tr = await fetch('/api/v1/tasks?status=running', { headers: h });
-  if (tr.ok) {
-    const tasks = await tr.json();
-    document.getElementById('stat-tasks').textContent = tasks.length;
-  }
-
-  // Devices
-  const dr = await fetch('/api/v1/telemetry/devices?limit=1', { headers: h });
-  if (dr.ok) {
-    // Just show indicator — full count not returned by list endpoint
-    document.getElementById('stat-devices').textContent = '✓';
-  }
+function statusBadge(s) {
+  const c = s === 'online' ? 'success' : s === 'offline' ? 'secondary' : 'warning';
+  return `<span class="badge text-bg-${c}">${s}</span>`;
 }
+
+function initMap() {
+  _map = L.map('probe-map', { scrollWheelZoom: false }).setView([41.9, 12.5], 5);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19, attribution: '© OpenStreetMap'
+  }).addTo(_map);
+  _markers = L.layerGroup().addTo(_map);
+}
+
+function renderMap(probes) {
+  _markers.clearLayers();
+  const located = probes.filter(p => p.lat != null && p.lon != null);
+  document.getElementById('map-note').textContent = located.length
+    ? `${located.length} sonde geolocalizzate`
+    : 'Nessuna sonda ha coordinate — impostale dalla pagina Probes (Modifica).';
+  if (!located.length) return;
+  const pts = [];
+  located.forEach(p => {
+    const color = p.status === 'online' ? '#10b981' : p.status === 'offline' ? '#64748b' : '#f59e0b';
+    const marker = L.circleMarker([p.lat, p.lon], {
+      radius: 9, color: '#fff', weight: 2, fillColor: color, fillOpacity: .9
+    }).bindPopup(`<b>${p.name}</b><br>${p.hostname}<br>Stato: ${p.status}` +
+      (p.location ? `<br>${p.location}` : '') + (p.ids_interface ? `<br>IDS: ${p.ids_interface}` : ''));
+    _markers.addLayer(marker);
+    pts.push([p.lat, p.lon]);
+  });
+  if (pts.length) _map.fitBounds(pts, { padding: [40, 40], maxZoom: 13 });
+}
+
+function makeChart(id, config) {
+  if (_charts[id]) _charts[id].destroy();
+  _charts[id] = new Chart(document.getElementById(id), config);
+}
+
+const PALETTE = ['#3b82f6','#10b981','#f59e0b','#ef4444','#a855f7','#14b8a6','#64748b','#ec4899'];
+
+function renderCharts(d) {
+  makeChart('chart-alerts', {
+    type: 'line',
+    data: {
+      labels: d.alerts_timeline.map(t => new Date(t.hour).getHours() + ':00'),
+      datasets: [{ label: 'Alert', data: d.alerts_timeline.map(t => t.count),
+        borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,.15)', fill: true, tension: .3 }]
+    },
+    options: { plugins: { legend: { display: false } }, maintainAspectRatio: false,
+      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+  });
+
+  const ts = d.task_status || {};
+  makeChart('chart-tasks', {
+    type: 'doughnut',
+    data: { labels: Object.keys(ts), datasets: [{ data: Object.values(ts), backgroundColor: PALETTE }] },
+    options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+  });
+
+  makeChart('chart-signatures', {
+    type: 'bar',
+    data: { labels: d.top_signatures.map(s => s.signature.slice(0, 28)),
+      datasets: [{ data: d.top_signatures.map(s => s.count), backgroundColor: '#a855f7' }] },
+    options: { indexAxis: 'y', maintainAspectRatio: false, plugins: { legend: { display: false } },
+      scales: { x: { beginAtZero: true, ticks: { precision: 0 } } } }
+  });
+
+  makeChart('chart-vendors', {
+    type: 'bar',
+    data: { labels: d.device_vendors.map(v => v.vendor.slice(0, 16)),
+      datasets: [{ data: d.device_vendors.map(v => v.count), backgroundColor: '#14b8a6' }] },
+    options: { maintainAspectRatio: false, plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+  });
+}
+
+function renderCards(c) {
+  document.getElementById('s-probes').textContent  = c.probes_total;
+  document.getElementById('s-online').textContent  = c.probes_online;
+  document.getElementById('s-offline').textContent = c.probes_total - c.probes_online;
+  document.getElementById('s-tasks').textContent   = c.active_tasks;
+  document.getElementById('s-alerts').textContent  = c.alerts_24h;
+  document.getElementById('s-devices').textContent = c.devices_total;
+  document.getElementById('s-wifi').textContent    = c.wifi_total;
+  document.getElementById('s-ble').textContent     = c.ble_total;
+}
+
+function renderProbeTable(probes) {
+  const tbody = document.getElementById('probe-list');
+  tbody.innerHTML = probes.length === 0
+    ? '<tr><td colspan="5" class="text-center text-muted py-3">Nessuna sonda</td></tr>'
+    : probes.map(p => `<tr>
+        <td>${p.name || '—'}</td>
+        <td>${p.hostname}</td>
+        <td>${p.location || '<span class="text-muted">—</span>'}</td>
+        <td>${p.ids_interface ? `<span class="badge text-bg-info">${p.ids_interface}</span>` : '<span class="badge text-bg-secondary">off</span>'}</td>
+        <td>${statusBadge(p.status)}</td>
+      </tr>`).join('');
+}
+
+async function loadDashboard() {
+  const resp = await fetch('/api/v1/dashboard/stats', { headers: apiHeaders() });
+  if (!resp.ok) return;
+  const d = await resp.json();
+  renderCards(d.counts);
+  renderProbeTable(d.probes);
+  renderMap(d.probes);
+  renderCharts(d);
+}
+
+initMap();
 loadDashboard();
+setInterval(loadDashboard, 30000);
 </script>
 {% endblock %}

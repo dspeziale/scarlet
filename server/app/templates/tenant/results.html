@@ -1,35 +1,80 @@
 {% extends "base.html" %}
 {% block title %}Task Results — SOC Seattle{% endblock %}
-{% block page_title %}Task Results{% endblock %}
+{% block page_title %}Risultati & Inventario{% endblock %}
 {% block content %}
-<div class="card shadow-sm">
-  <div class="card-header"><h5 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Device Inventory</h5></div>
-  <div class="card-body p-0">
-    <table class="table table-hover mb-0">
-      <thead class="table-light"><tr><th>IP</th><th>MAC</th><th>Hostname</th><th>Vendor</th><th>OS</th><th>Last Seen</th></tr></thead>
-      <tbody id="device-body"><tr><td colspan="6" class="text-center py-3 text-muted">Loading…</td></tr></tbody>
-    </table>
+<ul class="nav nav-tabs mb-3" id="resTabs" role="tablist">
+  <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-devices" type="button"><i class="bi bi-pc-display-horizontal me-1"></i>Dispositivi</button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-wifi" type="button"><i class="bi bi-wifi me-1"></i>WiFi</button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-ble" type="button"><i class="bi bi-bluetooth me-1"></i>BLE</button></li>
+</ul>
+
+<div class="tab-content">
+  <!-- Devices -->
+  <div class="tab-pane fade show active" id="tab-devices">
+    <div class="card shadow-sm"><div class="card-body p-0">
+      <table class="table table-hover mb-0">
+        <thead class="table-light"><tr><th>IP</th><th>MAC</th><th>Hostname</th><th>Vendor</th><th>OS</th><th>Last Seen</th></tr></thead>
+        <tbody id="device-body"><tr><td colspan="6" class="text-center py-3 text-muted">Loading…</td></tr></tbody>
+      </table>
+    </div></div>
+  </div>
+
+  <!-- WiFi -->
+  <div class="tab-pane fade" id="tab-wifi">
+    <div class="card shadow-sm"><div class="card-body p-0">
+      <table class="table table-hover mb-0">
+        <thead class="table-light"><tr><th>SSID</th><th>BSSID</th><th>Canale</th><th>Segnale</th><th>Cifratura</th><th>Visto</th></tr></thead>
+        <tbody id="wifi-body"><tr><td colspan="6" class="text-center py-3 text-muted">Loading…</td></tr></tbody>
+      </table>
+    </div></div>
+  </div>
+
+  <!-- BLE -->
+  <div class="tab-pane fade" id="tab-ble">
+    <div class="card shadow-sm"><div class="card-body p-0">
+      <table class="table table-hover mb-0">
+        <thead class="table-light"><tr><th>Indirizzo</th><th>Nome</th><th>Produttore</th><th>RSSI</th><th>Visto</th></tr></thead>
+        <tbody id="ble-body"><tr><td colspan="5" class="text-center py-3 text-muted">Loading…</td></tr></tbody>
+      </table>
+    </div></div>
   </div>
 </div>
 {% endblock %}
+
 {% block extra_js %}
 <script>
+function dt(s) { return s ? new Date(s).toLocaleString() : '—'; }
+
 async function loadDevices() {
   const resp = await fetch('/api/v1/telemetry/devices', { headers: apiHeaders() });
   const tbody = document.getElementById('device-body');
-  if (!resp.ok) return;
-  const devices = await resp.json();
-  tbody.innerHTML = devices.length === 0
-    ? '<tr><td colspan="6" class="text-center text-muted">No devices discovered yet</td></tr>'
-    : devices.map(d => `<tr>
-        <td>${d.ip || '—'}</td>
-        <td class="font-monospace">${d.mac || '—'}</td>
-        <td>${d.hostname || '—'}</td>
-        <td>${d.vendor || '—'}</td>
-        <td>${d.os || '—'}</td>
-        <td>${d.last_seen ? new Date(d.last_seen).toLocaleString() : '—'}</td>
-      </tr>`).join('');
+  if (!resp.ok) { tbody.innerHTML = '<tr><td colspan="6" class="text-danger text-center">Errore</td></tr>'; return; }
+  const d = await resp.json();
+  tbody.innerHTML = d.length === 0
+    ? '<tr><td colspan="6" class="text-center text-muted">Nessun dispositivo scoperto</td></tr>'
+    : d.map(x => `<tr><td>${x.ip||'—'}</td><td class="font-monospace">${x.mac||'—'}</td><td>${x.hostname||'—'}</td><td>${x.vendor||'—'}</td><td>${x.os||'—'}</td><td>${dt(x.last_seen)}</td></tr>`).join('');
 }
-loadDevices();
+
+async function loadWifi() {
+  const resp = await fetch('/api/v1/telemetry/wifi', { headers: apiHeaders() });
+  const tbody = document.getElementById('wifi-body');
+  if (!resp.ok) { tbody.innerHTML = '<tr><td colspan="6" class="text-danger text-center">Errore</td></tr>'; return; }
+  const d = await resp.json();
+  tbody.innerHTML = d.length === 0
+    ? '<tr><td colspan="6" class="text-center text-muted">Nessuna rete WiFi rilevata. Lancia un task <em>wifi_scan</em>.</td></tr>'
+    : d.map(x => `<tr><td>${x.ssid||'<span class="text-muted">(nascosto)</span>'}</td><td class="font-monospace">${x.bssid||'—'}</td><td>${x.channel??'—'}</td><td>${x.signal!=null?x.signal+' dBm':'—'}</td><td>${x.encryption||'—'}</td><td>${dt(x.seen_at)}</td></tr>`).join('');
+}
+
+async function loadBle() {
+  const resp = await fetch('/api/v1/telemetry/ble', { headers: apiHeaders() });
+  const tbody = document.getElementById('ble-body');
+  if (!resp.ok) { tbody.innerHTML = '<tr><td colspan="5" class="text-danger text-center">Errore</td></tr>'; return; }
+  const d = await resp.json();
+  tbody.innerHTML = d.length === 0
+    ? '<tr><td colspan="5" class="text-center text-muted">Nessun dispositivo BLE rilevato. Lancia un task <em>ble_scan</em>.</td></tr>'
+    : d.map(x => `<tr><td class="font-monospace">${x.address||'—'}</td><td>${x.name||'—'}</td><td>${x.manufacturer||'—'}</td><td>${x.rssi!=null?x.rssi:'—'}</td><td>${dt(x.seen_at)}</td></tr>`).join('');
+}
+
+loadDevices(); loadWifi(); loadBle();
 </script>
 {% endblock %}

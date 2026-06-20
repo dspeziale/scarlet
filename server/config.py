@@ -46,12 +46,14 @@ class Config:
     TALISMAN_FORCE_HTTPS: bool = os.environ.get("FORCE_HTTPS", "false").lower() == "true"
     TALISMAN_CONTENT_SECURITY_POLICY: dict = {
         "default-src": "'self'",
-        "script-src": ["'self'", "cdn.jsdelivr.net", "vercel.live", "'unsafe-inline'"],
-        "style-src": ["'self'", "cdn.jsdelivr.net", "fonts.googleapis.com", "'unsafe-inline'"],
-        "img-src": ["'self'", "data:", "cdn.jsdelivr.net"],
+        "script-src": ["'self'", "cdn.jsdelivr.net", "unpkg.com", "vercel.live", "'unsafe-inline'"],
+        "style-src": ["'self'", "cdn.jsdelivr.net", "unpkg.com", "fonts.googleapis.com", "'unsafe-inline'"],
+        # OpenStreetMap raster tiles for the probe map.
+        "img-src": ["'self'", "data:", "cdn.jsdelivr.net", "unpkg.com",
+                    "*.tile.openstreetmap.org", "*.basemaps.cartocdn.com"],
         "font-src": ["'self'", "cdn.jsdelivr.net", "fonts.gstatic.com"],
         # connect-src governs XHR/fetch and devtools source-map (.map) requests.
-        "connect-src": ["'self'", "cdn.jsdelivr.net", "vercel.live"],
+        "connect-src": ["'self'", "cdn.jsdelivr.net", "unpkg.com", "vercel.live"],
         # frame-src: Vercel live-feedback iframe (preview deployments only).
         "frame-src": ["'self'", "vercel.live"],
     }

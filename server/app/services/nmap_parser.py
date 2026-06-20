@@ -72,3 +72,53 @@ def parse_nmap_hosts(output: str) -> list[dict]:
 
     # Keep only hosts that have at least an ip or a mac.
     return [h for h in hosts if h.get("ip") or h.get("mac")]
+
+
+_BSS_RE = re.compile(r"^BSS\s+([0-9a-fA-F:]{17})")
+_SIGNAL_RE = re.compile(r"signal:\s*(-?\d+(?:\.\d+)?)\s*dBm")
+_FREQ_RE = re.compile(r"freq:\s*(\d+)")
+_SSID_RE = re.compile(r"SSID:\s*(.*)")
+
+
+def _freq_to_channel(freq: int) -> int | None:
+    if 2412 <= freq <= 2484:
+        return 1 if freq == 2412 else (freq - 2407) // 5
+    if 5000 <= freq <= 5900:
+        return (freq - 5000) // 5
+    return None
+
+
+def parse_iw_scan(output: str) -> list[dict]:
+    """Parse `iw <iface> scan` output into wifi network dicts."""
+    if not output:
+        return []
+    nets: list[dict] = []
+    cur: dict | None = None
+    enc_seen = False
+    for raw in output.splitlines():
+        line = raw.strip()
+        m = _BSS_RE.match(line)
+        if m:
+            if cur:
+                cur["encryption"] = "WPA/WPA2" if enc_seen else "Open"
+                nets.append(cur)
+            cur = {"bssid": m.group(1).lower(), "ssid": None, "signal": None, "channel": None, "encryption": None}
+            enc_seen = False
+            continue
+        if cur is None:
+            continue
+        sm = _SIGNAL_RE.search(line)
+        if sm:
+            cur["signal"] = int(float(sm.group(1)))
+        fm = _FREQ_RE.search(line)
+        if fm and cur["channel"] is None:
+            cur["channel"] = _freq_to_channel(int(fm.group(1)))
+        ssm = _SSID_RE.match(line)
+        if ssm:
+            cur["ssid"] = ssm.group(1).strip() or None
+        if "RSN:" in line or "WPA:" in line or "Privacy" in line:
+            enc_seen = True
+    if cur:
+        cur["encryption"] = "WPA/WPA2" if enc_seen else "Open"
+        nets.append(cur)
+    return [n for n in nets if n.get("bssid")]

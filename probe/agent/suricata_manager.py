@@ -95,9 +95,13 @@ class SuricataManager:
             )
             time.sleep(2)
             if self._proc.poll() is not None:
-                err = self._proc.stderr.read().decode(errors="replace")
-                self._last_error = err.strip()[-1000:] or f"exited with code {self._proc.returncode}"
-                log.error("suricata_start_failed", returncode=self._proc.returncode, stderr=err)
+                err = self._proc.stderr.read().decode(errors="replace").strip()
+                # With -D, Suricata logs the real error to suricata.log, not stderr.
+                log_tail = self._log_tail()
+                detail = err or log_tail or f"exited with code {self._proc.returncode}"
+                self._last_error = detail[-1500:]
+                log.error("suricata_start_failed", returncode=self._proc.returncode,
+                          stderr=err, log_tail=log_tail)
                 return False
             self._last_error = None
             log.info("suricata_started", pid=self._proc.pid)
@@ -167,6 +171,18 @@ class SuricataManager:
     @property
     def last_error(self) -> Optional[str]:
         return self._last_error
+
+    def _log_tail(self, max_lines: int = 15) -> str:
+        """Return the last error/warning lines from suricata.log (if present)."""
+        log_path = self._log_dir / "suricata.log"
+        try:
+            lines = log_path.read_text(errors="replace").splitlines()
+        except OSError:
+            return ""
+        # Prefer error/warning lines; fall back to the raw tail.
+        relevant = [ln for ln in lines if "Error" in ln or "Warning" in ln]
+        chosen = (relevant or lines)[-max_lines:]
+        return "\n".join(chosen).strip()
 
     def _pid_from_file(self) -> Optional[int]:
         pid_path = Path("/var/run/suricata.pid")

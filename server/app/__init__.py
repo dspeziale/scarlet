@@ -89,6 +89,7 @@ _SCHEMA_ADDITIONS: dict[str, dict[str, str]] = {
         "subnets": "JSON",
         "ids_interface": "VARCHAR(64)",
         "network_updated_at": "TIMESTAMP",
+        "ruleset_version": "VARCHAR(40)",
         "location": "VARCHAR(255)",
         "latitude": "DOUBLE PRECISION",
         "longitude": "DOUBLE PRECISION",
@@ -115,6 +116,15 @@ def _ensure_schema(app: Flask) -> None:
 
     try:
         with app.app_context():
+            import app.models  # noqa: F401 — ensure every model is registered
+            # Create any tables introduced by new models (idempotent — never
+            # touches existing tables). Covers new features on a DB that predates
+            # them, since the deployment has no migration step.
+            try:
+                db.create_all()
+            except Exception as exc:  # pragma: no cover
+                log.warning("schema_create_all_failed", error=str(exc))
+
             inspector = inspect(db.engine)
             tables = set(inspector.get_table_names())
             for table, columns in _SCHEMA_ADDITIONS.items():

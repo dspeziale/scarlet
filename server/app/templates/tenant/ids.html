@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% block title %}IDS Console — SOC Seattle{% endblock %}
+{% block page_title %}IDS Console{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="/dashboard">Home</a></li>
+  <li class="breadcrumb-item active">IDS Console</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  #ids-term { background:#0b1020; color:#cbd5e1; font-family: ui-monospace, Menlo, monospace;
+              font-size:.8rem; height:520px; overflow-y:auto; border-radius:.5rem; padding:.75rem; }
+  #ids-term .a-sev1 { color:#fca5a5; } #ids-term .a-sev2 { color:#fdba74; } #ids-term .a-sev3 { color:#fde68a; }
+  #ids-term .ts { color:#64748b; } #ids-term .ip { color:#7dd3fc; }
+  .rule-list { max-height: 420px; overflow-y:auto; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+  <label class="fw-semibold">Sonda:</label>
+  <select id="probe-select" class="form-select" style="width:320px"><option value="">Seleziona…</option></select>
+  <span class="badge text-bg-secondary" id="ids-state">—</span>
+  <div class="ms-auto">
+    <button class="btn btn-sm btn-outline-secondary" id="btn-clear"><i class="bi bi-trash me-1"></i>Pulisci</button>
+    <button class="btn btn-sm btn-outline-primary" id="btn-pause"><i class="bi bi-pause me-1"></i>Pausa</button>
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- Live terminal -->
+  <div class="col-lg-7">
+    <div class="card shadow-sm h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="bi bi-terminal me-2"></i>Traffico IDS live</h6>
+        <span class="small text-muted" id="alert-count">0 eventi</span>
+      </div>
+      <div class="card-body"><div id="ids-term">Seleziona una sonda con IDS attivo…</div></div>
+    </div>
+  </div>
+
+  <!-- Rules -->
+  <div class="col-lg-5">
+    <div class="card shadow-sm h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="bi bi-shield-lock me-2"></i>Regole attive sulla sonda</h6>
+        <button class="btn btn-sm btn-success" id="btn-save-rules"><i class="bi bi-send me-1"></i>Attiva selezione</button>
+      </div>
+      <div class="card-body">
+        <div id="rules-result" class="d-none alert py-1 px-2 small"></div>
+        <div class="rule-list mb-3" id="rule-list"><div class="text-muted">Seleziona una sonda…</div></div>
+        <hr>
+        <h6 class="text-muted small">Aggiungi regola al catalogo</h6>
+        <input class="form-control form-control-sm mb-1" id="r-msg" placeholder="Descrizione (msg)">
+        <textarea class="form-control form-control-sm mb-1" id="r-text" rows="2" placeholder='alert tcp any any -> any any (msg:"..."; sid:1000001;)'></textarea>
+        <button class="btn btn-sm btn-outline-primary" id="btn-add-rule">Aggiungi al catalogo</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let _probeId = null, _sinceId = 0, _paused = false, _timer = null, _count = 0;
+
+function esc(s){ return String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+async function loadProbes() {
+  const r = await fetch('/api/v1/probes', { headers: apiHeaders() });
+  if (!r.ok) return;
+  const probes = await r.json();
+  const sel = document.getElementById('probe-select');
+  sel.innerHTML = '<option value="">Seleziona…</option>' +
+    probes.map(p => `<option value="${p.id}" data-ids="${p.ids_interface||''}">${esc(p.name||p.hostname)} ${p.ids_interface?'('+p.ids_interface+')':''}</option>`).join('');
+}
+
+document.getElementById('probe-select').addEventListener('change', function () {
+  _probeId = this.value || null;
+  _sinceId = 0; _count = 0;
+  const term = document.getElementById('ids-term');
+  term.innerHTML = '';
+  document.getElementById('alert-count').textContent = '0 eventi';
+  const opt = this.selectedOptions[0];
+  const ids = opt && opt.dataset.ids;
+  document.getElementById('ids-state').textContent = ids ? 'IDS: '+ids : 'IDS non attivo';
+  document.getElementById('ids-state').className = 'badge ' + (ids ? 'text-bg-success' : 'text-bg-secondary');
+  if (_probeId) { loadRules(); pollAlerts(); }
+});
+
+// ── Live alerts ─────────────────────────────────────────────────────────────
+async function pollAlerts() {
+  if (!_probeId || _paused) return;
+  try {
+    const r = await fetch(`/api/v1/probes/${_probeId}/ids/alerts?since_id=${_sinceId}&limit=300`, { headers: apiHeaders() });
+    if (r.ok) {
+      const { alerts } = await r.json();
+      const term = document.getElementById('ids-term');
+      if (alerts.length && term.textContent.startsWith('Seleziona')) term.innerHTML = '';
+      alerts.forEach(a => {
+        _sinceId = Math.max(_sinceId, a.id);
+        _count++;
+        const sev = a.severity || 3;
+        const line = document.createElement('div');
+        line.className = 'a-sev' + (sev <= 1 ? 1 : sev === 2 ? 2 : 3);
+        const t = a.event_time ? new Date(a.event_time).toLocaleTimeString() : '';
+        line.innerHTML = `<span class="ts">${t}</span> [${esc(a.protocol||'-')}] ` +
+          `<span class="ip">${esc(a.src_ip||'?')}:${a.src_port||0}</span> → ` +
+          `<span class="ip">${esc(a.dest_ip||'?')}:${a.dest_port||0}</span>  ${esc(a.signature||a.category||'alert')}`;
+        term.appendChild(line);
+      });
+      if (alerts.length) {
+        document.getElementById('alert-count').textContent = _count + ' eventi';
+        term.scrollTop = term.scrollHeight;
+      }
+    }
+  } catch (e) {}
+}
+
+function startTimer(){ if (_timer) clearInterval(_timer); _timer = setInterval(pollAlerts, 3000); }
+document.getElementById('btn-pause').addEventListener('click', function () {
+  _paused = !_paused;
+  this.innerHTML = _paused ? '<i class="bi bi-play me-1"></i>Riprendi' : '<i class="bi bi-pause me-1"></i>Pausa';
+});
+document.getElementById('btn-clear').addEventListener('click', () => {
+  document.getElementById('ids-term').innerHTML = ''; _count = 0;
+  document.getElementById('alert-count').textContent = '0 eventi';
+});
+
+// ── Rules ───────────────────────────────────────────────────────────────────
+async function loadRules() {
+  const listEl = document.getElementById('rule-list');
+  listEl.innerHTML = '<div class="text-muted">Loading…</div>';
+  const [catR, asgR] = await Promise.all([
+    fetch('/api/v1/ids/rules', { headers: apiHeaders() }),
+    fetch(`/api/v1/probes/${_probeId}/ids/rules/assignments`, { headers: apiHeaders() }),
+  ]);
+  if (!catR.ok) { listEl.innerHTML = '<div class="text-danger">Errore nel catalogo regole</div>'; return; }
+  const rules = await catR.json();
+  const active = new Set(asgR.ok ? (await asgR.json()).active_rule_ids : []);
+  listEl.innerHTML = rules.length === 0
+    ? '<div class="text-muted">Catalogo vuoto — aggiungi una regola sotto.</div>'
+    : rules.map(r => `<div class="form-check">
+        <input class="form-check-input rule-cb" type="checkbox" value="${r.id}" id="rc-${r.id}" ${active.has(r.id)?'checked':''}>
+        <label class="form-check-label small" for="rc-${r.id}">
+          <span class="badge text-bg-light border">${r.sid||'—'}</span> ${esc(r.msg||r.rule_text.slice(0,60))}
+        </label></div>`).join('');
+}
+
+document.getElementById('btn-save-rules').addEventListener('click', async () => {
+  if (!_probeId) return;
+  const ids = Array.from(document.querySelectorAll('.rule-cb:checked')).map(c => c.value);
+  const r = await fetch(`/api/v1/probes/${_probeId}/ids/rules/assignments`, {
+    method: 'PUT', headers: apiHeaders(), body: JSON.stringify({ rule_ids: ids }),
+  });
+  const res = document.getElementById('rules-result');
+  if (r.ok) {
+    const d = await r.json();
+    res.className = 'alert alert-success py-1 px-2 small d-block';
+    res.textContent = `Ruleset v${d.ruleset_version} (${d.count} regole) inviato alla sonda.`;
+  } else {
+    res.className = 'alert alert-danger py-1 px-2 small d-block';
+    res.textContent = 'Errore nel salvataggio.';
+  }
+});
+
+document.getElementById('btn-add-rule').addEventListener('click', async () => {
+  const text = document.getElementById('r-text').value.trim();
+  const msg = document.getElementById('r-msg').value.trim();
+  if (!text) return;
+  const sidMatch = text.match(/sid:\s*(\d+)/);
+  const r = await fetch('/api/v1/ids/rules', {
+    method: 'POST', headers: apiHeaders(),
+    body: JSON.stringify({ rule_text: text, msg: msg || null, sid: sidMatch ? parseInt(sidMatch[1]) : null }),
+  });
+  if (r.ok) {
+    document.getElementById('r-text').value = '';
+    document.getElementById('r-msg').value = '';
+    loadRules();
+  }
+});
+
+loadProbes();
+startTimer();
+</script>
+{% endblock %}

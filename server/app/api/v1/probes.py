@@ -206,26 +206,42 @@ _DISCOVERY_TASKS = {"network_discovery", "service_detection", "os_fingerprinting
 
 
 def _ingest_discovery(result, probe_id: str, result_payload: dict) -> None:
-    """Parse nmap output from a discovery task result and upsert device inventory."""
+    """Parse a completed task result and populate the relevant inventory table."""
     try:
         task = result.assignment.task if result and result.assignment else None
-        if not task or task.task_type not in _DISCOVERY_TASKS:
+        if not task:
             return
-        output = result_payload.get("output")
-        if not output:
-            return
-        from app.services.nmap_parser import parse_nmap_hosts
+        ttype = task.task_type
         from app.services.telemetry_service import TelemetryService
-        devices = parse_nmap_hosts(output)
-        if not devices:
-            return
-        counts = TelemetryService().upsert_devices(result.tenant_id, probe_id, devices)
-        log.info("discovery_devices_ingested", probe_id=probe_id, **counts)
-        # Notify the tenant when previously-unseen devices appear.
-        if counts.get("added"):
-            _notify_new_devices(result.tenant_id, probe_id, counts["added"])
+        tsvc = TelemetryService()
+
+        if ttype in _DISCOVERY_TASKS:
+            output = result_payload.get("output")
+            if not output:
+                return
+            from app.services.nmap_parser import parse_nmap_hosts
+            devices = parse_nmap_hosts(output)
+            if not devices:
+                return
+            counts = tsvc.upsert_devices(result.tenant_id, probe_id, devices)
+            log.info("discovery_devices_ingested", probe_id=probe_id, **counts)
+            if counts.get("added"):
+                _notify_new_devices(result.tenant_id, probe_id, counts["added"])
+
+        elif ttype == "wifi_scan":
+            from app.services.nmap_parser import parse_iw_scan
+            nets = parse_iw_scan(result_payload.get("output", ""))
+            if nets:
+                counts = tsvc.upsert_wifi(result.tenant_id, probe_id, nets)
+                log.info("wifi_ingested", probe_id=probe_id, **counts)
+
+        elif ttype == "ble_scan":
+            devices = result_payload.get("devices") or []
+            if devices:
+                counts = tsvc.upsert_ble(result.tenant_id, probe_id, devices)
+                log.info("ble_ingested", probe_id=probe_id, **counts)
     except Exception as exc:
-        log.warning("discovery_ingest_failed", probe_id=probe_id, error=str(exc))
+        log.warning("telemetry_ingest_failed", probe_id=probe_id, error=str(exc))
 
 
 def _notify_new_devices(tenant_id: str, probe_id: str, added: int) -> None:
