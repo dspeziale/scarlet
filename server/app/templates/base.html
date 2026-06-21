@@ -159,63 +159,62 @@
       <nav class="mt-2">
         <ul class="nav sidebar-menu flex-column" data-lte-toggle="treeview">
           {% block sidebar_items %}
+          <!-- Dashboard -->
           <li class="nav-item">
             <a href="/dashboard" class="nav-link">
               <i class="nav-icon bi bi-speedometer2"></i><p>Dashboard</p>
             </a>
           </li>
-          <li class="nav-item">
-            <a href="/tenant/probes" class="nav-link">
-              <i class="nav-icon bi bi-hdd-network"></i><p>Probes</p>
+
+          <!-- Monitoraggio -->
+          <li class="nav-item menu-open">
+            <a href="#" class="nav-link">
+              <i class="nav-icon bi bi-activity"></i>
+              <p>Monitoraggio<i class="nav-arrow bi bi-chevron-down"></i></p>
             </a>
-          </li>
-          <li class="nav-item">
-            <a href="/tenant/tasks" class="nav-link">
-              <i class="nav-icon bi bi-list-task"></i><p>Tasks</p>
-            </a>
-          </li>
-          <li class="nav-item">
-            <a href="/tenant/ids" class="nav-link">
-              <i class="nav-icon bi bi-shield-shaded"></i><p>IDS Console</p>
-            </a>
-          </li>
-          <li class="nav-item">
-            <a href="/tenant/results" class="nav-link">
-              <i class="nav-icon bi bi-bar-chart"></i><p>Results</p>
-            </a>
-          </li>
-          <li class="nav-item">
-            <a href="/tenant/accounting" class="nav-link">
-              <i class="nav-icon bi bi-graph-up-arrow"></i><p>Accounting</p>
-            </a>
-          </li>
-          <li class="nav-item">
-            <a href="/tenant/users" class="nav-link">
-              <i class="nav-icon bi bi-people"></i><p>Users</p>
-            </a>
-          </li>
-          <li class="nav-item">
-            <a href="/tenant/audit" class="nav-link">
-              <i class="nav-icon bi bi-journal-check"></i><p>Audit Log</p>
-            </a>
-          </li>
-          <li class="nav-item">
-            <a href="/tenant/settings" class="nav-link">
-              <i class="nav-icon bi bi-bell"></i><p>Notifiche</p>
-            </a>
+            <ul class="nav nav-treeview">
+              <li class="nav-item"><a href="/tenant/probes" class="nav-link"><i class="nav-icon bi bi-hdd-network"></i><p>Sonde</p></a></li>
+              <li class="nav-item"><a href="/tenant/tasks" class="nav-link"><i class="nav-icon bi bi-list-task"></i><p>Task</p></a></li>
+              <li class="nav-item"><a href="/tenant/results" class="nav-link"><i class="nav-icon bi bi-pc-display-horizontal"></i><p>Inventario</p></a></li>
+            </ul>
           </li>
 
-          <!-- SuperAdmin links rendered dynamically by JS -->
+          <!-- Sicurezza -->
+          <li class="nav-item">
+            <a href="#" class="nav-link">
+              <i class="nav-icon bi bi-shield-shaded"></i>
+              <p>Sicurezza<i class="nav-arrow bi bi-chevron-right"></i></p>
+            </a>
+            <ul class="nav nav-treeview">
+              <li class="nav-item"><a href="/tenant/ids" class="nav-link"><i class="nav-icon bi bi-shield-lock"></i><p>IDS Console</p></a></li>
+              <li class="nav-item"><a href="/tenant/audit" class="nav-link"><i class="nav-icon bi bi-journal-check"></i><p>Audit Log</p></a></li>
+            </ul>
+          </li>
+
+          <!-- Amministrazione -->
+          <li class="nav-item">
+            <a href="#" class="nav-link">
+              <i class="nav-icon bi bi-gear-wide-connected"></i>
+              <p>Amministrazione<i class="nav-arrow bi bi-chevron-right"></i></p>
+            </a>
+            <ul class="nav nav-treeview">
+              <li class="nav-item"><a href="/tenant/users" class="nav-link"><i class="nav-icon bi bi-people"></i><p>Utenti</p></a></li>
+              <li class="nav-item"><a href="/tenant/accounting" class="nav-link"><i class="nav-icon bi bi-graph-up-arrow"></i><p>Accounting</p></a></li>
+              <li class="nav-item"><a href="/tenant/settings" class="nav-link"><i class="nav-icon bi bi-bell"></i><p>Notifiche</p></a></li>
+            </ul>
+          </li>
+
+          <!-- SuperAdmin (rivelato via JS) -->
           <li class="nav-item d-none" id="superadmin-section">
             <a href="#" class="nav-link">
-              <i class="nav-icon bi bi-gear"></i>
+              <i class="nav-icon bi bi-building-gear"></i>
               <p>SuperAdmin<i class="nav-arrow bi bi-chevron-right"></i></p>
             </a>
             <ul class="nav nav-treeview">
-              <li class="nav-item"><a href="/superadmin/tenants" class="nav-link"><i class="nav-icon bi bi-building"></i><p>Tenants</p></a></li>
-              <li class="nav-item"><a href="/superadmin/users" class="nav-link"><i class="nav-icon bi bi-people-fill"></i><p>All Users</p></a></li>
-              <li class="nav-item"><a href="/superadmin/audit" class="nav-link"><i class="nav-icon bi bi-journal-text"></i><p>Global Audit</p></a></li>
-              <li class="nav-item"><a href="/superadmin/stats" class="nav-link"><i class="nav-icon bi bi-activity"></i><p>Stats</p></a></li>
+              <li class="nav-item"><a href="/superadmin/tenants" class="nav-link"><i class="nav-icon bi bi-building"></i><p>Tenant</p></a></li>
+              <li class="nav-item"><a href="/superadmin/users" class="nav-link"><i class="nav-icon bi bi-people-fill"></i><p>Tutti gli utenti</p></a></li>
+              <li class="nav-item"><a href="/superadmin/audit" class="nav-link"><i class="nav-icon bi bi-journal-text"></i><p>Audit globale</p></a></li>
+              <li class="nav-item"><a href="/superadmin/stats" class="nav-link"><i class="nav-icon bi bi-activity"></i><p>Statistiche</p></a></li>
             </ul>
           </li>
           {% endblock %}
