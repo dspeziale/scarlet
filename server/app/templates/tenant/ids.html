@@ -198,20 +198,42 @@ async function loadRules() {
     fetch(`/api/v1/probes/${_probeId}/ids/rules/assignments`, { headers: apiHeaders() }),
   ]);
   if (!catR.ok) { listEl.innerHTML = '<div class="text-danger">Errore nel catalogo regole</div>'; return; }
-  const rules = await catR.json();
-  const active = new Set(asgR.ok ? (await asgR.json()).active_rule_ids : []);
-  listEl.innerHTML = rules.length === 0
-    ? '<div class="text-muted">Catalogo vuoto — aggiungi una regola sotto.</div>'
-    : rules.map(r => `<div class="form-check">
-        <input class="form-check-input rule-cb" type="checkbox" value="${r.id}" id="rc-${r.id}" ${active.has(r.id)?'checked':''}>
-        <label class="form-check-label small" for="rc-${r.id}">
-          <span class="badge text-bg-light border">${r.sid||'—'}</span> ${esc(r.msg||r.rule_text.slice(0,60))}
-        </label></div>`).join('');
+  _rulesCatalog = await catR.json();
+  _activeRuleIds = new Set(asgR.ok ? (await asgR.json()).active_rule_ids : []);
+  renderRuleList(document.getElementById('rule-search').value);
 }
+
+let _rulesCatalog = [], _activeRuleIds = new Set();
+
+function renderRuleList(filter) {
+  const listEl = document.getElementById('rule-list');
+  const q = (filter || '').toLowerCase().trim();
+  const rules = !q ? _rulesCatalog : _rulesCatalog.filter(r =>
+    (r.msg || '').toLowerCase().includes(q) ||
+    String(r.sid || '').includes(q) ||
+    (r.rule_text || '').toLowerCase().includes(q));
+  document.getElementById('rule-count').textContent = rules.length;
+  listEl.innerHTML = _rulesCatalog.length === 0
+    ? '<div class="text-muted">Catalogo vuoto — usa un template o importa da URL.</div>'
+    : (rules.length === 0
+      ? '<div class="text-muted">Nessuna regola corrisponde.</div>'
+      : rules.map(r => `<div class="form-check">
+          <input class="form-check-input rule-cb" type="checkbox" value="${r.id}" id="rc-${r.id}" ${_activeRuleIds.has(r.id)?'checked':''}>
+          <label class="form-check-label small" for="rc-${r.id}">
+            <span class="badge text-bg-light border">${r.sid||'—'}</span> ${esc(r.msg||r.rule_text.slice(0,60))}
+          </label></div>`).join(''));
+}
+document.getElementById('rule-search').addEventListener('input', function () { renderRuleList(this.value); });
+// Keep the selection in sync even when filtering hides some rows.
+document.getElementById('rule-list').addEventListener('change', (e) => {
+  if (!e.target.classList.contains('rule-cb')) return;
+  if (e.target.checked) _activeRuleIds.add(e.target.value);
+  else _activeRuleIds.delete(e.target.value);
+});
 
 document.getElementById('btn-save-rules').addEventListener('click', async () => {
   if (!_probeId) return;
-  const ids = Array.from(document.querySelectorAll('.rule-cb:checked')).map(c => c.value);
+  const ids = Array.from(_activeRuleIds);
   const r = await fetch(`/api/v1/probes/${_probeId}/ids/rules/assignments`, {
     method: 'PUT', headers: apiHeaders(), body: JSON.stringify({ rule_ids: ids }),
   });
@@ -370,6 +392,59 @@ function stopSniff() {
 
 document.getElementById('btn-sniff-start').addEventListener('click', startSniff);
 document.getElementById('btn-sniff-stop').addEventListener('click', stopSniff);
+
+// ── Rule templates ────────────────────────────────────────────────────────────
+const RULE_TEMPLATES = [
+  { name: 'ICMP ping in ingresso', sid: 1000001,
+    rule: 'alert icmp any any -> $HOME_NET any (msg:"ICMP ping rilevato"; itype:8; sid:1000001; rev:1;)' },
+  { name: 'Connessione SSH', sid: 1000002,
+    rule: 'alert tcp any any -> $HOME_NET 22 (msg:"Connessione SSH"; flow:to_server; flags:S; sid:1000002; rev:1;)' },
+  { name: 'SSH brute force (>5 in 60s)', sid: 1000003,
+    rule: 'alert tcp any any -> $HOME_NET 22 (msg:"Possibile SSH brute force"; flow:to_server; flags:S; threshold:type both, track by_src, count 5, seconds 60; sid:1000003; rev:1;)' },
+  { name: 'Telnet (in chiaro)', sid: 1000004,
+    rule: 'alert tcp any any -> $HOME_NET 23 (msg:"Traffico Telnet in chiaro"; flow:to_server; sid:1000004; rev:1;)' },
+  { name: 'RDP esposto', sid: 1000005,
+    rule: 'alert tcp any any -> $HOME_NET 3389 (msg:"Connessione RDP"; flow:to_server; flags:S; sid:1000005; rev:1;)' },
+  { name: 'SMB / 445', sid: 1000006,
+    rule: 'alert tcp any any -> $HOME_NET 445 (msg:"Connessione SMB"; flow:to_server; flags:S; sid:1000006; rev:1;)' },
+  { name: 'Query DNS', sid: 1000007,
+    rule: 'alert dns any any -> any any (msg:"Query DNS"; dns.query; sid:1000007; rev:1;)' },
+  { name: 'HTTP User-Agent sospetto (curl)', sid: 1000008,
+    rule: 'alert http any any -> any any (msg:"HTTP User-Agent curl"; http.user_agent; content:"curl/"; sid:1000008; rev:1;)' },
+  { name: 'Port scan (SYN, >20 porte/10s)', sid: 1000009,
+    rule: 'alert tcp any any -> $HOME_NET any (msg:"Possibile port scan"; flags:S; detection_filter:track by_src, count 20, seconds 10; sid:1000009; rev:1;)' },
+  { name: 'Nuova connessione TLS', sid: 1000010,
+    rule: 'alert tls any any -> any any (msg:"Handshake TLS"; tls.version:1.2; sid:1000010; rev:1;)' },
+  { name: 'FTP login', sid: 1000011,
+    rule: 'alert tcp any any -> $HOME_NET 21 (msg:"Login FTP"; flow:to_server; content:"USER"; sid:1000011; rev:1;)' },
+  { name: 'Connessione a IP esterno su porta alta', sid: 1000012,
+    rule: 'alert tcp $HOME_NET any -> $EXTERNAL_NET 1024: (msg:"Connessione in uscita su porta alta"; flow:to_server; flags:S; sid:1000012; rev:1;)' },
+];
+
+(function initTemplates() {
+  const sel = document.getElementById('rule-template');
+  sel.innerHTML = '<option value="">— Scegli un template —</option>' +
+    RULE_TEMPLATES.map((t, i) => `<option value="${i}">${t.name}</option>`).join('');
+})();
+
+document.getElementById('btn-add-template').addEventListener('click', async () => {
+  const idx = document.getElementById('rule-template').value;
+  const res = document.getElementById('template-result');
+  if (idx === '') { res.className='alert alert-warning py-1 px-2 small d-block'; res.textContent='Seleziona un template.'; return; }
+  const t = RULE_TEMPLATES[parseInt(idx)];
+  const payload = { rule_text: t.rule, msg: t.name, sid: t.sid };
+  if (selectedTenantId()) payload.tenant_id = selectedTenantId();
+  const r = await fetch('/api/v1/ids/rules', { method: 'POST', headers: apiHeaders(), body: JSON.stringify(payload) });
+  if (r.ok) {
+    res.className='alert alert-success py-1 px-2 small d-block';
+    res.textContent = `Template "${t.name}" aggiunto al catalogo.`;
+    if (_probeId) loadRules();
+  } else {
+    const d = await r.json();
+    res.className='alert alert-danger py-1 px-2 small d-block';
+    res.textContent = d.message || 'Errore (sid forse già presente).';
+  }
+});
 
 loadProbes();
 startTimer();
