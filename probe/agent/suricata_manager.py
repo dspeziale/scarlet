@@ -79,25 +79,21 @@ class SuricataManager:
             self._rules.parent.mkdir(parents=True, exist_ok=True)
             self._rules.write_text("# no rules deployed yet\n")
             log.info("suricata_empty_ruleset_created", path=str(self._rules))
-        # Remove a stale pidfile left by a crashed run — Suricata -D refuses to
-        # start (exit 1) if the pidfile exists, even with no live process.
-        pid_path = Path("/var/run/suricata.pid")
-        if pid_path.exists() and not self.is_running():
-            try:
-                pid_path.unlink()
-                log.info("suricata_stale_pidfile_removed")
-            except OSError:
-                pass
+        # Kill any orphan instance + stale pidfile (avoids cluster-id conflicts
+        # and Suricata refusing to start).
+        self._cleanup_stale()
+
+        # Run Suricata in the FOREGROUND and manage it as our child process.
+        # (Daemon mode -D forks and the parent exits 0 immediately, which makes
+        # success/failure detection unreliable. In a container the daemon would
+        # die with the agent anyway, so foreground is both simpler and robust.)
         cmd = [
             "suricata",
             "-c", str(self._yaml),
             "--pidfile", "/var/run/suricata.pid",
-            "-D",          # daemonise
             "-v",
         ]
-        # Suricata 8 requires an explicit capture-mode flag on the command line;
-        # the yaml section alone is not enough (without it Suricata prints usage
-        # and exits 1). Derive it from the configured capture mode + interface.
+        # Suricata 8 requires an explicit capture-mode flag on the command line.
         iface = self._interface or "any"
         if self._capture_mode == "pcap":
             cmd += ["--pcap" if iface == "any" else f"--pcap={iface}"]
@@ -106,46 +102,73 @@ class SuricataManager:
         log.info("suricata_start", cmd=" ".join(cmd))
         try:
             self._proc = subprocess.Popen(
-                cmd,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.PIPE,
+                cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             )
-            time.sleep(2)
-            if self._proc.poll() is not None:
-                err = self._proc.stderr.read().decode(errors="replace").strip()
-                # With -D, Suricata logs the real error to suricata.log, not stderr.
-                log_tail = self._log_tail()
-                detail = err or log_tail or f"exited with code {self._proc.returncode}"
-                self._last_error = detail[-1500:]
-                log.error("suricata_start_failed", returncode=self._proc.returncode,
-                          stderr=err, log_tail=log_tail)
-                return False
-            self._last_error = None
-            log.info("suricata_started", pid=self._proc.pid)
-            return True
         except FileNotFoundError:
             self._last_error = "suricata binary not found"
             log.error("suricata_binary_not_found")
             return False
 
-    def stop(self, timeout: int = 10) -> None:
+        # A bad config/interface makes Suricata exit within a couple of seconds;
+        # a healthy engine keeps running. Wait out a short grace period.
+        deadline = time.monotonic() + 8
+        while time.monotonic() < deadline:
+            if self._proc.poll() is not None:
+                self._last_error = (self._log_tail() or
+                                    f"exited with code {self._proc.returncode}")[-1500:]
+                log.error("suricata_start_failed", returncode=self._proc.returncode,
+                          log_tail=self._last_error)
+                return False
+            time.sleep(0.5)
+        self._last_error = None
+        log.info("suricata_started", pid=self._proc.pid)
+        return True
+
+    def _cleanup_stale(self) -> None:
+        """Kill any leftover suricata process and remove a stale pidfile."""
         pid = self._pid_from_file()
         if pid:
             try:
-                os.kill(pid, signal.SIGTERM)
-                _wait_for_pid(pid, timeout)
-                log.info("suricata_stopped_via_pidfile", pid=pid)
-                return
-            except ProcessLookupError:
+                os.kill(pid, signal.SIGKILL)
+            except (ProcessLookupError, PermissionError):
                 pass
-        if self._proc and self._proc.poll() is None:
+        pid_path = Path("/var/run/suricata.pid")
+        if pid_path.exists():
+            try:
+                pid_path.unlink()
+            except OSError:
+                pass
+
+    def stop(self, timeout: int = 10) -> None:
+        # Foreground child we manage.
+        if self._proc is not None and self._proc.poll() is None:
             self._proc.terminate()
             try:
                 self._proc.wait(timeout=timeout)
             except subprocess.TimeoutExpired:
                 self._proc.kill()
-            log.info("suricata_stopped", pid=self._proc.pid)
+                try:
+                    self._proc.wait(timeout=3)
+                except subprocess.TimeoutExpired:
+                    pass
         self._proc = None
+        # Belt and suspenders: terminate any pid still in the pidfile.
+        pid = self._pid_from_file()
+        if pid:
+            try:
+                os.kill(pid, signal.SIGTERM)
+                _wait_for_pid(pid, timeout)
+            except ProcessLookupError:
+                pass
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+        try:
+            Path("/var/run/suricata.pid").unlink(missing_ok=True)
+        except OSError:
+            pass
+        log.info("suricata_stopped")
 
     def restart(self) -> bool:
         self.stop()
@@ -162,15 +185,19 @@ class SuricataManager:
             log.warning("suricata_reload_no_pid")
 
     def is_running(self) -> bool:
+        # Primary: our foreground child.
+        if self._proc is not None:
+            return self._proc.poll() is None
+        # Fallback: a pid from the pidfile (e.g., leftover from a prior run).
         pid = self._pid_from_file()
         if pid:
             try:
                 os.kill(pid, 0)
                 return True
-            except (ProcessLookupError, PermissionError):
-                pass
-        if self._proc:
-            return self._proc.poll() is None
+            except PermissionError:
+                return True
+            except ProcessLookupError:
+                return False
         return False
 
     def status(self) -> dict:
