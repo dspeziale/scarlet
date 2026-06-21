@@ -79,6 +79,15 @@ class SuricataManager:
             self._rules.parent.mkdir(parents=True, exist_ok=True)
             self._rules.write_text("# no rules deployed yet\n")
             log.info("suricata_empty_ruleset_created", path=str(self._rules))
+        # Remove a stale pidfile left by a crashed run — Suricata -D refuses to
+        # start (exit 1) if the pidfile exists, even with no live process.
+        pid_path = Path("/var/run/suricata.pid")
+        if pid_path.exists() and not self.is_running():
+            try:
+                pid_path.unlink()
+                log.info("suricata_stale_pidfile_removed")
+            except OSError:
+                pass
         cmd = [
             "suricata",
             "-c", str(self._yaml),
