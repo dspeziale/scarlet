@@ -45,6 +45,7 @@ def create_app(env: str | None = None) -> Flask:
     migrate.init_app(app, db)
     jwt.init_app(app)
     limiter.init_app(app)
+    _exempt_probe_from_ratelimit()
     CORS(app, origins=cfg.CORS_ORIGINS, supports_credentials=True)
 
     if not app.testing:
@@ -158,6 +159,31 @@ def _ensure_schema(app: Flask) -> None:
                 log.info("schema_self_heal", table=table, added=list(missing))
     except Exception as exc:  # pragma: no cover — never block startup
         log.warning("schema_self_heal_failed", error=str(exc))
+
+
+# Probe-facing endpoints (no JWT, called frequently) — exempt from rate limiting.
+_PROBE_ENDPOINTS = {
+    "probe_register", "probe_provision", "probe_heartbeat", "probe_tasks_pending",
+    "probe_task_result", "probe_ids_config", "ids_ingest_alerts", "ids_probe_rules",
+    "ids_ingest_traffic", "ids_upload_pcap", "probe_scan_config", "probe_scan_results",
+    "probe_login",
+}
+
+_ratelimit_filter_registered = False
+
+
+def _exempt_probe_from_ratelimit() -> None:
+    global _ratelimit_filter_registered
+    if _ratelimit_filter_registered:
+        return
+    _ratelimit_filter_registered = True
+
+    from flask import request
+
+    @limiter.request_filter
+    def _skip_probe_endpoints():  # noqa: ANN202
+        ep = (request.endpoint or "").rsplit(".", 1)[-1]
+        return ep in _PROBE_ENDPOINTS
 
 
 def _register_blueprints(app: Flask) -> None:
