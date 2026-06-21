@@ -43,6 +43,7 @@ from rule_updater import RuleUpdater
 from alert_reporter import AlertReporter
 from pcap_uploader import PcapUploader
 from heartbeat import HeartbeatWorker
+from scheduler import SchedulerWorker
 
 structlog.configure(
     processors=[
@@ -309,6 +310,46 @@ class ProbeAgent:
             elif kl == "modalias":
                 info["modalias"] = val
         return info
+
+    def _wifi_scan(self, duration: int) -> dict:
+        """Scan WiFi networks with `iw` on the first wireless interface."""
+        rc, stdout, _ = self._run(["iw", "dev"], timeout=10)
+        if rc != 0:
+            return {"status": "error", "error": "iw not available or no wireless interfaces"}
+        iface = None
+        for line in stdout.splitlines():
+            line = line.strip()
+            if line.startswith("Interface "):
+                iface = line.split()[-1]
+                break
+        if not iface:
+            return {"status": "error", "error": "no wireless interface found"}
+        rc2, out2, err2 = self._run(["iw", iface, "scan"], timeout=duration + 20)
+        return {
+            "status": "ok" if rc2 == 0 else "error",
+            "interface": iface,
+            "output": out2,
+            "stderr": err2 or None,
+        }
+
+    def _run_scan(self, scan_type: str, params: dict) -> dict:
+        """Execute a scan and return its result dict (shared by tasks + scheduler)."""
+        if scan_type == "network_discovery":
+            target = params.get("target") or ""
+            if not target:
+                subnets = self._network.get("subnets") or []
+                target = subnets[0] if subnets else ""
+            if not target:
+                return {"status": "error", "error": "no target and no detected subnet"}
+            return self._nmap(
+                [_timing(params), "-sn", "--host-timeout", "900s", str(target)],
+                timeout=1000,
+            )
+        if scan_type == "wifi_scan":
+            return self._wifi_scan(int(params.get("duration", 15)))
+        if scan_type == "ble_scan":
+            return self._ble_scan(int(params.get("duration", 15)))
+        return {"status": "error", "error": f"unsupported scan: {scan_type}"}
 
     def _traffic_capture(self, interface: str, duration: int,
                          save_pcap: bool = False, max_packets: int = 0) -> dict:
@@ -703,8 +744,14 @@ class ProbeAgent:
             task_handler=self._handle_task,
             get_network=lambda: self._network,
         )
+        scheduler = SchedulerWorker(
+            server_url=cfg.SERVER_URL,
+            probe_id=self.probe_id,
+            http_client=self._http,
+            run_scan=self._run_scan,
+        )
 
-        self._workers = [rule_updater, alert_reporter, pcap_uploader, heartbeat]
+        self._workers = [rule_updater, alert_reporter, pcap_uploader, heartbeat, scheduler]
         for w in self._workers:
             w.start()
 

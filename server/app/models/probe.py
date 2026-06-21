@@ -89,6 +89,7 @@ class Probe(db.Model):
     ids_interface: Mapped[str | None] = mapped_column(String(64))
     network_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     ruleset_version: Mapped[str | None] = mapped_column(String(40))  # ETag for /ids/rules
+    scan_config: Mapped[dict | None] = mapped_column(JSON)           # autonomous scan schedule
 
     # Operator-supplied metadata (editable by the tenant admin).
     location: Mapped[str | None] = mapped_column(String(255))      # indirizzo
@@ -133,6 +134,7 @@ class Probe(db.Model):
             "subnets": self.subnets or [],
             "ids_interface": self.ids_interface,
             "network_updated_at": self.network_updated_at.isoformat() if self.network_updated_at else None,
+            "scan_config": self.scan_config or {},
             "location": self.location,
             "latitude": self.latitude,
             "longitude": self.longitude,

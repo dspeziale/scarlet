@@ -110,6 +110,66 @@
     </div>
   </div>
 </div>
+
+<!-- Auto-scan modal -->
+<div class="modal fade" id="modalScan" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-arrow-repeat me-2"></i>Scansioni automatiche — <span id="scan-probe-name"></span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="scan-probe-id">
+        <p class="text-muted small">La sonda esegue automaticamente le scansioni abilitate agli intervalli indicati. I risultati popolano l'inventario.</p>
+
+        <!-- Network discovery -->
+        <div class="card mb-2"><div class="card-body py-2">
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="nd-enabled">
+            <label class="form-check-label fw-semibold" for="nd-enabled"><i class="bi bi-diagram-3 me-1"></i>Network discovery</label>
+          </div>
+          <div class="row g-2 mt-1">
+            <div class="col-md-4"><label class="form-label small mb-0">Ogni (secondi)</label><input type="number" class="form-control form-control-sm" id="nd-interval" value="3600" min="30"></div>
+            <div class="col-md-5"><label class="form-label small mb-0">Target (vuoto = subnet sonda)</label><input type="text" class="form-control form-control-sm" id="nd-target" placeholder="es. 192.168.1.0/24"></div>
+            <div class="col-md-3"><label class="form-label small mb-0">Effort</label>
+              <select class="form-select form-select-sm" id="nd-timing"><option>T2</option><option>T3</option><option selected>T4</option><option>T5</option></select></div>
+          </div>
+        </div></div>
+
+        <!-- WiFi -->
+        <div class="card mb-2"><div class="card-body py-2">
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="wf-enabled">
+            <label class="form-check-label fw-semibold" for="wf-enabled"><i class="bi bi-wifi me-1"></i>WiFi scan</label>
+          </div>
+          <div class="row g-2 mt-1">
+            <div class="col-md-4"><label class="form-label small mb-0">Ogni (secondi)</label><input type="number" class="form-control form-control-sm" id="wf-interval" value="1800" min="30"></div>
+            <div class="col-md-4"><label class="form-label small mb-0">Durata (s)</label><input type="number" class="form-control form-control-sm" id="wf-duration" value="15" min="5"></div>
+          </div>
+        </div></div>
+
+        <!-- BLE -->
+        <div class="card mb-2"><div class="card-body py-2">
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="bl-enabled">
+            <label class="form-check-label fw-semibold" for="bl-enabled"><i class="bi bi-bluetooth me-1"></i>BLE scan</label>
+          </div>
+          <div class="row g-2 mt-1">
+            <div class="col-md-4"><label class="form-label small mb-0">Ogni (secondi)</label><input type="number" class="form-control form-control-sm" id="bl-interval" value="1800" min="30"></div>
+            <div class="col-md-4"><label class="form-label small mb-0">Durata (s)</label><input type="number" class="form-control form-control-sm" id="bl-duration" value="15" min="5"></div>
+          </div>
+        </div></div>
+
+        <div id="scan-result" class="d-none alert py-1 px-2 small"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+        <button class="btn btn-primary" id="btn-save-scan"><i class="bi bi-save me-1"></i>Salva configurazione</button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -151,6 +211,9 @@ async function loadProbes() {
           </button>
           <button class="btn btn-outline-primary btn-sm ms-1" onclick="openIdsModal('${p.id}')" title="Gestisci IDS" ${p.status==='online'?'':'disabled'}>
             <i class="bi bi-shield-check"></i>
+          </button>
+          <button class="btn btn-outline-success btn-sm ms-1" onclick="openScanModal('${p.id}')" title="Scansioni automatiche">
+            <i class="bi bi-arrow-repeat"></i>
           </button>
         </td>
       </tr>`;
@@ -308,6 +371,62 @@ document.getElementById('btn-save-probe').addEventListener('click', async () => 
   } else {
     res.className = 'alert alert-danger d-block';
     res.textContent = data.message || JSON.stringify(data);
+  }
+});
+
+// ── Auto-scan config ──────────────────────────────────────────────────────────
+function openScanModal(probeId) {
+  const p = _probes[probeId];
+  if (!p) return;
+  document.getElementById('scan-probe-id').value = p.id;
+  document.getElementById('scan-probe-name').textContent = p.name || p.hostname;
+  const c = p.scan_config || {};
+  const nd = c.network_discovery || {}, wf = c.wifi_scan || {}, bl = c.ble_scan || {};
+  document.getElementById('nd-enabled').checked = !!nd.enabled;
+  document.getElementById('nd-interval').value = nd.interval_sec || 3600;
+  document.getElementById('nd-target').value = nd.target || '';
+  document.getElementById('nd-timing').value = nd.timing || 'T4';
+  document.getElementById('wf-enabled').checked = !!wf.enabled;
+  document.getElementById('wf-interval').value = wf.interval_sec || 1800;
+  document.getElementById('wf-duration').value = wf.duration || 15;
+  document.getElementById('bl-enabled').checked = !!bl.enabled;
+  document.getElementById('bl-interval').value = bl.interval_sec || 1800;
+  document.getElementById('bl-duration').value = bl.duration || 15;
+  document.getElementById('scan-result').className = 'd-none alert';
+  new bootstrap.Modal(document.getElementById('modalScan')).show();
+}
+
+document.getElementById('btn-save-scan').addEventListener('click', async () => {
+  const id = document.getElementById('scan-probe-id').value;
+  const payload = {
+    network_discovery: {
+      enabled: document.getElementById('nd-enabled').checked,
+      interval_sec: parseInt(document.getElementById('nd-interval').value) || 3600,
+      target: document.getElementById('nd-target').value.trim(),
+      timing: document.getElementById('nd-timing').value,
+    },
+    wifi_scan: {
+      enabled: document.getElementById('wf-enabled').checked,
+      interval_sec: parseInt(document.getElementById('wf-interval').value) || 1800,
+      duration: parseInt(document.getElementById('wf-duration').value) || 15,
+    },
+    ble_scan: {
+      enabled: document.getElementById('bl-enabled').checked,
+      interval_sec: parseInt(document.getElementById('bl-interval').value) || 1800,
+      duration: parseInt(document.getElementById('bl-duration').value) || 15,
+    },
+  };
+  const r = await fetch(`/api/v1/probes/${id}/scan-config`, {
+    method: 'PUT', headers: apiHeaders(), body: JSON.stringify(payload),
+  });
+  const res = document.getElementById('scan-result');
+  if (r.ok) {
+    res.className = 'alert alert-success py-1 px-2 small d-block';
+    res.textContent = 'Configurazione salvata. La sonda la applicherà entro ~30s.';
+    loadProbes();
+  } else {
+    res.className = 'alert alert-danger py-1 px-2 small d-block';
+    res.textContent = 'Errore nel salvataggio.';
   }
 });
 

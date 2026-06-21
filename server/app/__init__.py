@@ -90,6 +90,7 @@ _SCHEMA_ADDITIONS: dict[str, dict[str, str]] = {
         "ids_interface": "VARCHAR(64)",
         "network_updated_at": "TIMESTAMP",
         "ruleset_version": "VARCHAR(40)",
+        "scan_config": "JSON",
         "location": "VARCHAR(255)",
         "latitude": "DOUBLE PRECISION",
         "longitude": "DOUBLE PRECISION",

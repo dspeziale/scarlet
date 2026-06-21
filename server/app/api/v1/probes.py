@@ -245,13 +245,9 @@ def probe_task_result(probe_id: str, assignment_id: str):
 _DISCOVERY_TASKS = {"network_discovery", "service_detection", "os_fingerprinting"}
 
 
-def _ingest_discovery(result, probe_id: str, result_payload: dict) -> None:
-    """Parse a completed task result and populate the relevant inventory table."""
+def _ingest_scan(tenant_id: str, probe_id: str, ttype: str, result_payload: dict) -> None:
+    """Parse a scan result (from a task or an autonomous scan) and populate inventory."""
     try:
-        task = result.assignment.task if result and result.assignment else None
-        if not task:
-            return
-        ttype = task.task_type
         from app.services.telemetry_service import TelemetryService
         tsvc = TelemetryService()
 
@@ -263,25 +259,32 @@ def _ingest_discovery(result, probe_id: str, result_payload: dict) -> None:
             devices = parse_nmap_hosts(output)
             if not devices:
                 return
-            counts = tsvc.upsert_devices(result.tenant_id, probe_id, devices)
+            counts = tsvc.upsert_devices(tenant_id, probe_id, devices)
             log.info("discovery_devices_ingested", probe_id=probe_id, **counts)
             if counts.get("added"):
-                _notify_new_devices(result.tenant_id, probe_id, counts["added"])
+                _notify_new_devices(tenant_id, probe_id, counts["added"])
 
         elif ttype == "wifi_scan":
             from app.services.nmap_parser import parse_iw_scan
             nets = parse_iw_scan(result_payload.get("output", ""))
             if nets:
-                counts = tsvc.upsert_wifi(result.tenant_id, probe_id, nets)
+                counts = tsvc.upsert_wifi(tenant_id, probe_id, nets)
                 log.info("wifi_ingested", probe_id=probe_id, **counts)
 
         elif ttype == "ble_scan":
             devices = result_payload.get("devices") or []
             if devices:
-                counts = tsvc.upsert_ble(result.tenant_id, probe_id, devices)
+                counts = tsvc.upsert_ble(tenant_id, probe_id, devices)
                 log.info("ble_ingested", probe_id=probe_id, **counts)
     except Exception as exc:
         log.warning("telemetry_ingest_failed", probe_id=probe_id, error=str(exc))
+
+
+def _ingest_discovery(result, probe_id: str, result_payload: dict) -> None:
+    """Adapter for task-result ingestion (delegates to _ingest_scan)."""
+    task = result.assignment.task if result and result.assignment else None
+    if task:
+        _ingest_scan(result.tenant_id, probe_id, task.task_type, result_payload)
 
 
 def _notify_new_devices(tenant_id: str, probe_id: str, added: int) -> None:
@@ -325,6 +328,75 @@ def probe_ids_config(probe_id: str):
         "bpf_filter": "",
         "capture_mode": "af-packet",
     }), 200
+
+
+# ── Autonomous scan scheduling ──────────────────────────────────────────────
+
+# Default schedule (all disabled) the agent uses if none configured.
+_DEFAULT_SCAN_CONFIG = {
+    "network_discovery": {"enabled": False, "interval_sec": 3600, "target": "", "timing": "T4"},
+    "wifi_scan": {"enabled": False, "interval_sec": 1800, "duration": 15},
+    "ble_scan": {"enabled": False, "interval_sec": 1800, "duration": 15},
+}
+
+
+@api_v1_bp.get("/probes/<probe_id>/scan-config")
+def probe_scan_config(probe_id: str):
+    """Probe fetches its autonomous-scan schedule (no auth, like ids/config)."""
+    from app.extensions import db
+    from app.models.probe import Probe
+    probe = db.session.get(Probe, probe_id)
+    if not probe:
+        return jsonify(error="not_found"), 404
+    cfg = {**_DEFAULT_SCAN_CONFIG, **(probe.scan_config or {})}
+    return jsonify(cfg), 200
+
+
+@api_v1_bp.put("/probes/<probe_id>/scan-config")
+@require_role(SUPERADMIN, TENANT_ADMIN, OPERATOR)
+def update_scan_config(probe_id: str):
+    """Operator configures which scans the probe runs and how often."""
+    from app.extensions import db
+    from app.models.probe import Probe
+    probe = db.session.get(Probe, probe_id)
+    if not probe:
+        return jsonify(error="not_found"), 404
+    user = g.current_user
+    if not user.is_superadmin and probe.tenant_id != user.tenant_id:
+        return jsonify(error="forbidden"), 403
+    body = request.get_json(silent=True) or {}
+    clean = {}
+    for stype in ("network_discovery", "wifi_scan", "ble_scan"):
+        c = body.get(stype) or {}
+        entry = dict(_DEFAULT_SCAN_CONFIG[stype])
+        entry["enabled"] = bool(c.get("enabled", entry["enabled"]))
+        entry["interval_sec"] = max(30, int(c.get("interval_sec", entry["interval_sec"])))
+        if stype == "network_discovery":
+            entry["target"] = (c.get("target") or "").strip()
+            entry["timing"] = c.get("timing", "T4")
+        else:
+            entry["duration"] = max(5, int(c.get("duration", entry["duration"])))
+        clean[stype] = entry
+    probe.scan_config = clean
+    db.session.commit()
+    return jsonify(clean), 200
+
+
+@api_v1_bp.post("/probes/<probe_id>/scan-results")
+def probe_scan_results(probe_id: str):
+    """Probe submits the result of an autonomous scan; server parses + ingests."""
+    from app.extensions import db
+    from app.models.probe import Probe
+    probe = db.session.get(Probe, probe_id)
+    if not probe:
+        return jsonify(error="not_found"), 404
+    body = request.get_json(silent=True) or {}
+    stype = body.get("type")
+    result = body.get("result") or {}
+    if stype not in ("network_discovery", "wifi_scan", "ble_scan"):
+        return jsonify(error="validation_error", message="bad scan type"), 400
+    _ingest_scan(probe.tenant_id, probe_id, stype, result)
+    return jsonify({"ok": True}), 200
 
 
 # ── Console: IDS control (start only after a card is chosen) ─────────────────
