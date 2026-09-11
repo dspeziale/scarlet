@@ -200,7 +200,7 @@ class SystemCommands:
 
     @staticmethod
     def hostname() -> RemoteCommand:
-        return RemoteCommand(("hostname", "-f"), "system.hostname", "FQDN")
+        return RemoteCommand(("hostname", "-f"), "system.hostname", "FQDN", allow_failure=True)
 
     @staticmethod
     def selinux() -> RemoteCommand:
