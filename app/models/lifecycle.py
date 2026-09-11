@@ -146,7 +146,9 @@ class HealthCheck(PkMixin, Base):
         ForeignKey("application_instances.id", ondelete="CASCADE"), nullable=False
     )
     check_type: Mapped[str] = mapped_column(String(24), nullable=False)
-    status: Mapped[str] = mapped_column(String(16), default=HealthStatus.UNKNOWN.value, nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(16), default=HealthStatus.UNKNOWN.value, nullable=False
+    )
     checked_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     duration_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
     attempts: Mapped[int] = mapped_column(Integer, default=1, nullable=False)

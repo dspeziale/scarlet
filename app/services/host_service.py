@@ -14,7 +14,12 @@ from app.errors import ConflictError, NotFoundError, ScarletError, ValidationErr
 from app.extensions import db
 from app.models.enums import AuditResult, CredentialType, HostStatus, RuntimeType
 from app.models.host import Environment, HostGroup, RuntimeCapability, TargetCredential, TargetHost
-from app.repositories import EnvironmentRepository, HostGroupRepository, HostRepository, InstanceRepository
+from app.repositories import (
+    EnvironmentRepository,
+    HostGroupRepository,
+    HostRepository,
+    InstanceRepository,
+)
 from app.runtimes.base import HostInfo, RuntimeContext
 from app.runtimes.factory import RuntimeFactory
 from app.security.crypto import get_cipher
@@ -88,7 +93,9 @@ class HostService:
         if "kubernetes_namespace" in data:
             ns = data.get("kubernetes_namespace")
             try:
-                out["kubernetes_namespace"] = validate_k8s_name(ns, field="kubernetes_namespace") if ns else None
+                out["kubernetes_namespace"] = (
+                    validate_k8s_name(ns, field="kubernetes_namespace") if ns else None
+                )
             except ValidationError as exc:
                 errors.update(exc.errors)
         if "kubernetes_context" in data:
@@ -130,16 +137,34 @@ class HostService:
         host.groups = groups
         db.session.add(host)
         db.session.commit()
-        audit.record("HOST_CREATED", user=user, target=host, entity_type="TargetHost", entity_id=host.id, details={"hostname": host.hostname, "environment": host.environment.code, "runtime_type": host.runtime_type})
+        audit.record(
+            "HOST_CREATED",
+            user=user,
+            target=host,
+            entity_type="TargetHost",
+            entity_id=host.id,
+            details={
+                "hostname": host.hostname,
+                "environment": host.environment.code,
+                "runtime_type": host.runtime_type,
+            },
+        )
         return host
 
     def update(self, host: TargetHost, data: dict[str, Any], *, user=None) -> TargetHost:
         payload = self._validate_payload(data, partial=True)
-        if "name" in payload and payload["name"] != host.name and self.hosts.by_name(payload["name"]):
+        if (
+            "name" in payload
+            and payload["name"] != host.name
+            and self.hosts.by_name(payload["name"])
+        ):
             raise ConflictError(f"A host named '{payload['name']}' already exists.")
         before = host.to_dict(include_system=False)
         groups = payload.pop("groups", None)
-        connection_changed = any(payload.get(k) not in (None, getattr(host, k)) for k in ("hostname", "ip_address", "ssh_port"))
+        connection_changed = any(
+            payload.get(k) not in (None, getattr(host, k))
+            for k in ("hostname", "ip_address", "ssh_port")
+        )
         for key, value in payload.items():
             setattr(host, key, value)
         if groups is not None:
@@ -152,14 +177,31 @@ class HostService:
             host.ssh_fingerprint = None
         db.session.commit()
         after = host.to_dict(include_system=False)
-        changed = {k: {"before": before.get(k), "after": after.get(k)} for k in after if before.get(k) != after.get(k) and k not in {"updated_at"}}
-        audit.record("HOST_UPDATED", user=user, target=host, entity_type="TargetHost", entity_id=host.id, details={"changes": changed})
+        changed = {
+            k: {"before": before.get(k), "after": after.get(k)}
+            for k in after
+            if before.get(k) != after.get(k) and k not in {"updated_at"}
+        }
+        audit.record(
+            "HOST_UPDATED",
+            user=user,
+            target=host,
+            entity_type="TargetHost",
+            entity_id=host.id,
+            details={"changes": changed},
+        )
         return host
 
     def set_enabled(self, host: TargetHost, enabled: bool, *, user=None) -> TargetHost:
         host.enabled = enabled
         db.session.commit()
-        audit.record("HOST_ENABLED" if enabled else "HOST_DISABLED", user=user, target=host, entity_type="TargetHost", entity_id=host.id)
+        audit.record(
+            "HOST_ENABLED" if enabled else "HOST_DISABLED",
+            user=user,
+            target=host,
+            entity_type="TargetHost",
+            entity_id=host.id,
+        )
         return host
 
     def delete(self, host: TargetHost, *, user=None) -> None:
@@ -168,22 +210,49 @@ class HostService:
         instances = self.instances.for_host(host.id)
         running = [i for i in instances if i.actual_state == "RUNNING"]
         if running:
-            raise ConflictError("Host still has running application instances. Stop them before deleting the host.")
-        has_deployments = db.session.execute(db.select(Deployment.id).where(Deployment.target_id == host.id).limit(1)).scalar_one_or_none()
+            raise ConflictError(
+                "Host still has running application instances. Stop them before deleting the host."
+            )
+        has_deployments = db.session.execute(
+            db.select(Deployment.id).where(Deployment.target_id == host.id).limit(1)
+        ).scalar_one_or_none()
         if has_deployments:
             # keep history: disable instead of delete
-            raise ConflictError("Host has deployment history and cannot be deleted. Disable it instead to preserve the audit trail.")
+            raise ConflictError(
+                "Host has deployment history and cannot be deleted. Disable it instead to preserve the audit trail."
+            )
         name = host.name
         env = host.environment.code
         db.session.delete(host)
         db.session.commit()
-        audit.record("HOST_DELETED", user=user, entity_type="TargetHost", entity_id=host.id, environment=env, details={"name": name})
+        audit.record(
+            "HOST_DELETED",
+            user=user,
+            entity_type="TargetHost",
+            entity_id=host.id,
+            environment=env,
+            details={"name": name},
+        )
 
     # --- credentials ---------------------------------------------------------------------------
-    def set_credential(self, host: TargetHost, *, credential_type: str, secret: str, passphrase: str | None = None, username: str | None = None, user=None) -> TargetCredential:
+    def set_credential(
+        self,
+        host: TargetHost,
+        *,
+        credential_type: str,
+        secret: str,
+        passphrase: str | None = None,
+        username: str | None = None,
+        user=None,
+    ) -> TargetCredential:
         ctype = CredentialType.parse(credential_type)
         if ctype is None:
-            raise ValidationError("Invalid credential type.", errors={"credential_type": [f"Must be one of {', '.join(CredentialType.values())}."]})
+            raise ValidationError(
+                "Invalid credential type.",
+                errors={
+                    "credential_type": [f"Must be one of {', '.join(CredentialType.values())}."]
+                },
+            )
         secret = (secret or "").strip() if ctype != CredentialType.PASSWORD else (secret or "")
         if not secret:
             raise ValidationError("Secret is required.", errors={"secret": ["Required."]})
@@ -195,7 +264,9 @@ class HostService:
             from app.ssh.client import SSHAuth
             from app.ssh.host_keys import fingerprint_of
 
-            pkey = SSHAuth(username=host.ssh_username, private_key=secret, passphrase=passphrase or None).load_pkey()
+            pkey = SSHAuth(
+                username=host.ssh_username, private_key=secret, passphrase=passphrase or None
+            ).load_pkey()
             assert pkey is not None
             fingerprint = fingerprint_of(pkey)
             key_type = pkey.get_name()
@@ -205,9 +276,14 @@ class HostService:
             try:
                 parsed = yaml.safe_load(secret)
             except yaml.YAMLError as exc:
-                raise ValidationError("kubeconfig is not valid YAML.", errors={"secret": ["Invalid YAML."]}) from exc
+                raise ValidationError(
+                    "kubeconfig is not valid YAML.", errors={"secret": ["Invalid YAML."]}
+                ) from exc
             if not isinstance(parsed, dict) or "clusters" not in parsed:
-                raise ValidationError("kubeconfig does not look valid.", errors={"secret": ["Missing clusters section."]})
+                raise ValidationError(
+                    "kubeconfig does not look valid.",
+                    errors={"secret": ["Missing clusters section."]},
+                )
         if username is not None:
             username = validate_ssh_username(username)
         cipher = get_cipher()
@@ -232,7 +308,18 @@ class HostService:
         )
         db.session.add(credential)
         db.session.commit()
-        audit.record("CREDENTIAL_CHANGED", user=user, target=host, entity_type="TargetCredential", entity_id=credential.id, details={"credential_type": ctype.value, "key_fingerprint": fingerprint, "key_type": key_type})
+        audit.record(
+            "CREDENTIAL_CHANGED",
+            user=user,
+            target=host,
+            entity_type="TargetCredential",
+            entity_id=credential.id,
+            details={
+                "credential_type": ctype.value,
+                "key_fingerprint": fingerprint,
+                "key_type": key_type,
+            },
+        )
         return credential
 
     def revoke_credential(self, host: TargetHost, credential_id: int, *, user=None) -> None:
@@ -242,7 +329,14 @@ class HostService:
         cred.is_active = False
         cred.rotated_at = utcnow()
         db.session.commit()
-        audit.record("CREDENTIAL_REVOKED", user=user, target=host, entity_type="TargetCredential", entity_id=cred.id, details={"credential_type": cred.credential_type})
+        audit.record(
+            "CREDENTIAL_REVOKED",
+            user=user,
+            target=host,
+            entity_type="TargetCredential",
+            entity_id=cred.id,
+            details={"credential_type": cred.credential_type},
+        )
 
     # --- remote operations (synchronous; tasks wrap these) -------------------------------------------
     def test_connection(self, host: TargetHost, *, user=None) -> dict[str, Any]:
@@ -251,21 +345,44 @@ class HostService:
         factory = get_ssh_factory()
         started = utcnow()
         try:
-            with factory.connect(host, connect_timeout=int(current_app.config.get("SCARLET_SSH_TIMEOUT", 30))) as client:
+            with factory.connect(
+                host, connect_timeout=int(current_app.config.get("SCARLET_SSH_TIMEOUT", 30))
+            ) as client:
                 whoami = client.run(SystemCommands.whoami())
                 hostname = client.run(SystemCommands.hostname())
             host.status = HostStatus.ONLINE.value
             host.last_seen_at = utcnow()
             host.last_error = None
             db.session.commit()
-            result = {"ok": True, "remote_user": whoami.stdout.strip(), "remote_hostname": hostname.stdout.strip(), "latency_ms": int((utcnow() - started).total_seconds() * 1000), "fingerprint": host.ssh_fingerprint}
-            audit.record("HOST_TEST_CONNECTION", user=user, target=host, entity_type="TargetHost", entity_id=host.id, details=result)
+            result = {
+                "ok": True,
+                "remote_user": whoami.stdout.strip(),
+                "remote_hostname": hostname.stdout.strip(),
+                "latency_ms": int((utcnow() - started).total_seconds() * 1000),
+                "fingerprint": host.ssh_fingerprint,
+            }
+            audit.record(
+                "HOST_TEST_CONNECTION",
+                user=user,
+                target=host,
+                entity_type="TargetHost",
+                entity_id=host.id,
+                details=result,
+            )
             return result
         except ScarletError as exc:
             host.status = HostStatus.OFFLINE.value
             host.last_error = exc.message
             db.session.commit()
-            audit.record("HOST_TEST_CONNECTION", user=user, target=host, entity_type="TargetHost", entity_id=host.id, result=AuditResult.FAILURE, details={"error": exc.message, "code": exc.code})
+            audit.record(
+                "HOST_TEST_CONNECTION",
+                user=user,
+                target=host,
+                entity_type="TargetHost",
+                entity_id=host.id,
+                result=AuditResult.FAILURE,
+                details={"error": exc.message, "code": exc.code},
+            )
             raise
 
     def discover(self, host: TargetHost, *, user=None) -> dict[str, Any]:
@@ -289,15 +406,35 @@ class HostService:
                 data["selinux"] = selinux.stdout.strip() if selinux.ok else None
                 data["remote_user"] = client.run(SystemCommands.whoami()).stdout.strip()
                 layout = RemoteLayout(base, "discovery-probe")
-                ctx = RuntimeContext(executor=client, host=HostInfo(name=host.name, runtime_type=host.runtime_type, base_path=base, kubernetes_namespace=host.kubernetes_namespace, kubernetes_context=host.kubernetes_context), application_code="discovery-probe", layout=layout, timeout=60)
+                ctx = RuntimeContext(
+                    executor=client,
+                    host=HostInfo(
+                        name=host.name,
+                        runtime_type=host.runtime_type,
+                        base_path=base,
+                        kubernetes_namespace=host.kubernetes_namespace,
+                        kubernetes_context=host.kubernetes_context,
+                    ),
+                    application_code="discovery-probe",
+                    layout=layout,
+                    timeout=60,
+                )
                 for adapter in RuntimeFactory.detectable():
-                    if adapter.runtime_type == RuntimeType.KUBERNETES and host.kubernetes_credential is not None:
-                        ctx.host.kubeconfig = get_cipher().decrypt(host.kubernetes_credential.encrypted_secret)
+                    if (
+                        adapter.runtime_type == RuntimeType.KUBERNETES
+                        and host.kubernetes_credential is not None
+                    ):
+                        ctx.host.kubeconfig = get_cipher().decrypt(
+                            host.kubernetes_credential.encrypted_secret
+                        )
                     try:
                         detection = adapter.detect(ctx)
                     except ScarletError as exc:
                         detection = None
-                        data["runtimes"][adapter.runtime_type.value] = {"available": False, "error": exc.message}
+                        data["runtimes"][adapter.runtime_type.value] = {
+                            "available": False,
+                            "error": exc.message,
+                        }
                     finally:
                         ctx.host.kubeconfig = None
                     if detection is not None:
@@ -306,10 +443,28 @@ class HostService:
             host.status = HostStatus.OFFLINE.value
             host.last_error = exc.message
             db.session.commit()
-            audit.record("HOST_DISCOVERED", user=user, target=host, entity_type="TargetHost", entity_id=host.id, result=AuditResult.FAILURE, details={"error": exc.message})
+            audit.record(
+                "HOST_DISCOVERED",
+                user=user,
+                target=host,
+                entity_type="TargetHost",
+                entity_id=host.id,
+                result=AuditResult.FAILURE,
+                details={"error": exc.message},
+            )
             raise
         self._apply_discovery(host, data)
-        audit.record("HOST_DISCOVERED", user=user, target=host, entity_type="TargetHost", entity_id=host.id, details={"os": data.get("os"), "runtimes": {k: v.get("available") for k, v in data["runtimes"].items()}})
+        audit.record(
+            "HOST_DISCOVERED",
+            user=user,
+            target=host,
+            entity_type="TargetHost",
+            entity_id=host.id,
+            details={
+                "os": data.get("os"),
+                "runtimes": {k: v.get("available") for k, v in data["runtimes"].items()},
+            },
+        )
         return data
 
     def _apply_discovery(self, host: TargetHost, data: dict[str, Any]) -> None:
@@ -337,7 +492,7 @@ class HostService:
                 cap = RuntimeCapability(host_id=host.id, runtime_type=runtime)
                 db.session.add(cap)
             cap.available = bool(info.get("available"))
-            cap.version = (info.get("version") or None)
+            cap.version = info.get("version") or None
             cap.rootless = info.get("rootless")
             cap.binary_path = info.get("binary_path")
             cap.details = info.get("details") or {}
@@ -358,20 +513,44 @@ class HostService:
         return self.test_connection(host)
 
     # --- host groups -------------------------------------------------------------------------------------
-    def create_group(self, *, name: str, description: str = "", environment_id: int | None = None, host_ids: list[int] | None = None, user=None) -> HostGroup:
+    def create_group(
+        self,
+        *,
+        name: str,
+        description: str = "",
+        environment_id: int | None = None,
+        host_ids: list[int] | None = None,
+        user=None,
+    ) -> HostGroup:
         name = (name or "").strip()
         if not HOST_NAME_RE.match(name):
             raise ValidationError("Invalid group name.", errors={"name": ["2-64 characters."]})
         if self.groups.by_name(name):
             raise ConflictError("Host group already exists.")
-        group = HostGroup(name=name, description=(description or "")[:255], environment_id=environment_id)
+        group = HostGroup(
+            name=name, description=(description or "")[:255], environment_id=environment_id
+        )
         group.hosts = self._resolve_hosts(host_ids or [], environment_id)
         db.session.add(group)
         db.session.commit()
-        audit.record("HOST_GROUP_CREATED", user=user, entity_type="HostGroup", entity_id=group.id, details={"name": name, "hosts": [h.name for h in group.hosts]})
+        audit.record(
+            "HOST_GROUP_CREATED",
+            user=user,
+            entity_type="HostGroup",
+            entity_id=group.id,
+            details={"name": name, "hosts": [h.name for h in group.hosts]},
+        )
         return group
 
-    def update_group(self, group: HostGroup, *, description: str | None = None, environment_id: int | None = None, host_ids: list[int] | None = None, user=None) -> HostGroup:
+    def update_group(
+        self,
+        group: HostGroup,
+        *,
+        description: str | None = None,
+        environment_id: int | None = None,
+        host_ids: list[int] | None = None,
+        user=None,
+    ) -> HostGroup:
         if description is not None:
             group.description = description[:255]
         if environment_id is not None:
@@ -379,27 +558,46 @@ class HostService:
         if host_ids is not None:
             group.hosts = self._resolve_hosts(host_ids, group.environment_id)
         db.session.commit()
-        audit.record("HOST_GROUP_UPDATED", user=user, entity_type="HostGroup", entity_id=group.id, details={"name": group.name, "hosts": [h.name for h in group.hosts]})
+        audit.record(
+            "HOST_GROUP_UPDATED",
+            user=user,
+            entity_type="HostGroup",
+            entity_id=group.id,
+            details={"name": group.name, "hosts": [h.name for h in group.hosts]},
+        )
         return group
 
     def delete_group(self, group: HostGroup, *, user=None) -> None:
         db.session.delete(group)
         db.session.commit()
-        audit.record("HOST_GROUP_DELETED", user=user, entity_type="HostGroup", entity_id=group.id, details={"name": group.name})
+        audit.record(
+            "HOST_GROUP_DELETED",
+            user=user,
+            entity_type="HostGroup",
+            entity_id=group.id,
+            details={"name": group.name},
+        )
 
     def _resolve_hosts(self, host_ids: list[int], environment_id: int | None) -> list[TargetHost]:
         hosts = []
         for hid in host_ids:
             host = self.hosts.get(int(hid))
             if host is None:
-                raise ValidationError(f"Unknown host {hid}.", errors={"host_ids": [f"Unknown host {hid}"]})
+                raise ValidationError(
+                    f"Unknown host {hid}.", errors={"host_ids": [f"Unknown host {hid}"]}
+                )
             if environment_id and host.environment_id != environment_id:
-                raise ValidationError(f"Host {host.name} is not in the group's environment.", errors={"host_ids": ["Environment mismatch."]})
+                raise ValidationError(
+                    f"Host {host.name} is not in the group's environment.",
+                    errors={"host_ids": ["Environment mismatch."]},
+                )
             hosts.append(host)
         return hosts
 
     # --- environments ---------------------------------------------------------------------------------------
-    def update_environment(self, env: Environment, data: dict[str, Any], *, user=None) -> Environment:
+    def update_environment(
+        self, env: Environment, data: dict[str, Any], *, user=None
+    ) -> Environment:
         for key in ("name", "description", "color"):
             if key in data and data[key] is not None:
                 setattr(env, key, str(data[key])[:255])
@@ -409,10 +607,20 @@ class HostService:
         if "max_parallel_deployments" in data and data["max_parallel_deployments"] is not None:
             value = int(data["max_parallel_deployments"])
             if not 1 <= value <= 50:
-                raise ValidationError("max_parallel_deployments out of range.", errors={"max_parallel_deployments": ["1-50"]})
+                raise ValidationError(
+                    "max_parallel_deployments out of range.",
+                    errors={"max_parallel_deployments": ["1-50"]},
+                )
             env.max_parallel_deployments = value
         db.session.commit()
-        audit.record("ENVIRONMENT_UPDATED", user=user, entity_type="Environment", entity_id=env.id, environment=env.code, details=env.to_dict())
+        audit.record(
+            "ENVIRONMENT_UPDATED",
+            user=user,
+            entity_type="Environment",
+            entity_id=env.id,
+            environment=env.code,
+            details=env.to_dict(),
+        )
         return env
 
 
@@ -426,7 +634,13 @@ def _parse_os_release(text: str) -> dict[str, str]:
             continue
         key, _, value = line.partition("=")
         out[key.strip().lower()] = value.strip().strip('"')
-    return {"name": out.get("name"), "version": out.get("version"), "version_id": out.get("version_id"), "id": out.get("id"), "pretty_name": out.get("pretty_name")}
+    return {
+        "name": out.get("name"),
+        "version": out.get("version"),
+        "version_id": out.get("version_id"),
+        "id": out.get("id"),
+        "pretty_name": out.get("pretty_name"),
+    }
 
 
 def _to_int(text: str) -> int | None:
@@ -441,7 +655,11 @@ def _parse_free(text: str) -> dict[str, int | None]:
         if line.lower().startswith("mem:"):
             parts = line.split()
             try:
-                return {"total_mb": int(parts[1]), "used_mb": int(parts[2]), "available_mb": int(parts[-1])}
+                return {
+                    "total_mb": int(parts[1]),
+                    "used_mb": int(parts[2]),
+                    "available_mb": int(parts[-1]),
+                }
             except (ValueError, IndexError):
                 break
     return {"total_mb": None, "used_mb": None, "available_mb": None}
@@ -453,6 +671,13 @@ def _parse_df(text: str) -> dict[str, Any]:
         return {"total_mb": None, "used_mb": None, "available_mb": None}
     parts = lines[-1].split()
     try:
-        return {"filesystem": parts[0], "total_mb": int(parts[1]), "used_mb": int(parts[2]), "available_mb": int(parts[3]), "use_percent": int(parts[4].rstrip("%")), "mount": parts[5] if len(parts) > 5 else None}
+        return {
+            "filesystem": parts[0],
+            "total_mb": int(parts[1]),
+            "used_mb": int(parts[2]),
+            "available_mb": int(parts[3]),
+            "use_percent": int(parts[4].rstrip("%")),
+            "mount": parts[5] if len(parts) > 5 else None,
+        }
     except (ValueError, IndexError):
         return {"total_mb": None, "used_mb": None, "available_mb": None}

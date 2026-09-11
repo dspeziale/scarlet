@@ -1,0 +1,29 @@
+# systemd unit running the SCARLET compose stack with Podman on Oracle Linux.
+# Install:
+#   sudo cp deployment/systemd/scarlet.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now scarlet
+# The stack directory must contain deployment/docker-compose.yml, .env, nginx-tls.conf and tls/.
+[Unit]
+Description=SCARLET - application release & lifecycle control plane (Podman Compose)
+Documentation=file:///opt/scarlet-server/docs/installation.md
+After=network-online.target
+Wants=network-online.target
+RequiresMountsFor=/opt/scarlet-server
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/scarlet-server
+Environment=COMPOSE_FILE=deployment/docker-compose.yml
+# podman compose delegates to podman-compose or docker-compose; both are supported
+ExecStartPre=/usr/bin/podman compose --env-file .env pull --ignore-pull-failures
+ExecStart=/usr/bin/podman compose --env-file .env up -d --remove-orphans
+ExecStop=/usr/bin/podman compose --env-file .env down
+ExecReload=/usr/bin/podman compose --env-file .env up -d --remove-orphans
+TimeoutStartSec=300
+TimeoutStopSec=120
+Restart=on-failure
+RestartSec=15
+
+[Install]
+WantedBy=multi-user.target

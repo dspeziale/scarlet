@@ -1,0 +1,20 @@
+{% extends "layout/base.html" %}
+{% from "partials/macros.html" import data_table with context %}
+{% block title %}Applications{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active">Applications</li>{% endblock %}
+{% block content %}
+<div data-page="applications-list">
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title"><i class="fa-solid fa-cube me-2"></i>Applications</h3>
+    <div class="card-tools">{% if can('application.create') %}<a href="{{ url_for('web.applications_new') }}" class="btn btn-sm btn-primary"><i class="fa-solid fa-plus me-1"></i>New application</a>{% endif %}</div>
+  </div>
+  <div class="card-body">
+    {% call data_table('apps-table', [{'label': 'Code', 'sort': 'code'}, {'label': 'Name', 'sort': 'name'}, {'label': 'Owner'}, {'label': 'Runtime', 'sort': 'runtime_type'}, {'label': 'Health check'}, {'label': 'Environments'}, {'label': 'Versions'}, {'label': 'Enabled'}, {'label': '', 'width': '120px'}], '/api/applications', empty='No applications registered.', extra_attrs='data-sort="code" data-direction="asc"') %}
+      <select name="runtime" class="form-select form-select-sm" style="width:auto"><option value="">All runtimes</option><option>DOCKER</option><option>PODMAN</option><option>KUBERNETES</option></select>
+    {% endcall %}
+  </div>
+</div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/pages/applications.js') }}"></script>{% endblock %}

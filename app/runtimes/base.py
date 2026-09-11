@@ -44,6 +44,7 @@ class RuntimeContext:
     layout: RemoteLayout
     log: Callable[..., None] = lambda *a, **k: None  # log(level, message, result=None)
     timeout: int = 600
+    local_release_dir: str | None = None  # local extracted package (Kubernetes API mode)
 
     def run(self, command, *, label: str | None = None) -> CommandResult:
         result = self.executor.run(command)
@@ -100,7 +101,12 @@ class LogChunk:
     truncated: bool = False
 
     def to_dict(self) -> dict[str, Any]:
-        return {"lines": self.lines, "source": self.source, "truncated": self.truncated, "count": len(self.lines)}
+        return {
+            "lines": self.lines,
+            "source": self.source,
+            "truncated": self.truncated,
+            "count": len(self.lines),
+        }
 
 
 class RuntimeAdapter(ABC):
@@ -132,16 +138,22 @@ class RuntimeAdapter(ABC):
         """Return the last ``lines`` log lines through the runtime's log interface."""
 
     @abstractmethod
-    def health(self, ctx: RuntimeContext, spec: HealthSpec, desired: DesiredApplicationState | None = None) -> HealthResult:
+    def health(
+        self, ctx: RuntimeContext, spec: HealthSpec, desired: DesiredApplicationState | None = None
+    ) -> HealthResult:
         """Execute a single health probe (retry logic lives in HealthChecker)."""
 
     # --- mutation ---------------------------------------------------------------------
     @abstractmethod
-    def install(self, ctx: RuntimeContext, desired: DesiredApplicationState, release_dir: str) -> dict[str, Any]:
+    def install(
+        self, ctx: RuntimeContext, desired: DesiredApplicationState, release_dir: str
+    ) -> dict[str, Any]:
         """Prepare the release on the host (pull/load image, render objects)."""
 
     @abstractmethod
-    def start(self, ctx: RuntimeContext, desired: DesiredApplicationState) -> ActualApplicationState:
+    def start(
+        self, ctx: RuntimeContext, desired: DesiredApplicationState
+    ) -> ActualApplicationState:
         """Start the desired version. Idempotent: running already => ALREADY_RUNNING."""
 
     @abstractmethod
@@ -152,11 +164,15 @@ class RuntimeAdapter(ABC):
     def remove(self, ctx: RuntimeContext) -> None:
         """Remove runtime objects for the application (not the release files)."""
 
-    def restart(self, ctx: RuntimeContext, desired: DesiredApplicationState) -> ActualApplicationState:
+    def restart(
+        self, ctx: RuntimeContext, desired: DesiredApplicationState
+    ) -> ActualApplicationState:
         self.stop(ctx)
         return self.start(ctx, desired)
 
-    def rollback(self, ctx: RuntimeContext, previous: DesiredApplicationState, release_dir: str) -> ActualApplicationState:
+    def rollback(
+        self, ctx: RuntimeContext, previous: DesiredApplicationState, release_dir: str
+    ) -> ActualApplicationState:
         """Activate ``previous`` (stop current, ensure image present, start previous)."""
         self.stop(ctx)
         self.install(ctx, previous, release_dir)
@@ -166,7 +182,9 @@ class RuntimeAdapter(ABC):
         raise NotImplementedError(f"{self.runtime_type.value} does not support scaling.")
 
     # --- reconciliation --------------------------------------------------------------------
-    def apply(self, ctx: RuntimeContext, desired: DesiredApplicationState) -> ActualApplicationState:
+    def apply(
+        self, ctx: RuntimeContext, desired: DesiredApplicationState
+    ) -> ActualApplicationState:
         """Drive the actual state toward ``desired`` (used by remediation)."""
         if desired.state == DesiredState.ABSENT:
             self.remove(ctx)
@@ -176,7 +194,9 @@ class RuntimeAdapter(ABC):
             if actual.state == ApplicationState.RUNNING:
                 return self.stop(ctx)
             return actual
-        if actual.state != ApplicationState.RUNNING or (actual.version and actual.version != desired.version):
+        if actual.state != ApplicationState.RUNNING or (
+            actual.version and actual.version != desired.version
+        ):
             if actual.state == ApplicationState.RUNNING:
                 self.stop(ctx)
             return self.start(ctx, desired)

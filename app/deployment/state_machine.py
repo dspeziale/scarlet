@@ -11,7 +11,9 @@ from app.errors import InvalidStateTransitionError
 from app.models.enums import DeploymentStatus as S
 
 TRANSITIONS: dict[S, frozenset[S]] = {
-    S.CREATED: frozenset({S.PENDING_APPROVAL, S.QUEUED, S.CANCELLED, S.PREFLIGHT_FAILED, S.REJECTED}),
+    S.CREATED: frozenset(
+        {S.PENDING_APPROVAL, S.QUEUED, S.CANCELLED, S.PREFLIGHT_FAILED, S.REJECTED}
+    ),
     S.PENDING_APPROVAL: frozenset({S.APPROVED, S.REJECTED, S.CANCELLED}),
     S.APPROVED: frozenset({S.QUEUED, S.CANCELLED}),
     S.QUEUED: frozenset({S.VALIDATING, S.CANCELLED, S.FAILED}),

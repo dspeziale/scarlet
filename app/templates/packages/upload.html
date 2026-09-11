@@ -1,0 +1,64 @@
+{% extends "layout/base.html" %}
+{% block title %}Upload package{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item"><a href="{{ url_for('web.packages_list') }}">Packages</a></li><li class="breadcrumb-item active">Upload</li>{% endblock %}
+{% block content %}
+<div data-page="package-upload" data-max-mb="{{ config.SCARLET_MAX_UPLOAD_MB }}">
+<div class="row">
+  <div class="col-lg-7">
+    <div class="card card-primary card-outline">
+      <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-upload me-2"></i>Upload a SCARLET release package</h3></div>
+      <div class="card-body">
+        <div class="dropzone" id="dropzone" tabindex="0">
+          <i class="fa-solid fa-file-zipper fa-2x text-muted mb-2"></i>
+          <p class="mb-1"><b>Drag &amp; drop</b> a <code>*.scarlet.tar.gz</code> file here, or click to choose.</p>
+          <p class="small text-muted mb-0">Maximum size {{ config.SCARLET_MAX_UPLOAD_MB }} MB. The package is validated before anything is stored as a release; nothing is ever executed.</p>
+          <input type="file" id="file-input" class="d-none" accept=".gz,.tgz,application/gzip">
+        </div>
+        <div id="file-info" class="mt-3 d-none">
+          <dl class="row small mb-2">
+            <dt class="col-3">File</dt><dd class="col-9" id="fi-name"></dd>
+            <dt class="col-3">Size</dt><dd class="col-9" id="fi-size"></dd>
+            <dt class="col-3">SHA-256 (local)</dt><dd class="col-9"><code id="fi-sha">computing…</code></dd>
+          </dl>
+          <div class="row g-2 align-items-end">
+            <div class="col-md-5"><label class="form-label small">Application (optional cross-check)</label><select class="form-select form-select-sm" id="application_id"><option value="">Detect from manifest</option>{% for a in applications %}<option value="{{ a.id }}" {% if request.args.get('application_id')|int == a.id %}selected{% endif %}>{{ a.code }}</option>{% endfor %}</select></div>
+            <div class="col-md-7"><label class="form-label small">Release notes</label><input class="form-control form-control-sm" id="release_notes" maxlength="4000" placeholder="Optional"></div>
+          </div>
+          <div class="form-check form-switch mt-2"><input class="form-check-input" type="checkbox" id="auto_release" checked><label class="form-check-label small" for="auto_release">Create the release automatically when the package is valid</label></div>
+          <div class="progress mt-3 d-none" id="upload-progress" style="height: 14px"><div class="progress-bar progress-bar-striped progress-bar-animated" style="width:0%">0%</div></div>
+          <div class="mt-3 d-flex gap-2"><button class="btn btn-primary" id="btn-upload"><i class="fa-solid fa-cloud-arrow-up me-1"></i>Upload &amp; validate</button><button class="btn btn-outline-secondary" id="btn-reset">Reset</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="card d-none" id="result-card">
+      <div class="card-header"><h3 class="card-title">Validation result <span id="result-status"></span></h3></div>
+      <div class="card-body">
+        <dl class="row small" id="result-meta"></dl>
+        <div id="result-errors"></div>
+        <div id="result-warnings"></div>
+        <details class="mt-2"><summary class="small">Manifest</summary><pre class="manifest bg-body-tertiary p-2 rounded mt-2" id="result-manifest"></pre></details>
+        <div class="mt-3 d-flex gap-2" id="result-actions"></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card card-outline card-info">
+      <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-circle-info me-2"></i>Package format</h3></div>
+      <div class="card-body small">
+        <pre class="bg-body-tertiary p-2 rounded mb-2">customer-api-2.5.0.scarlet.tar.gz
+├── manifest.yaml        (required, manifest_version: 1)
+├── application/         (image archive, binaries, …)
+├── config/              (env files referenced by the manifest)
+├── scripts/             (hook scripts *.sh)
+├── docker-compose.yml   (optional, compose mode)
+├── kubernetes/          (Kubernetes manifests)
+└── helm/                (optional Helm chart)</pre>
+        <p class="mb-1">Validation checks: extension, gzip/tar integrity, path traversal, links and special files, member count and size, manifest schema, required files, application registration, runtime compatibility, version immutability and duplicate detection.</p>
+        <p class="mb-0">Build packages with <code>scripts/build-scarlet-package.py</code>; see <b>docs/APPLICATION_RELEASE_CONTRACT.md</b>.</p>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/pages/packages.js') }}"></script>{% endblock %}

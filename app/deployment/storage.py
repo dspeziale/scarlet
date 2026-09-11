@@ -45,7 +45,14 @@ class ArtifactStorage(ABC):
         """Stream an upload into a temporary (incoming) location, hashing on the fly."""
 
     @abstractmethod
-    def promote(self, incoming_key: str, application_id: int, version: str, manifest_yaml: str, metadata: dict[str, Any]) -> StoredArtifact:
+    def promote(
+        self,
+        incoming_key: str,
+        application_id: int,
+        version: str,
+        manifest_yaml: str,
+        metadata: dict[str, Any],
+    ) -> StoredArtifact:
         """Move a validated incoming artifact to its immutable release location."""
 
     @abstractmethod
@@ -81,7 +88,11 @@ class LocalFilesystemArtifactStorage(ArtifactStorage):
 
     # --- helpers -------------------------------------------------------------------
     def _resolve(self, storage_key: str) -> Path:
-        if not storage_key or storage_key.startswith(("/", "\\")) or ".." in Path(storage_key).parts:
+        if (
+            not storage_key
+            or storage_key.startswith(("/", "\\"))
+            or ".." in Path(storage_key).parts
+        ):
             raise ArtifactStorageError("Invalid storage key.")
         path = (self.root / storage_key).resolve()
         if self.root not in path.parents:
@@ -115,7 +126,14 @@ class LocalFilesystemArtifactStorage(ArtifactStorage):
             raise ArtifactStorageError("Uploaded file is empty.")
         return StoredArtifact(key, size, digest.hexdigest())
 
-    def promote(self, incoming_key: str, application_id: int, version: str, manifest_yaml: str, metadata: dict[str, Any]) -> StoredArtifact:
+    def promote(
+        self,
+        incoming_key: str,
+        application_id: int,
+        version: str,
+        manifest_yaml: str,
+        metadata: dict[str, Any],
+    ) -> StoredArtifact:
         src = self._resolve(incoming_key)
         if not src.exists():
             raise ArtifactStorageError("Incoming artifact not found.")
@@ -129,7 +147,9 @@ class LocalFilesystemArtifactStorage(ArtifactStorage):
         dest = target_dir / "package.tar.gz"
         shutil.move(str(src), str(dest))
         (target_dir / "manifest.yaml").write_text(manifest_yaml, encoding="utf-8")
-        (target_dir / "metadata.json").write_text(json.dumps(metadata, indent=2, default=str), encoding="utf-8")
+        (target_dir / "metadata.json").write_text(
+            json.dumps(metadata, indent=2, default=str), encoding="utf-8"
+        )
         # make the release read-only where the platform supports it
         try:
             os.chmod(dest, 0o440)

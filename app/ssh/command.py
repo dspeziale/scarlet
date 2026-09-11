@@ -138,12 +138,15 @@ def validate_remote_path(path: str, base: str) -> str:
     """Return ``path`` if it is an absolute, normalized path under ``base``."""
     if not isinstance(path, str) or not path or "\x00" in path or "\n" in path:
         raise UnsafeCommandError("Invalid remote path.")
+    raw_parts = path.split("/")
+    if any(part in {".", ".."} for part in raw_parts) or any(part == "" for part in raw_parts[1:]):
+        raise UnsafeCommandError(
+            "Remote paths must be normalized (no '.', '..' or empty segments)."
+        )
     candidate = PurePosixPath(path)
     base_path = PurePosixPath(base)
     if not candidate.is_absolute() or not base_path.is_absolute():
         raise UnsafeCommandError("Remote paths must be absolute.")
-    if ".." in candidate.parts or "." in candidate.parts[1:]:
-        raise UnsafeCommandError("Remote paths must be normalized (no '.' or '..').")
     if candidate != base_path and base_path not in candidate.parents:
         raise UnsafeCommandError(
             "Remote path escapes the SCARLET base directory.",
@@ -211,7 +214,10 @@ class SystemCommands:
         if binary not in {"docker", "podman", "kubectl", "helm", "curl", "nc", "tar", "sha256sum"}:
             raise UnsafeCommandError("Lookup of this binary is not allowed.")
         return RemoteCommand(
-            ("command", "-v", binary), f"system.which.{binary}", f"Locate {binary}", allow_failure=True
+            ("command", "-v", binary),
+            f"system.which.{binary}",
+            f"Locate {binary}",
+            allow_failure=True,
         )
 
     @staticmethod
@@ -258,14 +264,18 @@ class FileCommands:
         return RemoteCommand(("mkdir", "-p", self._p(path)), "fs.mkdir", "Create directory")
 
     def exists(self, path: str) -> RemoteCommand:
-        return RemoteCommand(("test", "-e", self._p(path)), "fs.exists", "Check path", allow_failure=True)
+        return RemoteCommand(
+            ("test", "-e", self._p(path)), "fs.exists", "Check path", allow_failure=True
+        )
 
     def is_dir(self, path: str) -> RemoteCommand:
-        return RemoteCommand(("test", "-d", self._p(path)), "fs.isdir", "Check directory", allow_failure=True)
+        return RemoteCommand(
+            ("test", "-d", self._p(path)), "fs.isdir", "Check directory", allow_failure=True
+        )
 
     def remove_tree(self, path: str) -> RemoteCommand:
         target = self._p(path)
-        if PurePosixPath(target) == PurePosixPath(self.base) or len(PurePosixPath(target).parts) < 4:
+        if len(PurePosixPath(target).parts) < len(PurePosixPath(self.base).parts) + 3:
             raise UnsafeCommandError("Refusing to remove a top-level SCARLET directory.")
         return RemoteCommand(("rm", "-rf", "--", target), "fs.rmtree", "Remove directory")
 
@@ -277,24 +287,35 @@ class FileCommands:
 
     def symlink(self, target: str, link_path: str) -> RemoteCommand:
         return RemoteCommand(
-            ("ln", "-sfn", "--", self._p(target), self._p(link_path)), "fs.symlink", "Create symlink"
+            ("ln", "-sfn", "--", self._p(target), self._p(link_path)),
+            "fs.symlink",
+            "Create symlink",
         )
 
     def atomic_symlink_switch(self, target: str, link_path: str) -> list[RemoteCommand]:
         """Create ``link_path`` -> ``target`` atomically via temp link + rename."""
         tmp_link = f"{self._p(link_path)}.tmp"
         return [
-            RemoteCommand(("ln", "-sfn", "--", self._p(target), tmp_link), "fs.symlink", "Prepare symlink"),
-            RemoteCommand(("mv", "-T", "--", tmp_link, self._p(link_path)), "fs.mv", "Activate symlink"),
+            RemoteCommand(
+                ("ln", "-sfn", "--", self._p(target), tmp_link), "fs.symlink", "Prepare symlink"
+            ),
+            RemoteCommand(
+                ("mv", "-T", "--", tmp_link, self._p(link_path)), "fs.mv", "Activate symlink"
+            ),
         ]
 
     def readlink(self, link_path: str) -> RemoteCommand:
         return RemoteCommand(
-            ("readlink", "-f", "--", self._p(link_path)), "fs.readlink", "Resolve symlink", allow_failure=True
+            ("readlink", "-f", "--", self._p(link_path)),
+            "fs.readlink",
+            "Resolve symlink",
+            allow_failure=True,
         )
 
     def list_dir(self, path: str) -> RemoteCommand:
-        return RemoteCommand(("ls", "-1", "--", self._p(path)), "fs.ls", "List directory", allow_failure=True)
+        return RemoteCommand(
+            ("ls", "-1", "--", self._p(path)), "fs.ls", "List directory", allow_failure=True
+        )
 
     def sha256(self, path: str) -> RemoteCommand:
         return RemoteCommand(("sha256sum", "--", self._p(path)), "fs.sha256", "Checksum")
@@ -316,12 +337,16 @@ class FileCommands:
         )
 
     def cat(self, path: str) -> RemoteCommand:
-        return RemoteCommand(("cat", "--", self._p(path)), "fs.cat", "Read file", allow_failure=True)
+        return RemoteCommand(
+            ("cat", "--", self._p(path)), "fs.cat", "Read file", allow_failure=True
+        )
 
     def chmod_exec(self, path: str) -> RemoteCommand:
         return RemoteCommand(("chmod", "u+x", "--", self._p(path)), "fs.chmod", "Make executable")
 
-    def run_hook(self, script_path: str, release_dir: str, timeout: int, env: dict[str, str]) -> RemoteCommand:
+    def run_hook(
+        self, script_path: str, release_dir: str, timeout: int, env: dict[str, str]
+    ) -> RemoteCommand:
         """Execute a package hook script with ``sh`` inside the release directory.
 
         Hooks are only run for applications with ``allow_hooks`` and the script
@@ -331,7 +356,9 @@ class FileCommands:
         release = self._p(release_dir)
         scripts_dir = PurePosixPath(release) / "scripts"
         if scripts_dir not in PurePosixPath(script).parents:
-            raise UnsafeCommandError("Hook scripts must live inside the release 'scripts/' directory.")
+            raise UnsafeCommandError(
+                "Hook scripts must live inside the release 'scripts/' directory."
+            )
         if not script.endswith(".sh"):
             raise UnsafeCommandError("Hook scripts must be .sh files.")
         if timeout < 1 or timeout > 3600:
@@ -353,7 +380,18 @@ class FileCommands:
         if days < 1:
             raise ValidationError("days must be >= 1")
         return RemoteCommand(
-            ("find", self._p(path), "-mindepth", "1", "-maxdepth", "1", "-type", "d", "-mtime", f"+{int(days)}"),
+            (
+                "find",
+                self._p(path),
+                "-mindepth",
+                "1",
+                "-maxdepth",
+                "1",
+                "-type",
+                "d",
+                "-mtime",
+                f"+{int(days)}",
+            ),
             "builder.find_old",
             "List stale directories",
             allow_failure=True,

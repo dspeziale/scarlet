@@ -1,0 +1,35 @@
+{% extends "layout/base.html" %}
+{% block title %}Releases{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active">Releases</li>{% endblock %}
+{% block content %}
+<div data-page="releases">
+<div class="card">
+  <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-tags me-2"></i>Released versions (immutable)</h3><div class="card-tools">{% if can('package.upload') %}<a href="{{ url_for('web.packages_upload') }}" class="btn btn-sm btn-primary"><i class="fa-solid fa-upload me-1"></i>Upload package</a>{% endif %}</div></div>
+  <div class="card-body p-0">
+    <table class="table table-sm table-hover mb-0 align-middle">
+      <thead><tr><th>Application</th><th>Version</th><th>Runtime</th><th>Image</th><th>SHA-256</th><th>Released</th><th>By</th><th>Package</th><th></th></tr></thead>
+      <tbody>
+      {% for v in versions %}
+      <tr class="{{ 'text-muted' if not v.is_active }}">
+        <td><a href="{{ url_for('web.application_detail', app_id=v.application_id) }}">{{ v.application.code }}</a></td>
+        <td><code>{{ v.version }}</code>{% if not v.is_active %} <span class="badge text-bg-dark">inactive</span>{% endif %}</td>
+        <td>{{ v.runtime_type|runtime_icon }}</td>
+        <td class="small font-monospace-sm">{{ v.image_name or '-' }}{% if v.image_tag %}:{{ v.image_tag }}{% endif %}</td>
+        <td><code class="small" title="{{ v.checksum_sha256 }}">{{ v.checksum_sha256[:12] }}…</code></td>
+        <td class="small text-muted">{{ v.created_at|dt }}</td>
+        <td class="small">{{ v.package.uploaded_by.username if v.package and v.package.uploaded_by else '-' }}</td>
+        <td>{% if v.package %}{{ v.package.status|status_badge }} <span class="small text-muted">{{ v.package.size_bytes|filesize }}</span>{% else %}<span class="small text-muted">none</span>{% endif %}</td>
+        <td class="text-end text-nowrap">
+          <button class="btn btn-sm btn-outline-secondary" data-manifest="{{ v.application_id }}/{{ v.id }}" title="Manifest"><i class="fa-solid fa-file-code"></i></button>
+          {% if can('application.update') and v.is_active %}<button class="btn btn-sm btn-outline-dark" data-deactivate="{{ v.application_id }}/{{ v.id }}" data-version="{{ v.version }}" title="Deactivate (prevents new deployments)"><i class="fa-solid fa-ban"></i></button>{% endif %}
+        </td>
+      </tr>
+      {% else %}<tr><td colspan="9" class="text-center text-muted py-4">No releases yet.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<div class="modal fade" id="manifest-modal" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Manifest <span id="manifest-title"></span></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div id="manifest-integrity" class="small mb-2"></div><pre class="manifest bg-body-tertiary p-2 rounded" id="manifest-body"></pre></div></div></div></div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/pages/applications.js') }}"></script>{% endblock %}

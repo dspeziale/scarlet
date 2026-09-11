@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token_value }}">
+  <meta name="scarlet-user" content="{{ current_user_obj.username if current_user_obj else '' }}">
+  <meta name="scarlet-permissions" content="{{ current_user_obj.permission_codes|sort|join(',') if current_user_obj else '' }}">
+  <meta name="scarlet-prod-phrase" content="{{ prod_phrase }}">
+  <title>{% block title %}SCARLET{% endblock %} · SCARLET</title>
+  <link rel="stylesheet" href="{{ asset('fontawesome_css') }}">
+  <link rel="stylesheet" href="{{ asset('bootstrap_icons_css') }}">
+  <link rel="stylesheet" href="{{ asset('adminlte_css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/scarlet.css') }}">
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+  {% block head %}{% endblock %}
+</head>
+<body class="layout-fixed sidebar-expand-lg bg-body-tertiary{% if scarlet_env == 'production' %} scarlet-prod-instance{% endif %}">
+<div class="app-wrapper">
+  {% include "partials/navbar.html" %}
+  {% include "partials/sidebar.html" %}
+  <main class="app-main">
+    <div class="app-content-header">
+      <div class="container-fluid">
+        <div class="row">
+          <div class="col-sm-7">
+            <h3 class="mb-0">{% block page_title %}{{ self.title() }}{% endblock %}</h3>
+          </div>
+          <div class="col-sm-5">
+            <ol class="breadcrumb float-sm-end">
+              <li class="breadcrumb-item"><a href="{{ url_for('web.dashboard') }}">Dashboard</a></li>
+              {% block breadcrumb %}{% endblock %}
+            </ol>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="app-content">
+      <div class="container-fluid">
+        {% include "partials/alerts.html" %}
+        {% block content %}{% endblock %}
+      </div>
+    </div>
+  </main>
+  {% include "partials/footer.html" %}
+</div>
+{% include "partials/modals.html" %}
+<div class="toast-container position-fixed top-0 end-0 p-3" id="toast-container"></div>
+<script src="{{ asset('bootstrap_js') }}"></script>
+<script src="{{ asset('adminlte_js') }}"></script>
+<script src="{{ url_for('static', filename='js/scarlet.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

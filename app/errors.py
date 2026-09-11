@@ -38,7 +38,9 @@ class ScarletError(Exception):
 # --- validation / input -------------------------------------------------------
 
 
-class ValidationError(ScarletError):
+class ValidationError(ScarletError, ValueError):
+    """Also a ValueError so Pydantic validators convert it into a schema error."""
+
     code = "VALIDATION_ERROR"
     http_status = 400
     user_message = "Invalid input."

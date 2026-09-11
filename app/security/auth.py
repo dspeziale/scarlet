@@ -55,7 +55,13 @@ def register_auth(app: Flask) -> None:
         if request.path.startswith("/api/"):
             return (
                 jsonify(
-                    {"ok": False, "error": {"code": "AUTHENTICATION_REQUIRED", "message": "Authentication required."}}
+                    {
+                        "ok": False,
+                        "error": {
+                            "code": "AUTHENTICATION_REQUIRED",
+                            "message": "Authentication required.",
+                        },
+                    }
                 ),
                 401,
             )

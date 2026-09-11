@@ -61,10 +61,13 @@ class ProductionGuard:
                 self._setting("SCARLET_PROD_REQUIRE_CONFIRMATION", True)
                 or environment.require_confirmation
             ),
-            confirmation_phrase=str(self._setting("SCARLET_PROD_CONFIRMATION_PHRASE", "DEPLOY TO PROD")),
+            confirmation_phrase=str(
+                self._setting("SCARLET_PROD_CONFIRMATION_PHRASE", "DEPLOY TO PROD")
+            ),
             require_reason=bool(self._setting("SCARLET_PROD_REQUIRE_REASON", True)),
             require_approval=bool(
-                self._setting("SCARLET_PROD_REQUIRE_APPROVAL", False) or environment.require_approval
+                self._setting("SCARLET_PROD_REQUIRE_APPROVAL", False)
+                or environment.require_approval
             ),
             allow_rollback=bool(
                 self._setting("SCARLET_PROD_ALLOW_ROLLBACK", True) and environment.allow_rollback
@@ -73,7 +76,9 @@ class ProductionGuard:
 
     def authorize(self, permission: str, environment, *, user=None) -> None:
         """Permission check that automatically requires the prod.* variant on PROD."""
-        check_permission(permission, production=bool(environment and environment.is_production), user=user)
+        check_permission(
+            permission, production=bool(environment and environment.is_production), user=user
+        )
 
     def check_operation(
         self,
@@ -98,7 +103,9 @@ class ProductionGuard:
                     errors={"reason": ["Required for PROD operations."]},
                 )
             if reqs.require_confirmation:
-                expected = phrase_override or self.expected_phrase(operation, reqs.confirmation_phrase)
+                expected = phrase_override or self.expected_phrase(
+                    operation, reqs.confirmation_phrase
+                )
                 if (confirmation or "").strip() != expected:
                     raise ProductionSafetyError(
                         f"Production confirmation failed. Type exactly: {expected}",
@@ -121,5 +128,9 @@ class ProductionGuard:
         approved = [a for a in deployment.approvals if a.status == "APPROVED"]
         if not approved:
             raise ApprovalRequiredError()
-        if approver is not None and any(a.decided_by_id == deployment.requested_by_id for a in approved):
-            raise ProductionSafetyError("A deployment cannot be approved by the user who requested it.")
+        if approver is not None and any(
+            a.decided_by_id == deployment.requested_by_id for a in approved
+        ):
+            raise ProductionSafetyError(
+                "A deployment cannot be approved by the user who requested it."
+            )

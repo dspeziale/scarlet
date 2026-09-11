@@ -17,7 +17,9 @@ class SystemSetting(PkMixin, TimestampMixin, Base):
 
     key: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
     value: Mapped[str] = mapped_column(Text, nullable=False)
-    value_type: Mapped[str] = mapped_column(String(8), default="str", nullable=False)  # str|int|bool
+    value_type: Mapped[str] = mapped_column(
+        String(8), default="str", nullable=False
+    )  # str|int|bool
     description: Mapped[str] = mapped_column(String(255), default="", nullable=False)
     category: Mapped[str] = mapped_column(String(32), default="general", nullable=False)
     is_editable: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)

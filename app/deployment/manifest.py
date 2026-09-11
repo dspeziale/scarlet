@@ -13,7 +13,16 @@ import shlex
 from typing import Any, Literal
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, ValidationError as PydanticValidationError, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
+from pydantic import (
+    ValidationError as PydanticValidationError,
+)
 
 from app.errors import ManifestValidationError
 from app.security.validators import (
@@ -38,7 +47,9 @@ class _Strict(BaseModel):
 class ImageSpec(_Strict):
     name: str
     tag: str
-    archive: str | None = Field(default=None, description="Path inside the package to an image archive (`docker save`)")
+    archive: str | None = Field(
+        default=None, description="Path inside the package to an image archive (`docker save`)"
+    )
     pull_policy: Literal["if-not-present", "always", "never"] = "if-not-present"
 
     @field_validator("name")
@@ -65,7 +76,9 @@ class PortSpec(_Strict):
     container: int = Field(ge=1, le=65535)
     host: int | None = Field(default=None, ge=1, le=65535)
     protocol: Literal["tcp", "udp"] = "tcp"
-    bind: str | None = Field(default=None, description="Host interface to bind (IPv4 only), e.g. 127.0.0.1")
+    bind: str | None = Field(
+        default=None, description="Host interface to bind (IPv4 only), e.g. 127.0.0.1"
+    )
 
     @field_validator("bind")
     @classmethod
@@ -103,14 +116,18 @@ class VolumeSpec(_Strict):
 
 
 class HealthcheckSpec(_Strict):
-    type: Literal["http", "https", "tcp", "command", "container_status", "kubernetes_status"] = "container_status"
+    type: Literal["http", "https", "tcp", "command", "container_status", "kubernetes_status"] = (
+        "container_status"
+    )
     path: str = "/health"
     port: int | None = Field(default=None, ge=1, le=65535)
     expected_status: int = Field(default=200, ge=100, le=599)
     timeout: int = Field(default=10, ge=1, le=300)
     retries: int = Field(default=5, ge=1, le=50)
     interval: int = Field(default=3, ge=0, le=300)
-    command: str | None = Field(default=None, description="Command executed inside the container (exec)")
+    command: str | None = Field(
+        default=None, description="Command executed inside the container (exec)"
+    )
 
     @field_validator("path")
     @classmethod
@@ -149,7 +166,9 @@ class DeploymentSpec(_Strict):
     replicas: int = Field(default=1, ge=0, le=100)
     user: str | None = Field(default=None, description="Container user (uid[:gid])")
     read_only_rootfs: bool = False
-    extra_args_allowed: bool = False  # reserved; extra runtime args are never accepted from the manifest
+    extra_args_allowed: bool = (
+        False  # reserved; extra runtime args are never accepted from the manifest
+    )
 
     @field_validator("user")
     @classmethod
@@ -216,7 +235,13 @@ class HooksSpec(_Strict):
         return out
 
     def all_scripts(self) -> list[str]:
-        return self.pre_deploy + self.migrate + self.post_deploy + self.pre_rollback + self.post_rollback
+        return (
+            self.pre_deploy
+            + self.migrate
+            + self.post_deploy
+            + self.pre_rollback
+            + self.post_rollback
+        )
 
 
 class DependencySpec(_Strict):
@@ -250,7 +275,9 @@ class KubernetesServiceSpec(_Strict):
 
 class KubernetesSpec(_Strict):
     namespace: str | None = None
-    manifests: str | None = Field(default="kubernetes", description="Directory with YAML manifests inside the package")
+    manifests: str | None = Field(
+        default="kubernetes", description="Directory with YAML manifests inside the package"
+    )
     helm: HelmSpec | None = None
     deployment_name: str | None = None
     container_name: str | None = None
@@ -311,7 +338,9 @@ class Manifest(_Strict):
     @classmethod
     def _mv(cls, v: int) -> int:
         if v not in SUPPORTED_MANIFEST_VERSIONS:
-            raise ValueError(f"unsupported manifest_version {v}; supported: {sorted(SUPPORTED_MANIFEST_VERSIONS)}")
+            raise ValueError(
+                f"unsupported manifest_version {v}; supported: {sorted(SUPPORTED_MANIFEST_VERSIONS)}"
+            )
         return v
 
     @field_validator("application")
@@ -362,7 +391,11 @@ class Manifest(_Strict):
                 raise ValueError("image or compose is required for docker/podman runtimes")
             if self.image is not None and self.compose is not None:
                 raise ValueError("specify either image or compose, not both")
-            if self.image is not None and self.image.pull_policy == "never" and not self.image.archive:
+            if (
+                self.image is not None
+                and self.image.pull_policy == "never"
+                and not self.image.archive
+            ):
                 raise ValueError("image.pull_policy 'never' requires image.archive")
         if self.runtime == "kubernetes":
             if self.kubernetes is None:
@@ -373,11 +406,15 @@ class Manifest(_Strict):
                 raise ValueError("compose is not valid for the kubernetes runtime")
         if self.healthcheck.type in {"http", "https", "tcp"} and self.healthcheck.port is None:
             if self.ports:
-                object.__setattr__(self.healthcheck, "port", self.ports[0].host or self.ports[0].container)
+                object.__setattr__(
+                    self.healthcheck, "port", self.ports[0].host or self.ports[0].container
+                )
             elif self.kubernetes and self.kubernetes.service:
                 object.__setattr__(self.healthcheck, "port", self.kubernetes.service.port)
             else:
-                raise ValueError("healthcheck.port is required for http/https/tcp checks without ports")
+                raise ValueError(
+                    "healthcheck.port is required for http/https/tcp checks without ports"
+                )
         if self.healthcheck.type == "kubernetes_status" and self.runtime != "kubernetes":
             raise ValueError("kubernetes_status health check requires the kubernetes runtime")
         if self.healthcheck.type == "container_status" and self.runtime == "kubernetes":

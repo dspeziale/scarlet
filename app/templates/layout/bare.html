@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}SCARLET{% endblock %} · SCARLET</title>
+  <link rel="stylesheet" href="{{ asset('fontawesome_css') }}">
+  <link rel="stylesheet" href="{{ asset('adminlte_css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/scarlet.css') }}">
+</head>
+<body class="bg-body-secondary">
+<div class="container py-5">
+  <div class="text-center mb-4"><span class="scarlet-logo-lg"><i class="fa-solid fa-cubes"></i></span><div><b>SCARLET</b></div></div>
+  {% block content %}{% endblock %}
+  <p class="text-center mt-4"><a href="{{ url_for('web_auth.login') }}">Sign in</a></p>
+</div>
+</body>
+</html>

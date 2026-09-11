@@ -1,0 +1,37 @@
+{% extends "layout/base.html" %}
+{% block title %}Settings{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active">Settings</li>{% endblock %}
+{% block content %}
+<div data-page="settings">
+<div class="alert alert-info small"><i class="fa-solid fa-circle-info me-1"></i>Values set here override the environment variables with the same name and take effect immediately (no restart). Secrets (encryption key, database URL, SMTP password) are never managed here. Every change is audited.</div>
+{% set categories = settings|groupby('category') %}
+<div class="row">
+{% for category, items in categories %}
+<div class="col-lg-6">
+  <div class="card">
+    <div class="card-header"><h3 class="card-title text-capitalize"><i class="fa-solid fa-sliders me-2"></i>{{ category }}</h3></div>
+    <div class="card-body p-0">
+      <table class="table table-sm mb-0 align-middle">
+        <tbody>
+        {% for s in items %}
+        <tr data-key="{{ s.key }}" data-type="{{ s.value_type }}">
+          <td style="width:45%"><code class="small">{{ s.key }}</code><div class="small text-muted">{{ s.description }}</div></td>
+          <td>
+            {% if s.value_type == 'bool' %}<div class="form-check form-switch"><input class="form-check-input setting-input" type="checkbox" {% if s.value %}checked{% endif %}></div>
+            {% elif s.value_type == 'int' %}<input class="form-control form-control-sm setting-input" type="number" value="{{ s.value }}">
+            {% else %}<input class="form-control form-control-sm setting-input" type="text" value="{{ s.value }}" maxlength="64">{% endif %}
+            {% if s.overridden %}<div class="small text-warning-emphasis">overrides env default <code>{{ s.default }}</code></div>{% endif %}
+          </td>
+          <td class="text-end text-nowrap" style="width:90px"><button class="btn btn-sm btn-outline-primary" data-save title="Save"><i class="fa-solid fa-floppy-disk"></i></button> {% if s.overridden %}<button class="btn btn-sm btn-outline-secondary" data-reset title="Reset to env default"><i class="fa-solid fa-rotate-left"></i></button>{% endif %}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endfor %}
+</div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/pages/system.js') }}"></script>{% endblock %}

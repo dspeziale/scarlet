@@ -23,7 +23,11 @@ class RuntimeFactory:
 
     @classmethod
     def get(cls, runtime_type: str | RuntimeType) -> RuntimeAdapter:
-        key = runtime_type.value if isinstance(runtime_type, RuntimeType) else str(runtime_type).upper()
+        key = (
+            runtime_type.value
+            if isinstance(runtime_type, RuntimeType)
+            else str(runtime_type).upper()
+        )
         adapter_cls = cls._registry.get(key)
         if adapter_cls is None:
             raise RuntimeNotSupportedError(

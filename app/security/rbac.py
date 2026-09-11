@@ -179,7 +179,7 @@ def check_permission(permission: str, *, production: bool = False, user=None) ->
     if user is None:
         raise AuthenticationError()
     if not user_has_permission(user, permission, production=production):
-        detail = f" on a PRODUCTION target" if production else ""
+        detail = " on a PRODUCTION target" if production else ""
         raise AuthorizationError(
             f"Permission '{permission}'{detail} is required.",
             details={"permission": permission, "production": production},

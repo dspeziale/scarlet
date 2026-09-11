@@ -44,7 +44,9 @@ def register_security_headers(app: Flask) -> None:
         response.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
         if not request.path.startswith("/api/docs"):
             response.headers.setdefault("Content-Security-Policy", csp)
-        if hsts_enabled and (request.is_secure or request.headers.get("X-Forwarded-Proto") == "https"):
+        if hsts_enabled and (
+            request.is_secure or request.headers.get("X-Forwarded-Proto") == "https"
+        ):
             response.headers.setdefault(
                 "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
             )

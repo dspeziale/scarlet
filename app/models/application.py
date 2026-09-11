@@ -44,7 +44,9 @@ class Application(PkMixin, TimestampMixin, Base):
     description: Mapped[str] = mapped_column(Text, default="", nullable=False)
     owner: Mapped[str] = mapped_column(String(128), default="", nullable=False)
     repository: Mapped[str] = mapped_column(String(255), default="", nullable=False)
-    artifact_type: Mapped[str] = mapped_column(String(32), default="container-image", nullable=False)
+    artifact_type: Mapped[str] = mapped_column(
+        String(32), default="container-image", nullable=False
+    )
     runtime_type: Mapped[str] = mapped_column(String(16), nullable=False)
     default_port: Mapped[int | None] = mapped_column(Integer, nullable=True)
     healthcheck_type: Mapped[str] = mapped_column(
@@ -290,7 +292,9 @@ class ApplicationInstance(PkMixin, TimestampMixin, Base):
     last_health_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     drift_detected: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    drift_type: Mapped[str] = mapped_column(String(24), default=DriftType.NONE.value, nullable=False)
+    drift_type: Mapped[str] = mapped_column(
+        String(24), default=DriftType.NONE.value, nullable=False
+    )
     drift_details: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     drift_detected_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
@@ -319,7 +323,9 @@ class ApplicationInstance(PkMixin, TimestampMixin, Base):
             "application_name": self.application.name if self.application else None,
             "host_id": self.host_id,
             "host_name": self.host.name if self.host else None,
-            "environment": self.host.environment.code if self.host and self.host.environment else None,
+            "environment": (
+                self.host.environment.code if self.host and self.host.environment else None
+            ),
             "is_production": self.host.is_production if self.host else False,
             "runtime_type": self.host.runtime_type if self.host else None,
             "desired": {
@@ -327,9 +333,9 @@ class ApplicationInstance(PkMixin, TimestampMixin, Base):
                 "version_id": self.desired_version_id,
                 "state": self.desired_state,
                 "replicas": self.desired_replicas,
-                "updated_at": self.desired_updated_at.isoformat()
-                if self.desired_updated_at
-                else None,
+                "updated_at": (
+                    self.desired_updated_at.isoformat() if self.desired_updated_at else None
+                ),
             },
             "actual": {
                 "version": self.actual_version
@@ -338,25 +344,25 @@ class ApplicationInstance(PkMixin, TimestampMixin, Base):
                 "state": self.actual_state,
                 "replicas": self.actual_replicas,
                 "runtime": self.actual_runtime,
-                "observed_at": self.actual_observed_at.isoformat()
-                if self.actual_observed_at
-                else None,
+                "observed_at": (
+                    self.actual_observed_at.isoformat() if self.actual_observed_at else None
+                ),
                 "details": self.actual_details or {},
             },
             "current_version": self.current_version.version if self.current_version else None,
             "previous_version": self.previous_version.version if self.previous_version else None,
             "state": self.actual_state,
             "health_status": self.health_status,
-            "last_health_check_at": self.last_health_check_at.isoformat()
-            if self.last_health_check_at
-            else None,
+            "last_health_check_at": (
+                self.last_health_check_at.isoformat() if self.last_health_check_at else None
+            ),
             "last_health_message": self.last_health_message,
             "drift_detected": self.drift_detected,
             "drift_type": self.drift_type,
             "drift_details": self.drift_details or {},
             "last_deployment_id": self.last_deployment_id,
-            "last_operation_at": self.last_operation_at.isoformat()
-            if self.last_operation_at
-            else None,
+            "last_operation_at": (
+                self.last_operation_at.isoformat() if self.last_operation_at else None
+            ),
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

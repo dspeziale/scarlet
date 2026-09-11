@@ -51,16 +51,27 @@ class ApplicationService:
                 errors["runtime_type"] = ["Must be DOCKER, PODMAN or KUBERNETES."]
             else:
                 out["runtime_type"] = rt.value
-        for key, limit in (("description", 4000), ("owner", 128), ("repository", 255), ("artifact_type", 32)):
+        for key, limit in (
+            ("description", 4000),
+            ("owner", 128),
+            ("repository", 255),
+            ("artifact_type", 32),
+        ):
             if key in data and data[key] is not None:
                 out[key] = str(data[key])[:limit]
         if "default_port" in data:
             port = data.get("default_port")
-            out["default_port"] = validate_int_range(port, field="default_port", minimum=1, maximum=65535) if port not in (None, "") else None
+            out["default_port"] = (
+                validate_int_range(port, field="default_port", minimum=1, maximum=65535)
+                if port not in (None, "")
+                else None
+            )
         if "healthcheck_type" in data:
             hc = HealthCheckType.parse(data.get("healthcheck_type"))
             if hc is None:
-                errors["healthcheck_type"] = [f"Must be one of {', '.join(HealthCheckType.values())}."]
+                errors["healthcheck_type"] = [
+                    f"Must be one of {', '.join(HealthCheckType.values())}."
+                ]
             else:
                 out["healthcheck_type"] = hc.value
         if "healthcheck_url" in data:
@@ -83,8 +94,17 @@ class ApplicationService:
             out["healthcheck_command"] = cmd[:512] or None
         if "healthcheck_port" in data:
             port = data.get("healthcheck_port")
-            out["healthcheck_port"] = validate_int_range(port, field="healthcheck_port", minimum=1, maximum=65535) if port not in (None, "") else None
-        for key, lo, hi in (("healthcheck_expected_status", 100, 599), ("healthcheck_timeout", 1, 300), ("healthcheck_retries", 1, 50), ("healthcheck_interval", 0, 300)):
+            out["healthcheck_port"] = (
+                validate_int_range(port, field="healthcheck_port", minimum=1, maximum=65535)
+                if port not in (None, "")
+                else None
+            )
+        for key, lo, hi in (
+            ("healthcheck_expected_status", 100, 599),
+            ("healthcheck_timeout", 1, 300),
+            ("healthcheck_retries", 1, 50),
+            ("healthcheck_interval", 0, 300),
+        ):
             if key in data and data[key] not in (None, ""):
                 try:
                     out[key] = validate_int_range(data[key], field=key, minimum=lo, maximum=hi)
@@ -129,7 +149,14 @@ class ApplicationService:
         app = Application(**payload)
         db.session.add(app)
         db.session.commit()
-        audit.record("APPLICATION_CREATED", user=user, application=app, entity_type="Application", entity_id=app.id, details={"code": app.code, "runtime_type": app.runtime_type})
+        audit.record(
+            "APPLICATION_CREATED",
+            user=user,
+            application=app,
+            entity_type="Application",
+            entity_id=app.id,
+            details={"code": app.code, "runtime_type": app.runtime_type},
+        )
         return app
 
     def update(self, app: Application, data: dict[str, Any], *, user=None) -> Application:
@@ -144,8 +171,19 @@ class ApplicationService:
             setattr(app, key, value)
         db.session.commit()
         after = app.to_dict()
-        changes = {k: {"before": before.get(k), "after": after.get(k)} for k in after if before.get(k) != after.get(k) and k != "updated_at"}
-        audit.record("APPLICATION_UPDATED", user=user, application=app, entity_type="Application", entity_id=app.id, details={"changes": changes})
+        changes = {
+            k: {"before": before.get(k), "after": after.get(k)}
+            for k in after
+            if before.get(k) != after.get(k) and k != "updated_at"
+        }
+        audit.record(
+            "APPLICATION_UPDATED",
+            user=user,
+            application=app,
+            entity_type="Application",
+            entity_id=app.id,
+            details={"changes": changes},
+        )
         return app
 
     def delete(self, app: Application, *, user=None) -> None:
@@ -154,15 +192,27 @@ class ApplicationService:
             raise ConflictError("Application has running instances. Stop them first.")
         from app.models.deployment import Deployment
 
-        if db.session.execute(db.select(Deployment.id).where(Deployment.application_id == app.id).limit(1)).scalar_one_or_none():
-            raise ConflictError("Application has deployment history and cannot be deleted. Disable it instead.")
+        if db.session.execute(
+            db.select(Deployment.id).where(Deployment.application_id == app.id).limit(1)
+        ).scalar_one_or_none():
+            raise ConflictError(
+                "Application has deployment history and cannot be deleted. Disable it instead."
+            )
         code = app.code
         db.session.delete(app)
         db.session.commit()
-        audit.record("APPLICATION_DELETED", user=user, entity_type="Application", entity_id=app.id, details={"code": code})
+        audit.record(
+            "APPLICATION_DELETED",
+            user=user,
+            entity_type="Application",
+            entity_id=app.id,
+            details={"code": code},
+        )
 
     # --- compatibility -----------------------------------------------------------------------
-    def check_target_compatibility(self, app: Application, host: TargetHost, version: ApplicationVersion | None = None) -> list[str]:
+    def check_target_compatibility(
+        self, app: Application, host: TargetHost, version: ApplicationVersion | None = None
+    ) -> list[str]:
         """Return a list of human readable incompatibility reasons (empty = compatible)."""
         problems: list[str] = []
         if not app.enabled:
@@ -171,40 +221,79 @@ class ApplicationService:
             problems.append(f"Host {host.name} is disabled.")
         env_code = host.environment.code
         if not app.is_environment_allowed(env_code):
-            problems.append(f"Application is not allowed in environment {env_code} (allowed: {', '.join(app.allowed_environments)}).")
+            problems.append(
+                f"Application is not allowed in environment {env_code} (allowed: {', '.join(app.allowed_environments)})."
+            )
         if host.runtime_type == RuntimeType.NONE.value:
-            problems.append(f"Host {host.name} has no container runtime configured. Run DISCOVER and set the runtime.")
+            problems.append(
+                f"Host {host.name} has no container runtime configured. Run DISCOVER and set the runtime."
+            )
         elif not app.is_runtime_allowed(host.runtime_type):
-            problems.append(f"Application runtime {app.runtime_type} is not compatible with host runtime {host.runtime_type}.")
-        if version is not None and version.runtime_type != host.runtime_type and version.runtime_type not in (app.allowed_runtimes or []):
-            problems.append(f"Version {version.version} was packaged for {version.runtime_type} but the host runs {host.runtime_type}.")
+            problems.append(
+                f"Application runtime {app.runtime_type} is not compatible with host runtime {host.runtime_type}."
+            )
+        if (
+            version is not None
+            and version.runtime_type != host.runtime_type
+            and version.runtime_type not in (app.allowed_runtimes or [])
+        ):
+            problems.append(
+                f"Version {version.version} was packaged for {version.runtime_type} but the host runs {host.runtime_type}."
+            )
         if app.allowed_host_group_ids:
             if not app.is_host_group_allowed([g.id for g in host.groups]):
                 names = [g.name for g in self.groups.all() if g.id in app.allowed_host_group_ids]
-                problems.append(f"Host {host.name} is not in an allowed host group ({', '.join(names)}).")
+                problems.append(
+                    f"Host {host.name} is not in an allowed host group ({', '.join(names)})."
+                )
         if version is not None and not version.is_active:
             problems.append(f"Version {version.version} has been deactivated.")
-        if version is not None and version.package is not None and version.package.status != "VALID":
-            problems.append(f"Package for version {version.version} is not valid ({version.package.status}).")
+        if (
+            version is not None
+            and version.package is not None
+            and version.package.status != "VALID"
+        ):
+            problems.append(
+                f"Package for version {version.version} is not valid ({version.package.status})."
+            )
         return problems
 
-    def compatible_hosts(self, app: Application, version: ApplicationVersion | None = None) -> list[dict[str, Any]]:
+    def compatible_hosts(
+        self, app: Application, version: ApplicationVersion | None = None
+    ) -> list[dict[str, Any]]:
         from app.repositories import HostRepository
 
         out = []
         for host in HostRepository().enabled():
             problems = self.check_target_compatibility(app, host, version)
-            out.append({"host": host.to_dict(include_system=False), "compatible": not problems, "problems": problems})
+            out.append(
+                {
+                    "host": host.to_dict(include_system=False),
+                    "compatible": not problems,
+                    "problems": problems,
+                }
+            )
         return out
 
     # --- versions -----------------------------------------------------------------------------------
     def deactivate_version(self, version: ApplicationVersion, *, user=None) -> ApplicationVersion:
-        in_use = [i for i in self.instances.for_application(version.application_id) if i.current_version_id == version.id or i.desired_version_id == version.id]
+        in_use = [
+            i
+            for i in self.instances.for_application(version.application_id)
+            if i.current_version_id == version.id or i.desired_version_id == version.id
+        ]
         if in_use:
             raise ConflictError("Version is currently deployed and cannot be deactivated.")
         version.is_active = False
         db.session.commit()
-        audit.record("VERSION_DEACTIVATED", user=user, application=version.application, entity_type="ApplicationVersion", entity_id=version.id, details={"version": version.version})
+        audit.record(
+            "VERSION_DEACTIVATED",
+            user=user,
+            application=version.application,
+            entity_type="ApplicationVersion",
+            entity_id=version.id,
+            details={"version": version.version},
+        )
         return version
 
     def overview(self, app: Application) -> dict[str, Any]:
@@ -214,7 +303,9 @@ class ApplicationService:
             "application": app.to_dict(),
             "versions": [v.to_dict() for v in versions],
             "instances": [i.to_dict() for i in instances],
-            "recent_deployments": [d.to_dict() for d in self.deployments.list(application_id=app.id, per_page=10).items],
+            "recent_deployments": [
+                d.to_dict() for d in self.deployments.list(application_id=app.id, per_page=10).items
+            ],
             "environments": [e.code for e in self.environments.all()],
             "environment_types": EnvironmentType.values(),
         }

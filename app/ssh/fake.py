@@ -41,7 +41,9 @@ class FakeHostState:
     runtime: str = "podman"  # podman | docker | none
     runtime_version: str = "4.9.4"
     rootless: bool = True
-    os_release: str = 'NAME="Oracle Linux Server"\nVERSION="9.4"\nID="ol"\nVERSION_ID="9.4"\nPRETTY_NAME="Oracle Linux Server 9.4"\n'
+    os_release: str = (
+        'NAME="Oracle Linux Server"\nVERSION="9.4"\nID="ol"\nVERSION_ID="9.4"\nPRETTY_NAME="Oracle Linux Server 9.4"\n'
+    )
     kernel: str = "Linux 5.15.0-206.153.7.1.el9uek.x86_64 x86_64"
     nproc: int = 4
     mem_total_mb: int = 7821
@@ -55,7 +57,9 @@ class FakeHostState:
     containers: dict[str, FakeContainer] = field(default_factory=dict)
     images: set[str] = field(default_factory=set)
     commands: list[str] = field(default_factory=list)
-    fail_on: dict[str, tuple[int, str]] = field(default_factory=dict)  # command_type -> (exit, stderr)
+    fail_on: dict[str, tuple[int, str]] = field(
+        default_factory=dict
+    )  # command_type -> (exit, stderr)
     health_http_status: int = 200
     unreachable: bool = False
     hook_log: list[str] = field(default_factory=list)
@@ -91,7 +95,9 @@ class FakeSSHClient:
     def __exit__(self, *exc) -> None:
         self.close()
 
-    def upload(self, local_path: str, remote_path: str, progress: Callable[[int, int], None] | None = None) -> int:
+    def upload(
+        self, local_path: str, remote_path: str, progress: Callable[[int, int], None] | None = None
+    ) -> int:
         with open(local_path, "rb") as fh:
             data = fh.read()
         parent = str(PurePosixPath(remote_path).parent)
@@ -165,20 +171,28 @@ class FakeSSHClient:
     def _cmd_free(self, args, command):
         s = self.state
         used = s.mem_total_mb - s.mem_available_mb
-        return 0, (
-            "               total        used        free      shared  buff/cache   available\n"
-            f"Mem:        {s.mem_total_mb:8d}    {used:8d}    {s.mem_available_mb - 1000:8d}         120        1000    {s.mem_available_mb:8d}\n"
-            "Swap:              0           0           0\n"
-        ), ""
+        return (
+            0,
+            (
+                "               total        used        free      shared  buff/cache   available\n"
+                f"Mem:        {s.mem_total_mb:8d}    {used:8d}    {s.mem_available_mb - 1000:8d}         120        1000    {s.mem_available_mb:8d}\n"
+                "Swap:              0           0           0\n"
+            ),
+            "",
+        )
 
     def _cmd_df(self, args, command):
         s = self.state
         used = s.disk_total_mb - s.disk_available_mb
         pct = int(used * 100 / s.disk_total_mb)
-        return 0, (
-            "Filesystem     1048576-blocks    Used Available Capacity Mounted on\n"
-            f"/dev/mapper/ol-root   {s.disk_total_mb} {used} {s.disk_available_mb} {pct}% /\n"
-        ), ""
+        return (
+            0,
+            (
+                "Filesystem     1048576-blocks    Used Available Capacity Mounted on\n"
+                f"/dev/mapper/ol-root   {s.disk_total_mb} {used} {s.disk_available_mb} {pct}% /\n"
+            ),
+            "",
+        )
 
     def _cmd_id(self, args, command):
         if "-un" in args:
@@ -251,10 +265,10 @@ class FakeSSHClient:
             for d in list(self.state.dirs):
                 if d == src or d.startswith(src + "/"):
                     self.state.dirs.discard(d)
-                    self.state.dirs.add(dst + d[len(src):])
+                    self.state.dirs.add(dst + d[len(src) :])
             for f in list(self.state.files):
                 if f.startswith(src + "/"):
-                    self.state.files[dst + f[len(src):]] = self.state.files.pop(f)
+                    self.state.files[dst + f[len(src) :]] = self.state.files.pop(f)
             return 0, "", ""
         return 1, "", f"mv: cannot stat '{src}': No such file or directory"
 
@@ -338,7 +352,6 @@ class FakeSSHClient:
 
     # health helpers --------------------------------------------------------------
     def _cmd_curl(self, args, command):
-        url = args[-1]
         running = any(c.status == "running" for c in self.state.containers.values())
         if not running:
             return 7, "", "curl: (7) Failed to connect"
@@ -389,8 +402,13 @@ class FakeSSHClient:
                     labels[k] = v
                 if a in {"-p", "--publish"}:
                     ports.append(args[i + 1])
-            s.containers[name] = FakeContainer(name=name, image=image, labels=labels, ports=ports,
-                                               logs=[f"{utcnow().isoformat()} INFO application started ({image})"])
+            s.containers[name] = FakeContainer(
+                name=name,
+                image=image,
+                labels=labels,
+                ports=ports,
+                logs=[f"{utcnow().isoformat()} INFO application started ({image})"],
+            )
             return 0, hashlib.sha256(name.encode()).hexdigest() + "\n", ""
         if sub in {"stop", "start", "restart", "rm", "kill"}:
             name = args[-1]
@@ -398,7 +416,11 @@ class FakeSSHClient:
             if c is None:
                 if sub == "rm" and ("-f" in args or "--ignore" in args):
                     return 0, "", ""
-                return 125, "", f"Error: no container with name or ID \"{name}\" found: no such container"
+                return (
+                    125,
+                    "",
+                    f'Error: no container with name or ID "{name}" found: no such container',
+                )
             if sub == "stop":
                 c.status = "exited"
                 c.logs.append(f"{utcnow().isoformat()} INFO application stopped")
@@ -412,12 +434,15 @@ class FakeSSHClient:
                 del s.containers[name]
             return 0, name + "\n", ""
         if sub == "ps":
-            fmt_index = args.index("--format") if "--format" in args else -1
             rows = []
             for c in s.containers.values():
                 if "-a" not in args and c.status != "running":
                     continue
-                rows.append(json.dumps({"Names": [c.name], "Image": c.image, "State": c.status, "Labels": c.labels}))
+                rows.append(
+                    json.dumps(
+                        {"Names": [c.name], "Image": c.image, "State": c.status, "Labels": c.labels}
+                    )
+                )
             return 0, "\n".join(rows) + ("\n" if rows else ""), ""
         if sub == "inspect":
             name = args[-1]
@@ -428,8 +453,12 @@ class FakeSSHClient:
             payload = {
                 "Id": hashlib.sha256(name.encode()).hexdigest(),
                 "Name": name,
-                "State": {"Status": c.status, "Running": c.status == "running", "ExitCode": c.exit_code,
-                          "Health": {"Status": "healthy" if c.status == "running" else "unhealthy"}},
+                "State": {
+                    "Status": c.status,
+                    "Running": c.status == "running",
+                    "ExitCode": c.exit_code,
+                    "Health": {"Status": "healthy" if c.status == "running" else "unhealthy"},
+                },
                 "Config": {"Image": c.image, "Labels": c.labels},
                 "ImageName": c.image,
             }
@@ -442,7 +471,7 @@ class FakeSSHClient:
             name = args[-1]
             c = s.containers.get(name)
             if c is None:
-                return 125, "", f"Error: no container with name or ID \"{name}\" found"
+                return 125, "", f'Error: no container with name or ID "{name}" found'
             tail = None
             if "--tail" in args:
                 tail = int(args[args.index("--tail") + 1])
@@ -462,7 +491,16 @@ class FakeSSHClient:
         if not self.state.kubectl:
             return 127, "", "sh: kubectl: command not found"
         if args[:1] == ["version"]:
-            return 0, json.dumps({"clientVersion": {"gitVersion": "v1.30.2"}, "serverVersion": {"gitVersion": "v1.30.1"}}), ""
+            return (
+                0,
+                json.dumps(
+                    {
+                        "clientVersion": {"gitVersion": "v1.30.2"},
+                        "serverVersion": {"gitVersion": "v1.30.1"},
+                    }
+                ),
+                "",
+            )
         return 0, "", ""
 
 
@@ -495,4 +533,12 @@ def local_sha256(path: str) -> str:
     return h.hexdigest()
 
 
-__all__ = ["FakeContainer", "FakeHostState", "FakeSSHClient", "FakeSSHClientFactory", "local_sha256", "os", "shlex"]
+__all__ = [
+    "FakeContainer",
+    "FakeHostState",
+    "FakeSSHClient",
+    "FakeSSHClientFactory",
+    "local_sha256",
+    "os",
+    "shlex",
+]

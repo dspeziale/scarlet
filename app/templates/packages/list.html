@@ -1,0 +1,19 @@
+{% extends "layout/base.html" %}
+{% from "partials/macros.html" import data_table with context %}
+{% block title %}Packages{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active">Packages{% endblock %}
+{% block content %}
+<div data-page="packages-list">
+<div class="card">
+  <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-box-archive me-2"></i>Uploaded packages</h3><div class="card-tools">{% if can('package.upload') %}<a href="{{ url_for('web.packages_upload') }}" class="btn btn-sm btn-primary"><i class="fa-solid fa-upload me-1"></i>Upload package</a>{% endif %}</div></div>
+  <div class="card-body">
+    {% call data_table('packages-table', [{'label': 'File'}, {'label': 'Application'}, {'label': 'Version'}, {'label': 'Runtime'}, {'label': 'Size', 'sort': 'size_bytes'}, {'label': 'SHA-256'}, {'label': 'Status', 'sort': 'status'}, {'label': 'Uploaded', 'sort': 'created_at'}, {'label': 'By'}, {'label': '', 'width': '110px'}], '/api/packages', empty='No packages uploaded yet.') %}
+      <select name="status" class="form-select form-select-sm" style="width:auto"><option value="">All statuses</option><option>VALID</option><option>INVALID</option><option>QUARANTINED</option><option>VALIDATING</option></select>
+      <select name="application_id" class="form-select form-select-sm" style="width:auto"><option value="">All applications</option>{% for a in applications %}<option value="{{ a.id }}">{{ a.code }}</option>{% endfor %}</select>
+    {% endcall %}
+  </div>
+</div>
+<div class="modal fade" id="package-modal" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="package-modal-title">Package</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="package-modal-body"></div></div></div></div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/pages/packages.js') }}"></script>{% endblock %}

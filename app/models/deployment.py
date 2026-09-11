@@ -69,7 +69,9 @@ class Deployment(PkMixin, TimestampMixin, Base):
     )
 
     reference: Mapped[str] = mapped_column(String(32), unique=True, nullable=False)
-    kind: Mapped[str] = mapped_column(String(16), default=DeploymentKind.DEPLOY.value, nullable=False)
+    kind: Mapped[str] = mapped_column(
+        String(16), default=DeploymentKind.DEPLOY.value, nullable=False
+    )
     batch_id: Mapped[int | None] = mapped_column(
         ForeignKey("deployment_batches.id", ondelete="SET NULL"), nullable=True
     )
@@ -127,7 +129,9 @@ class Deployment(PkMixin, TimestampMixin, Base):
     requested_by = relationship("User", foreign_keys=[requested_by_id])
     batch: Mapped[DeploymentBatch | None] = relationship(back_populates="deployments")
     steps: Mapped[list[DeploymentStep]] = relationship(
-        back_populates="deployment", cascade="all, delete-orphan", order_by="DeploymentStep.sequence"
+        back_populates="deployment",
+        cascade="all, delete-orphan",
+        order_by="DeploymentStep.sequence",
     )
     approvals: Mapped[list[DeploymentApproval]] = relationship(
         back_populates="deployment", cascade="all, delete-orphan"
@@ -196,7 +200,9 @@ class DeploymentStep(PkMixin, Base):
     sequence: Mapped[int] = mapped_column(Integer, nullable=False)
     name: Mapped[str] = mapped_column(String(64), nullable=False)
     label: Mapped[str] = mapped_column(String(128), nullable=False)
-    status: Mapped[str] = mapped_column(String(16), default=StepStatus.PENDING.value, nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(16), default=StepStatus.PENDING.value, nullable=False
+    )
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     duration_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)

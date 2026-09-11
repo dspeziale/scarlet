@@ -90,7 +90,9 @@ class Repository(Generic[T]):
 
     def count(self, stmt: Select | None = None) -> int:
         stmt = stmt if stmt is not None else db.select(self.model)
-        return self.session.execute(db.select(func.count()).select_from(stmt.order_by(None).subquery())).scalar_one()
+        return self.session.execute(
+            db.select(func.count()).select_from(stmt.order_by(None).subquery())
+        ).scalar_one()
 
     # --- listing ---------------------------------------------------------------------------
     def base_query(self) -> Select:
@@ -103,24 +105,49 @@ class Repository(Generic[T]):
         return stmt
 
     def apply_sort(self, stmt: Select, sort: str | None, direction: str | None) -> Select:
-        column = self.sortable.get(sort or self.default_sort) or self.sortable.get(self.default_sort) or self.model.id
+        column = (
+            self.sortable.get(sort or self.default_sort)
+            or self.sortable.get(self.default_sort)
+            or self.model.id
+        )
         if (direction or "desc").lower() == "asc":
             return stmt.order_by(column.asc(), self.model.id.asc())
         return stmt.order_by(column.desc(), self.model.id.desc())
 
-    def paginate(self, stmt: Select, page: int = 1, per_page: int = 25, filters: dict[str, Any] | None = None) -> Page[T]:
+    def paginate(
+        self, stmt: Select, page: int = 1, per_page: int = 25, filters: dict[str, Any] | None = None
+    ) -> Page[T]:
         page = max(1, int(page or 1))
         per_page = min(max(1, int(per_page or 25)), 500)
         total = self.count(stmt)
-        items = list(self.session.execute(stmt.limit(per_page).offset((page - 1) * per_page)).scalars().unique())
+        items = list(
+            self.session.execute(stmt.limit(per_page).offset((page - 1) * per_page))
+            .scalars()
+            .unique()
+        )
         return Page(items=items, total=total, page=page, per_page=per_page, filters=filters or {})
 
-    def list(self, *, page: int = 1, per_page: int = 25, search: str | None = None, sort: str | None = None, direction: str | None = None, **filters: Any) -> Page[T]:
+    def list(
+        self,
+        *,
+        page: int = 1,
+        per_page: int = 25,
+        search: str | None = None,
+        sort: str | None = None,
+        direction: str | None = None,
+        **filters: Any,
+    ) -> Page[T]:
         stmt = self.base_query()
         stmt = self.apply_filters(stmt, filters)
         stmt = self.apply_search(stmt, search)
         stmt = self.apply_sort(stmt, sort, direction)
-        return self.paginate(stmt, page, per_page, {k: v for k, v in filters.items() if v not in (None, "")} | ({"search": search} if search else {}))
+        return self.paginate(
+            stmt,
+            page,
+            per_page,
+            {k: v for k, v in filters.items() if v not in (None, "")}
+            | ({"search": search} if search else {}),
+        )
 
     def apply_filters(self, stmt: Select, filters: dict[str, Any]) -> Select:
         for key, value in filters.items():

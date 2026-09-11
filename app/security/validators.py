@@ -39,9 +39,13 @@ LOG_SEARCH_RE = re.compile(r"^[\w .:\-\[\]/=,'\"()]{0,200}$")
 def validate_hostname(value: str) -> str:
     value = (value or "").strip()
     if not value or len(value) > 253 or not HOSTNAME_RE.match(value):
-        raise ValidationError("Invalid hostname.", errors={"hostname": ["Invalid hostname format."]})
+        raise ValidationError(
+            "Invalid hostname.", errors={"hostname": ["Invalid hostname format."]}
+        )
     if value.lower() in {"localhost", "localhost.localdomain"}:
-        raise ValidationError("Target hostname cannot be localhost.", errors={"hostname": ["Not allowed."]})
+        raise ValidationError(
+            "Target hostname cannot be localhost.", errors={"hostname": ["Not allowed."]}
+        )
     return value.rstrip(".")
 
 
@@ -58,7 +62,8 @@ def validate_ip_address(value: str | None, *, allow_empty: bool = True) -> str |
         ) from exc
     if addr.is_loopback or addr.is_multicast or addr.is_unspecified or addr.is_reserved:
         raise ValidationError(
-            "IP address not allowed.", errors={"ip_address": ["Loopback/multicast/reserved addresses are not allowed."]}
+            "IP address not allowed.",
+            errors={"ip_address": ["Loopback/multicast/reserved addresses are not allowed."]},
         )
     return str(addr)
 
@@ -78,7 +83,9 @@ def validate_app_code(value: str) -> str:
     if not value or len(value) > 64 or not APP_CODE_RE.match(value):
         raise ValidationError(
             "Invalid application code.",
-            errors={"code": ["Use lowercase letters, digits and single dashes (e.g. customer-api)."]},
+            errors={
+                "code": ["Use lowercase letters, digits and single dashes (e.g. customer-api)."]
+            },
         )
     return value
 
@@ -89,7 +96,9 @@ def parse_semver(value: str) -> dict[str, Any]:
     if not match or len(value) > 64:
         raise ValidationError(
             "Invalid version.",
-            errors={"version": ["Must follow semantic versioning, e.g. 2.5.0 or 2.5.0-rc.1+build.7"]},
+            errors={
+                "version": ["Must follow semantic versioning, e.g. 2.5.0 or 2.5.0-rc.1+build.7"]
+            },
         )
     return {
         "version": value,
@@ -189,11 +198,15 @@ def validate_url_path(value: str) -> str:
 def validate_log_search(value: str | None) -> str:
     value = (value or "").strip()
     if len(value) > 200 or not LOG_SEARCH_RE.match(value):
-        raise ValidationError("Invalid search expression.", errors={"search": ["Invalid characters."]})
+        raise ValidationError(
+            "Invalid search expression.", errors={"search": ["Invalid characters."]}
+        )
     return value
 
 
-def validate_int_range(value: Any, *, field: str, minimum: int, maximum: int, default: int | None = None) -> int:
+def validate_int_range(
+    value: Any, *, field: str, minimum: int, maximum: int, default: int | None = None
+) -> int:
     if value is None or value == "":
         if default is not None:
             return default
@@ -201,7 +214,9 @@ def validate_int_range(value: Any, *, field: str, minimum: int, maximum: int, de
     try:
         number = int(value)
     except (TypeError, ValueError) as exc:
-        raise ValidationError(f"{field} must be an integer.", errors={field: ["Must be an integer."]}) from exc
+        raise ValidationError(
+            f"{field} must be an integer.", errors={field: ["Must be an integer."]}
+        ) from exc
     if number < minimum or number > maximum:
         raise ValidationError(
             f"{field} out of range.", errors={field: [f"Must be between {minimum} and {maximum}."]}

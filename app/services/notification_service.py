@@ -54,7 +54,9 @@ class EmailChannel(NotificationChannel):
             body += f"\n\n{notification.link}"
         msg.set_content(body)
         try:
-            with smtplib.SMTP(cfg["SCARLET_MAIL_SERVER"], int(cfg.get("SCARLET_MAIL_PORT", 587)), timeout=15) as smtp:
+            with smtplib.SMTP(
+                cfg["SCARLET_MAIL_SERVER"], int(cfg.get("SCARLET_MAIL_PORT", 587)), timeout=15
+            ) as smtp:
                 if cfg.get("SCARLET_MAIL_USE_TLS", True):
                     smtp.starttls()
                 if cfg.get("SCARLET_MAIL_USERNAME"):
@@ -87,16 +89,48 @@ class NotificationService:
         """Create notifications for explicit users, users with a permission, or broadcast."""
         recipients: list[User] = []
         if user_ids:
-            recipients = list(db.session.execute(db.select(User).where(User.id.in_(user_ids), User.is_active.is_(True))).scalars())
+            recipients = list(
+                db.session.execute(
+                    db.select(User).where(User.id.in_(user_ids), User.is_active.is_(True))
+                ).scalars()
+            )
         elif permission:
-            recipients = [u for u in db.session.execute(db.select(User).where(User.is_active.is_(True))).scalars() if u.has_permission(permission)]
+            recipients = [
+                u
+                for u in db.session.execute(
+                    db.select(User).where(User.is_active.is_(True))
+                ).scalars()
+                if u.has_permission(permission)
+            ]
         created: list[Notification] = []
         lvl = level.value if isinstance(level, NotificationLevel) else str(level)
         if recipients:
             for user in recipients:
-                created.append(Notification(user_id=user.id, level=lvl, event_type=event_type, title=title[:255], message=message, link=link, created_at=utcnow(), details=details))
+                created.append(
+                    Notification(
+                        user_id=user.id,
+                        level=lvl,
+                        event_type=event_type,
+                        title=title[:255],
+                        message=message,
+                        link=link,
+                        created_at=utcnow(),
+                        details=details,
+                    )
+                )
         else:
-            created.append(Notification(user_id=None, level=lvl, event_type=event_type, title=title[:255], message=message, link=link, created_at=utcnow(), details=details))
+            created.append(
+                Notification(
+                    user_id=None,
+                    level=lvl,
+                    event_type=event_type,
+                    title=title[:255],
+                    message=message,
+                    link=link,
+                    created_at=utcnow(),
+                    details=details,
+                )
+            )
         db.session.add_all(created)
         db.session.commit()
         for channel in self.channels:
@@ -108,14 +142,19 @@ class NotificationService:
                 log.warning("notification channel %s failed: %s", channel.name, exc)
         return created
 
-    def list_for(self, user: User, unread_only: bool = False, limit: int = 50) -> list[Notification]:
+    def list_for(
+        self, user: User, unread_only: bool = False, limit: int = 50
+    ) -> list[Notification]:
         return self.repo.for_user(user.id, unread_only=unread_only, limit=limit)
 
     def unread_count(self, user: User) -> int:
         return self.repo.unread_count(user.id)
 
     def mark_read(self, user: User, notification_id: int | None = None) -> int:
-        stmt = db.select(Notification).where((Notification.user_id == user.id) | (Notification.user_id.is_(None)), Notification.read.is_(False))
+        stmt = db.select(Notification).where(
+            (Notification.user_id == user.id) | (Notification.user_id.is_(None)),
+            Notification.read.is_(False),
+        )
         if notification_id is not None:
             stmt = stmt.where(Notification.id == notification_id)
         rows = list(db.session.execute(stmt).scalars())
@@ -129,6 +168,24 @@ class NotificationService:
         return len(rows)
 
 
-def notify_operators(event_type: str, title: str, message: str, *, level=NotificationLevel.INFO, link: str | None = None, details=None, email: bool = False) -> None:
+def notify_operators(
+    event_type: str,
+    title: str,
+    message: str,
+    *,
+    level=NotificationLevel.INFO,
+    link: str | None = None,
+    details=None,
+    email: bool = False,
+) -> None:
     """Convenience used by background jobs (deployment result, health failure...)."""
-    NotificationService().notify(event_type, title, message, level=level, link=link, permission="deployment.view", details=details, email=email)
+    NotificationService().notify(
+        event_type,
+        title,
+        message,
+        level=level,
+        link=link,
+        permission="deployment.view",
+        details=details,
+        email=email,
+    )

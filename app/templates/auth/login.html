@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in · SCARLET</title>
+  <link rel="stylesheet" href="{{ asset('fontawesome_css') }}">
+  <link rel="stylesheet" href="{{ asset('adminlte_css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/scarlet.css') }}">
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+</head>
+<body class="login-page bg-body-secondary">
+<div class="login-box">
+  <div class="login-logo">
+    <span class="scarlet-logo-lg"><i class="fa-solid fa-cubes"></i></span>
+    <div><b>SCARLET</b></div>
+    <div class="small text-muted">System Container Application Release, Lifecycle &amp; Environment Tool</div>
+  </div>
+  <div class="card">
+    <div class="card-body login-card-body">
+      <p class="login-box-msg">Sign in to manage application deployments</p>
+      {% if error %}<div class="alert alert-danger py-2" role="alert"><i class="fa-solid fa-circle-exclamation me-1"></i>{{ error }}</div>{% endif %}
+      {% with messages = get_flashed_messages(with_categories=true) %}{% for category, message in messages %}<div class="alert alert-{{ 'danger' if category == 'error' else category }} py-2">{{ message }}</div>{% endfor %}{% endwith %}
+      <form method="post" action="{{ url_for('web_auth.login', next=next) }}" autocomplete="on">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token_value }}">
+        <input type="hidden" name="next" value="{{ next }}">
+        <div class="input-group mb-3">
+          <input type="text" name="username" class="form-control" placeholder="Username" required autofocus maxlength="64" autocomplete="username">
+          <div class="input-group-text"><span class="fa-solid fa-user"></span></div>
+        </div>
+        <div class="input-group mb-3">
+          <input type="password" name="password" class="form-control" placeholder="Password" required maxlength="256" autocomplete="current-password">
+          <div class="input-group-text"><span class="fa-solid fa-lock"></span></div>
+        </div>
+        <div class="row">
+          <div class="col-8">
+            <div class="form-check"><input class="form-check-input" type="checkbox" name="remember" id="remember"><label class="form-check-label" for="remember">Remember me</label></div>
+          </div>
+          <div class="col-4"><button type="submit" class="btn btn-primary w-100">Sign in</button></div>
+        </div>
+      </form>
+      <p class="mt-3 mb-0 small text-muted">Access is restricted to authorized operators. All actions are audited.</p>
+    </div>
+  </div>
+  <p class="text-center small text-muted mt-3">SCARLET v{{ scarlet_version }} &middot; {{ scarlet_env }}</p>
+</div>
+</body>
+</html>

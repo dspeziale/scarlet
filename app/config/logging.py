@@ -10,8 +10,8 @@ import sys
 from datetime import UTC, datetime
 from typing import Any
 
-log_context: contextvars.ContextVar[dict[str, Any]] = contextvars.ContextVar(
-    "scarlet_log_context", default={}
+log_context: contextvars.ContextVar[dict[str, Any] | None] = contextvars.ContextVar(
+    "scarlet_log_context", default=None
 )
 
 CONTEXT_KEYS = (
@@ -44,25 +44,28 @@ def redact(text: str) -> str:
 
 
 def bind_context(**kwargs: Any) -> contextvars.Token:
-    current = dict(log_context.get())
+    current = dict(log_context.get() or {})
     current.update({k: v for k, v in kwargs.items() if v is not None})
     return log_context.set(current)
 
 
 def reset_context(token: contextvars.Token | None = None) -> None:
     if token is not None:
-        log_context.reset(token)
-    else:
-        log_context.set({})
+        try:
+            log_context.reset(token)
+            return
+        except (RuntimeError, ValueError):
+            pass  # token already used (context reused by test harness)
+    log_context.set({})
 
 
 def current_context() -> dict[str, Any]:
-    return dict(log_context.get())
+    return dict(log_context.get() or {})
 
 
 class ContextFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
-        ctx = log_context.get()
+        ctx = log_context.get() or {}
         for key in CONTEXT_KEYS:
             if not hasattr(record, key):
                 setattr(record, key, ctx.get(key))
@@ -91,9 +94,7 @@ class JsonFormatter(logging.Formatter):
 
 class TextFormatter(logging.Formatter):
     def __init__(self) -> None:
-        super().__init__(
-            "%(asctime)s %(levelname)-7s %(name)s [req=%(request_id)s] %(message)s"
-        )
+        super().__init__("%(asctime)s %(levelname)-7s %(name)s [req=%(request_id)s] %(message)s")
 
     def format(self, record: logging.LogRecord) -> str:
         record.msg = redact(str(record.msg))

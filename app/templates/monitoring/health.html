@@ -1,0 +1,41 @@
+{% extends "layout/base.html" %}
+{% from "partials/macros.html" import action_button with context %}
+{% block title %}Health{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active">Health</li>{% endblock %}
+{% block content %}
+<div data-page="monitoring-health">
+<div class="card">
+  <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-heart-pulse me-2"></i>Application instances health &amp; drift</h3>
+    <div class="card-tools d-flex gap-2">{% if can('health.execute') %}<button class="btn btn-sm btn-outline-primary" id="btn-check-all"><i class="fa-solid fa-heart-pulse me-1"></i>Check all running</button>{% endif %}<button class="btn btn-sm btn-outline-secondary" id="btn-reload"><i class="fa-solid fa-rotate"></i></button></div></div>
+  <div class="card-body p-0">
+    <table class="table table-sm table-hover mb-0 align-middle">
+      <thead><tr><th>Application</th><th>Target</th><th>Env</th><th>Desired</th><th>Actual</th><th>Health</th><th>Last check</th><th>Message</th><th>Drift</th><th class="text-end">Actions</th></tr></thead>
+      <tbody>
+      {% for i in instances if i.current_version_id %}
+      {% set p = i.host.is_production %}
+      <tr>
+        <td><a href="{{ url_for('web.application_detail', app_id=i.application_id) }}">{{ i.application.code }}</a></td>
+        <td><a href="{{ url_for('web.host_detail', host_id=i.host_id) }}">{{ i.host.name }}</a></td>
+        <td>{{ i.host.environment.code|env_badge(p) }}</td>
+        <td><code>{{ i.desired_version.version if i.desired_version else '-' }}</code> {{ i.desired_state|status_badge }}</td>
+        <td><code>{{ i.actual_version or '-' }}</code> {{ i.actual_state|status_badge }}</td>
+        <td><span class="health-dot {{ i.health_status }}"></span>{{ i.health_status }}</td>
+        <td class="small text-muted">{{ i.last_health_check_at|dt }}</td>
+        <td class="small text-truncate-200" title="{{ i.last_health_message or '' }}">{{ i.last_health_message or '' }}</td>
+        <td>{% if i.drift_detected %}<span class="badge text-bg-warning text-dark">{{ i.drift_type }}</span>{% else %}<span class="text-success small"><i class="fa-solid fa-check"></i></span>{% endif %}</td>
+        <td class="text-end text-nowrap">
+          {% set common = 'data-app="' ~ i.application_id ~ '" data-host="' ~ i.host_id ~ '" data-app-code="' ~ i.application.code ~ '" data-host-name="' ~ i.host.name ~ '" data-env="' ~ i.host.environment.code ~ '" data-production="' ~ (1 if p else 0) ~ '" data-op-button' %}
+          {{ action_button('Health', 'fa-solid fa-heart-pulse', 'btn-outline-secondary', 'data-action="lifecycle" data-op="HEALTH" ' ~ common, 'health.execute') }}
+          {{ action_button('Status', 'fa-solid fa-circle-info', 'btn-outline-secondary', 'data-action="lifecycle" data-op="STATUS" ' ~ common, 'lifecycle.status') }}
+          {{ action_button('Logs', 'fa-solid fa-scroll', 'btn-outline-secondary', 'data-action="lifecycle" data-op="LOGS" ' ~ common, 'logs.view') }}
+        </td>
+      </tr>
+      {% else %}<tr><td colspan="10" class="text-center text-muted py-4">No deployed instances.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="card-footer small text-muted">Health is refreshed by every deployment, by manual checks and by the periodic health sweep (every 10 minutes). Drift is computed by the reconciler comparing desired and actual state.</div>
+</div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/pages/monitoring.js') }}"></script>{% endblock %}

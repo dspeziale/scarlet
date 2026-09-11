@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import io
-import socket
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -42,7 +41,9 @@ class SSHAuth:
         errors: list[str] = []
         for key_cls in (paramiko.Ed25519Key, paramiko.ECDSAKey, paramiko.RSAKey):
             try:
-                return key_cls.from_private_key(io.StringIO(self.private_key), password=self.passphrase)
+                return key_cls.from_private_key(
+                    io.StringIO(self.private_key), password=self.passphrase
+                )
             except paramiko.PasswordRequiredException as exc:
                 raise SSHAuthenticationError("The private key requires a passphrase.") from exc
             except paramiko.SSHException as exc:
@@ -77,7 +78,9 @@ class RemoteExecutor(Protocol):
 
     def run(self, command: RemoteCommand) -> CommandResult: ...
 
-    def upload(self, local_path: str, remote_path: str, progress: Callable[[int, int], None] | None = None) -> int: ...
+    def upload(
+        self, local_path: str, remote_path: str, progress: Callable[[int, int], None] | None = None
+    ) -> int: ...
 
     def read_file(self, remote_path: str, max_bytes: int = 1024 * 1024) -> str: ...
 
@@ -107,7 +110,9 @@ class SSHClient:
             client.get_host_keys().add(entry, params.host_key.key_type, params.host_key.to_pkey())
         client.set_missing_host_key_policy(
             ScarletHostKeyPolicy(
-                params.host_key_policy, on_pending=params.on_pending_key, on_accept=params.on_accepted_key
+                params.host_key_policy,
+                on_pending=params.on_pending_key,
+                on_accept=params.on_accepted_key,
             )
         )
         pkey = params.auth.load_pkey()
@@ -140,9 +145,11 @@ class SSHClient:
         except paramiko.AuthenticationException as exc:
             client.close()
             raise SSHAuthenticationError(details={"reason": str(exc)}) from exc
-        except socket.timeout as exc:
+        except TimeoutError as exc:
             client.close()
-            raise SSHTimeoutError(f"Connection to {params.hostname}:{params.port} timed out.") from exc
+            raise SSHTimeoutError(
+                f"Connection to {params.hostname}:{params.port} timed out."
+            ) from exc
         except (OSError, paramiko.SSHException) as exc:
             client.close()
             raise SSHConnectionError(
@@ -188,7 +195,12 @@ class SSHClient:
         rendered = command.render()
         started = utcnow()
         t0 = time.monotonic()
-        log.debug("ssh exec", extra={"extra_data": {"command": command.rendered_for_log(), "type": command.command_type}})
+        log.debug(
+            "ssh exec",
+            extra={
+                "extra_data": {"command": command.rendered_for_log(), "type": command.command_type}
+            },
+        )
         try:
             transport = self._client.get_transport()
             if transport is None or not transport.is_active():
@@ -208,7 +220,11 @@ class SSHClient:
                     stdout_chunks.append(channel.recv(65536))
                 if channel.recv_stderr_ready():
                     stderr_chunks.append(channel.recv_stderr(65536))
-                if channel.exit_status_ready() and not channel.recv_ready() and not channel.recv_stderr_ready():
+                if (
+                    channel.exit_status_ready()
+                    and not channel.recv_ready()
+                    and not channel.recv_stderr_ready()
+                ):
                     break
                 if time.monotonic() > deadline:
                     timed_out = True
@@ -225,7 +241,7 @@ class SSHClient:
                 while channel.recv_stderr_ready():
                     stderr_chunks.append(channel.recv_stderr(65536))
                 channel.close()
-        except socket.timeout as exc:
+        except TimeoutError as exc:
             raise SSHTimeoutError(f"Command timed out after {timeout}s.") from exc
         except paramiko.SSHException as exc:
             raise SSHConnectionError(f"SSH channel error: {redact(str(exc))}") from exc
@@ -266,10 +282,14 @@ class SSHClient:
                 self._sftp = self._client.open_sftp()
                 self._sftp.get_channel().settimeout(self.params.command_timeout)
             except paramiko.SSHException as exc:
-                raise SSHConnectionError(f"Unable to open SFTP session: {redact(str(exc))}") from exc
+                raise SSHConnectionError(
+                    f"Unable to open SFTP session: {redact(str(exc))}"
+                ) from exc
         return self._sftp
 
-    def upload(self, local_path: str, remote_path: str, progress: Callable[[int, int], None] | None = None) -> int:
+    def upload(
+        self, local_path: str, remote_path: str, progress: Callable[[int, int], None] | None = None
+    ) -> int:
         from app.ssh.sftp import upload_file
 
         return upload_file(self, local_path, remote_path, progress=progress)

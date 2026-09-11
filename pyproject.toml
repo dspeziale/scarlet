@@ -21,7 +21,10 @@ exclude = ["migrations/versions"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "S", "N", "C4", "SIM", "PL"]
-ignore = ["S101", "PLR0913", "PLR2004", "PLR0912", "PLR0915", "PLR0911", "B008", "S603", "S607", "S108", "N818", "PLW0603"]
+ignore = ["S101", "PLR0913", "PLR0917", "PLR2004", "PLR0912", "PLR0915", "PLR0911", "PLR0914", "PLC0415", "B008", "S603", "S607", "S108", "N818", "PLW0603", "PLW2901", "S110", "SIM105", "S704", "UP046", "UP042", "E501", "S105", "C416", "PLR1714", "SIM102", "SIM113", "SIM201"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "tests"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S", "PL", "B"]

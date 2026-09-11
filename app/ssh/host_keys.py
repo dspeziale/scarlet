@@ -81,7 +81,9 @@ class ScarletHostKeyPolicy(paramiko.MissingHostKeyPolicy):
         self.on_pending = on_pending
         self.on_accept = on_accept
 
-    def missing_host_key(self, client: paramiko.SSHClient, hostname: str, key: paramiko.PKey) -> None:
+    def missing_host_key(
+        self, client: paramiko.SSHClient, hostname: str, key: paramiko.PKey
+    ) -> None:
         record = HostKeyRecord.from_pkey(key)
         if self.mode == "tofu":
             client.get_host_keys().add(hostname, key.get_name(), key)
@@ -112,7 +114,7 @@ def fetch_host_key(hostname: str, port: int, timeout: int = 10) -> HostKeyRecord
         transport.start_client(timeout=timeout)
         key = transport.get_remote_server_key()
         return HostKeyRecord.from_pkey(key)
-    except socket.timeout as exc:
+    except TimeoutError as exc:
         raise SSHTimeoutError(f"Timed out fetching host key from {hostname}:{port}.") from exc
     except (OSError, paramiko.SSHException) as exc:
         raise SSHConnectionError(f"Unable to fetch host key from {hostname}:{port}: {exc}") from exc

@@ -1,0 +1,34 @@
+{% extends "layout/base.html" %}
+{% block title %}Environments{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active">Environments</li>{% endblock %}
+{% block content %}
+<div data-page="environments">
+<div class="row">
+{% for e in environments %}
+<div class="col-lg-6">
+  <div class="card card-outline card-{{ 'danger' if e.is_production else 'success' }}">
+    <div class="card-header"><h3 class="card-title">{{ e.code|env_badge(e.is_production) }} {{ e.name }}</h3><div class="card-tools small text-muted">{{ host_counts.get(e.code, 0) }} host(s)</div></div>
+    <form class="env-form" data-env-id="{{ e.id }}">
+      <div class="card-body">
+        <p class="text-muted small">{{ e.description }}</p>
+        <div class="row g-3">
+          <div class="col-md-6"><label class="form-label">Name</label><input class="form-control form-control-sm" name="name" value="{{ e.name }}" {% if not can('system.manage') %}disabled{% endif %}></div>
+          <div class="col-md-6"><label class="form-label">Max parallel deployments</label><input class="form-control form-control-sm" type="number" min="1" max="50" name="max_parallel_deployments" value="{{ e.max_parallel_deployments }}" {% if not can('system.manage') %}disabled{% endif %}></div>
+          <div class="col-12">
+            <div class="form-check form-switch"><input class="form-check-input" type="checkbox" name="require_confirmation" id="rc-{{ e.id }}" {% if e.require_confirmation %}checked{% endif %} {% if not can('system.manage') %}disabled{% endif %}><label class="form-check-label" for="rc-{{ e.id }}">Require typed confirmation for deployments/stop/rollback</label></div>
+            <div class="form-check form-switch"><input class="form-check-input" type="checkbox" name="require_approval" id="ra-{{ e.id }}" {% if e.require_approval %}checked{% endif %} {% if not can('system.manage') %}disabled{% endif %}><label class="form-check-label" for="ra-{{ e.id }}">Require second-person approval for deployments</label></div>
+            <div class="form-check form-switch"><input class="form-check-input" type="checkbox" name="allow_rollback" id="ar-{{ e.id }}" {% if e.allow_rollback %}checked{% endif %} {% if not can('system.manage') %}disabled{% endif %}><label class="form-check-label" for="ar-{{ e.id }}">Allow rollback</label></div>
+          </div>
+        </div>
+        {% if e.is_production %}<div class="alert alert-danger small mt-3 mb-0"><i class="fa-solid fa-triangle-exclamation me-1"></i>Production controls also depend on the global settings <code>SCARLET_PROD_REQUIRE_CONFIRMATION</code> and <code>SCARLET_PROD_REQUIRE_APPROVAL</code>: the stricter of the two applies. Operators additionally need <code>prod.*</code> permissions.</div>{% endif %}
+      </div>
+      {% if can('system.manage') %}<div class="card-footer text-end"><button type="submit" class="btn btn-sm btn-primary">Save</button></div>{% endif %}
+    </form>
+  </div>
+</div>
+{% endfor %}
+</div>
+<p class="text-muted small">Additional environments (e.g. STAGING) can be added with a database migration/seed; the model is environment-agnostic.</p>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/pages/hosts.js') }}"></script>{% endblock %}

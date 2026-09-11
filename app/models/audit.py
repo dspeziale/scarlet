@@ -45,7 +45,9 @@ class AuditLog(PkMixin, Base):
     )
     application_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
     environment: Mapped[str | None] = mapped_column(String(16), nullable=True)
-    result: Mapped[str] = mapped_column(String(16), default=AuditResult.SUCCESS.value, nullable=False)
+    result: Mapped[str] = mapped_column(
+        String(16), default=AuditResult.SUCCESS.value, nullable=False
+    )
     ip_address: Mapped[str | None] = mapped_column(String(64), nullable=True)
     request_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
     details: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)

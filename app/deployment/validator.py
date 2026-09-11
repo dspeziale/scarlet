@@ -125,7 +125,9 @@ class PackageValidator:
         report.size_bytes = os.path.getsize(path)
         report.checksum_sha256 = sha256_file(path)
 
-        if original_filename is not None and not original_filename.lower().endswith(PACKAGE_SUFFIXES):
+        if original_filename is not None and not original_filename.lower().endswith(
+            PACKAGE_SUFFIXES
+        ):
             report.errors.append(
                 f"Unexpected file extension for '{original_filename}'. Expected .scarlet.tar.gz"
             )
@@ -211,7 +213,9 @@ class PackageValidator:
         if MANIFEST_NAME not in seen:
             report.errors.append("manifest.yaml is missing from the package root.")
         for top in sorted(top_level_unknown):
-            report.warnings.append(f"Unexpected top-level entry '{top}' (allowed: {', '.join(sorted(ALLOWED_TOP_LEVEL))}).")
+            report.warnings.append(
+                f"Unexpected top-level entry '{top}' (allowed: {', '.join(sorted(ALLOWED_TOP_LEVEL))})."
+            )
 
     def _read_manifest(self, tar: tarfile.TarFile, report: ValidationReport) -> None:
         member = None
@@ -234,7 +238,9 @@ class PackageValidator:
             report.manifest = parse_manifest(raw)
             report.manifest_text = raw.decode("utf-8")
         except PackageValidationError as exc:
-            report.errors.extend(exc.errors.get("manifest", [exc.message]) if exc.errors else [exc.message])
+            report.errors.extend(
+                exc.errors.get("manifest", [exc.message]) if exc.errors else [exc.message]
+            )
 
     def _check_required_files(self, report: ValidationReport) -> None:
         manifest = report.manifest
@@ -249,24 +255,32 @@ class PackageValidator:
                 parent = parent.parent
         for required in manifest.required_files():
             if required not in members:
-                report.errors.append(f"Required file '{required}' declared in manifest is missing from the package.")
+                report.errors.append(
+                    f"Required file '{required}' declared in manifest is missing from the package."
+                )
         for required in manifest.required_dirs():
             if required not in dirs:
-                report.errors.append(f"Required directory '{required}' declared in manifest is missing from the package.")
+                report.errors.append(
+                    f"Required directory '{required}' declared in manifest is missing from the package."
+                )
         if manifest.compose and manifest.compose.file not in members:
             report.errors.append(f"Compose file '{manifest.compose.file}' is missing.")
         scripts = [m for m in report.members if m.startswith("scripts/") and m.endswith(".sh")]
         declared = set(manifest.hooks.all_scripts())
         for script in scripts:
             if script not in declared:
-                report.warnings.append(f"Script '{script}' is not referenced by any hook and will never run.")
+                report.warnings.append(
+                    f"Script '{script}' is not referenced by any hook and will never run."
+                )
 
     def _scan(self, path: str, report: ValidationReport) -> None:
         """Optional external malware scanner (e.g. ``clamscan --no-summary {path}``)."""
         assert self.scanner_command
         argv = [part.replace("{path}", path) for part in self.scanner_command.split()]
         try:
-            proc = subprocess.run(argv, capture_output=True, text=True, timeout=600, check=False)  # noqa: S603
+            proc = subprocess.run(
+                argv, capture_output=True, text=True, timeout=600, check=False
+            )  # noqa: S603
         except (OSError, subprocess.TimeoutExpired) as exc:
             report.errors.append(f"Malware scanner could not be executed: {exc}")
             report.scanner_result = "ERROR"
@@ -281,7 +295,9 @@ class PackageValidator:
 def build_validator_from_config(config) -> PackageValidator:
     return PackageValidator(
         max_members=int(config.get("SCARLET_MAX_PACKAGE_MEMBERS", 20000)),
-        max_uncompressed_bytes=int(config.get("SCARLET_MAX_PACKAGE_UNCOMPRESSED_MB", 8192)) * 1024 * 1024,
+        max_uncompressed_bytes=int(config.get("SCARLET_MAX_PACKAGE_UNCOMPRESSED_MB", 8192))
+        * 1024
+        * 1024,
         scanner_command=config.get("SCARLET_MALWARE_SCANNER_COMMAND") or None,
     )
 

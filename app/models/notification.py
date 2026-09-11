@@ -23,7 +23,9 @@ class Notification(PkMixin, Base):
     user_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), nullable=True
     )
-    level: Mapped[str] = mapped_column(String(16), default=NotificationLevel.INFO.value, nullable=False)
+    level: Mapped[str] = mapped_column(
+        String(16), default=NotificationLevel.INFO.value, nullable=False
+    )
     event_type: Mapped[str] = mapped_column(String(64), nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     message: Mapped[str] = mapped_column(Text, default="", nullable=False)

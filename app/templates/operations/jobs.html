@@ -1,0 +1,39 @@
+{% extends "layout/base.html" %}
+{% block title %}Jobs{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active">Jobs</li>{% endblock %}
+{% block content %}
+<div data-page="jobs">
+<div class="row">
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-gears me-2"></i>Active operations</h3><div class="card-tools small text-muted"><span class="spinner-border spinner-border-sm me-1"></span>auto-refresh</div></div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0" id="active-ops">
+          <thead><tr><th>Reference</th><th>Type</th><th>Application</th><th>Target</th><th>Status</th><th>By</th><th>Since</th></tr></thead>
+          <tbody>{% for o in active %}<tr><td><a href="{{ url_for('web.operation_detail', operation_id=o.id) }}"><code>{{ o.reference }}</code></a></td><td>{{ o.operation_type }}</td><td>{{ o.application.code if o.application else '-' }}</td><td>{{ o.target.name if o.target else '-' }}</td><td>{{ o.status|status_badge }}</td><td>{{ o.requested_by.username if o.requested_by else 'system' }}</td><td class="small text-muted">{{ o.created_at|dt }}</td></tr>{% else %}<tr><td colspan="7" class="text-center text-muted py-3">No active operations.</td></tr>{% endfor %}</tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-rocket me-2"></i>Deployments in progress</h3></div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0" id="active-deps">
+          <thead><tr><th>Reference</th><th>Application</th><th>Version</th><th>Target</th><th>Status</th><th>Since</th></tr></thead>
+          <tbody>{% for d in running_deployments %}<tr><td><a href="{{ url_for('web.deployment_detail', deployment_id=d.id) }}"><code>{{ d.reference }}</code></a></td><td>{{ d.application.code }}</td><td>{{ d.version.version }}</td><td>{{ d.target.name }}</td><td>{{ d.status|status_badge }}</td><td class="small text-muted">{{ d.created_at|dt }}</td></tr>{% else %}<tr><td colspan="6" class="text-center text-muted py-3">No deployments in progress.</td></tr>{% endfor %}</tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-magnifying-glass me-2"></i>Look up a job id</h3></div>
+      <div class="card-body">
+        <form class="d-flex gap-2" id="job-lookup"><input class="form-control form-control-sm font-monospace" name="job_id" placeholder="Celery job id" maxlength="64" required pattern="[A-Za-z0-9-]+"><button class="btn btn-sm btn-outline-primary">Lookup</button></form>
+        <pre class="small bg-body-tertiary p-2 rounded mt-2 d-none" id="job-result"></pre>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/pages/operations.js') }}"></script>{% endblock %}

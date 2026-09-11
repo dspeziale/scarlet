@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
 
-from sqlalchemy import JSON, DateTime, Integer, MetaData
+from sqlalchemy import DateTime, Integer, MetaData
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from app.utils.time import utcnow
@@ -21,7 +20,6 @@ NAMING_CONVENTION = {
 
 class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=NAMING_CONVENTION)
-    type_annotation_map = {dict[str, Any]: JSON, list[Any]: JSON}
 
 
 class PkMixin:

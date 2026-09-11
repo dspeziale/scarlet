@@ -14,7 +14,16 @@ from app.utils.time import utcnow
 
 log = get_logger("scarlet.audit")
 
-SENSITIVE_KEYS = {"password", "passphrase", "private_key", "secret", "token", "kubeconfig", "encrypted_secret", "value"}
+SENSITIVE_KEYS = {
+    "password",
+    "passphrase",
+    "private_key",
+    "secret",
+    "token",
+    "kubeconfig",
+    "encrypted_secret",
+    "value",
+}
 
 
 def scrub(details: dict[str, Any] | None) -> dict[str, Any] | None:
@@ -24,14 +33,24 @@ def scrub(details: dict[str, Any] | None) -> dict[str, Any] | None:
     out: dict[str, Any] = {}
     for key, value in details.items():
         lowered = str(key).lower()
-        if any(s in lowered for s in SENSITIVE_KEYS) and lowered not in {"secret_keys", "value_type", "is_secret", "token_prefix", "key_fingerprint", "key_type"}:
+        if any(s in lowered for s in SENSITIVE_KEYS) and lowered not in {
+            "secret_keys",
+            "value_type",
+            "is_secret",
+            "token_prefix",
+            "key_fingerprint",
+            "key_type",
+        }:
             out[key] = "[REDACTED]"
         elif isinstance(value, dict):
             out[key] = scrub(value)
         elif isinstance(value, str):
             out[key] = redact(value)[:2000]
         elif isinstance(value, list):
-            out[key] = [scrub(v) if isinstance(v, dict) else (redact(v)[:500] if isinstance(v, str) else v) for v in value[:100]]
+            out[key] = [
+                scrub(v) if isinstance(v, dict) else (redact(v)[:500] if isinstance(v, str) else v)
+                for v in value[:100]
+            ]
         else:
             out[key] = value
     return out
@@ -80,7 +99,12 @@ class AuditRecorder:
             target_name=getattr(target, "name", None),
             application_id=getattr(application, "id", None),
             application_code=getattr(application, "code", None),
-            environment=environment or (target.environment.code if target is not None and getattr(target, "environment", None) else None),
+            environment=environment
+            or (
+                target.environment.code
+                if target is not None and getattr(target, "environment", None)
+                else None
+            ),
             result=result.value if isinstance(result, AuditResult) else str(result),
             ip_address=ip,
             request_id=request_id,
@@ -89,7 +113,19 @@ class AuditRecorder:
         db.session.add(entry)
         if commit:
             db.session.commit()
-        log.info("audit %s %s", action, entry.result, extra={"extra_data": {"audit_action": action, "entity_type": entity_type, "entity_id": entry.entity_id, "result": entry.result}})
+        log.info(
+            "audit %s %s",
+            action,
+            entry.result,
+            extra={
+                "extra_data": {
+                    "audit_action": action,
+                    "entity_type": entity_type,
+                    "entity_id": entry.entity_id,
+                    "result": entry.result,
+                }
+            },
+        )
         return entry
 
     def security_event(
@@ -106,7 +142,9 @@ class AuditRecorder:
         ip, request_id = _request_meta()
         event = SecurityEvent(
             timestamp=utcnow(),
-            severity=severity.value if isinstance(severity, SecurityEventSeverity) else str(severity),
+            severity=(
+                severity.value if isinstance(severity, SecurityEventSeverity) else str(severity)
+            ),
             event_type=event_type,
             message=redact(message)[:2000],
             user_id=getattr(user, "id", None),
@@ -118,7 +156,12 @@ class AuditRecorder:
         db.session.add(event)
         if commit:
             db.session.commit()
-        log.warning("security event %s: %s", event_type, message, extra={"extra_data": {"event_type": event_type, "severity": event.severity}})
+        log.warning(
+            "security event %s: %s",
+            event_type,
+            message,
+            extra={"extra_data": {"event_type": event_type, "severity": event.severity}},
+        )
         return event
 
 

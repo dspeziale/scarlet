@@ -1,11 +1,11 @@
 """Predictable remote filesystem layout for an application on a target host.
 
-    <base>/applications/<app>/
-        releases/<version>/       immutable extracted release
-        current -> releases/<v>   atomic symlink to the active release
-        shared/config|data|logs   persistent data shared across releases
-        staging/                  uploads and temporary extraction
-        backups/
+<base>/applications/<app>/
+    releases/<version>/       immutable extracted release
+    current -> releases/<v>   atomic symlink to the active release
+    shared/config|data|logs   persistent data shared across releases
+    staging/                  uploads and temporary extraction
+    backups/
 """
 
 from __future__ import annotations
@@ -47,7 +47,9 @@ class RemoteLayout:
 
     @property
     def shared_config_dir(self) -> str:
-        return join_remote(self.base_path, "applications", self.application_code, "shared", "config")
+        return join_remote(
+            self.base_path, "applications", self.application_code, "shared", "config"
+        )
 
     @property
     def shared_data_dir(self) -> str:
@@ -67,22 +69,34 @@ class RemoteLayout:
 
     @property
     def env_file(self) -> str:
-        return join_remote(self.base_path, "applications", self.application_code, "shared", "config", "scarlet.env")
+        return join_remote(
+            self.base_path, "applications", self.application_code, "shared", "config", "scarlet.env"
+        )
 
     def release_dir(self, version: str) -> str:
         validate_version(version)
-        return join_remote(self.base_path, "applications", self.application_code, "releases", version)
+        return join_remote(
+            self.base_path, "applications", self.application_code, "releases", version
+        )
 
     def release_tmp_dir(self, version: str, token: str) -> str:
         validate_version(version)
         return join_remote(
-            self.base_path, "applications", self.application_code, "staging", f"{version}.{token}.extract"
+            self.base_path,
+            "applications",
+            self.application_code,
+            "staging",
+            f"{version}.{token}.extract",
         )
 
     def staging_package(self, version: str, token: str) -> str:
         validate_version(version)
         return join_remote(
-            self.base_path, "applications", self.application_code, "staging", f"{version}.{token}.scarlet.tar.gz"
+            self.base_path,
+            "applications",
+            self.application_code,
+            "staging",
+            f"{version}.{token}.scarlet.tar.gz",
         )
 
     def all_dirs(self) -> list[str]:

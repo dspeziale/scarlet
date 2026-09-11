@@ -32,7 +32,9 @@ class Configuration(PkMixin, TimestampMixin, Base):
     application = relationship("Application")
     environment = relationship("Environment")
     entries: Mapped[list[ConfigurationEntry]] = relationship(
-        back_populates="configuration", cascade="all, delete-orphan", order_by="ConfigurationEntry.key"
+        back_populates="configuration",
+        cascade="all, delete-orphan",
+        order_by="ConfigurationEntry.key",
     )
     versions: Mapped[list[ConfigurationVersion]] = relationship(
         back_populates="configuration",

@@ -1,0 +1,112 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "scarlet.fullname" . }}-config
+  labels: {{- include "scarlet.labels" . | nindent 4 }}
+data:
+  SCARLET_ARTIFACT_PATH: /data/scarlet/artifacts
+  SCARLET_UPLOAD_TMP_PATH: /data/scarlet/uploads
+  SCARLET_LOG_PATH: /data/scarlet/logs
+  {{- range $key, $value := .Values.config }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "scarlet.fullname" . }}-web
+  labels: {{- include "scarlet.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+spec:
+  replicas: {{ .Values.web.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: web
+  template:
+    metadata:
+      labels: {{- include "scarlet.labels" . | nindent 8 }}
+        app.kubernetes.io/component: web
+    spec:
+      securityContext: { runAsNonRoot: true, runAsUser: 10001, runAsGroup: 10001, fsGroup: 10001 }
+      containers:
+        - name: web
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["web"]
+          {{- include "scarlet.env" . | nindent 10 }}
+          ports: [{ containerPort: 8000, name: http }]
+          volumeMounts:
+            - { name: data, mountPath: /data/scarlet }
+            - { name: tmp, mountPath: /tmp }
+          readinessProbe: { httpGet: { path: /api/ready, port: http }, initialDelaySeconds: 20, periodSeconds: 15 }
+          livenessProbe: { httpGet: { path: /api/health, port: http }, initialDelaySeconds: 40, periodSeconds: 30 }
+          resources: {{- toYaml .Values.web.resources | nindent 12 }}
+          {{- include "scarlet.securityContext" . | nindent 10 }}
+      {{- include "scarlet.volumes" . | nindent 6 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "scarlet.fullname" . }}-worker
+  labels: {{- include "scarlet.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+spec:
+  replicas: {{ .Values.worker.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: worker
+  template:
+    metadata:
+      labels: {{- include "scarlet.labels" . | nindent 8 }}
+        app.kubernetes.io/component: worker
+    spec:
+      securityContext: { runAsNonRoot: true, runAsUser: 10001, runAsGroup: 10001, fsGroup: 10001 }
+      containers:
+        - name: worker
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["worker"]
+          env:
+            - { name: SCARLET_SKIP_MIGRATIONS, value: "true" }
+            - { name: CELERY_CONCURRENCY, value: {{ .Values.worker.concurrency | quote }} }
+          {{- include "scarlet.env" . | nindent 10 }}
+          volumeMounts:
+            - { name: data, mountPath: /data/scarlet }
+            - { name: tmp, mountPath: /tmp }
+          resources: {{- toYaml .Values.worker.resources | nindent 12 }}
+          {{- include "scarlet.securityContext" . | nindent 10 }}
+      {{- include "scarlet.volumes" . | nindent 6 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "scarlet.fullname" . }}-beat
+  labels: {{- include "scarlet.labels" . | nindent 4 }}
+    app.kubernetes.io/component: beat
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: beat
+  template:
+    metadata:
+      labels: {{- include "scarlet.labels" . | nindent 8 }}
+        app.kubernetes.io/component: beat
+    spec:
+      securityContext: { runAsNonRoot: true, runAsUser: 10001, runAsGroup: 10001, fsGroup: 10001 }
+      containers:
+        - name: beat
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["beat"]
+          {{- include "scarlet.env" . | nindent 10 }}
+          volumeMounts:
+            - { name: data, mountPath: /data/scarlet }
+            - { name: tmp, mountPath: /tmp }
+          resources: {{- toYaml .Values.beat.resources | nindent 12 }}
+          {{- include "scarlet.securityContext" . | nindent 10 }}
+      {{- include "scarlet.volumes" . | nindent 6 }}

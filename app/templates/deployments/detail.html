@@ -1,0 +1,76 @@
+{% extends "layout/base.html" %}
+{% from "partials/macros.html" import kv with context %}
+{% set d = deployment %}
+{% block title %}{{ d.reference }}{% endblock %}
+{% block page_title %}{{ d.kind }} {{ d.reference }} <span id="dep-status">{{ d.status|status_badge }}</span>{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item"><a href="{{ url_for('web.deployments_list') }}">Deployments</a></li><li class="breadcrumb-item active">{{ d.reference }}</li>{% endblock %}
+{% block content %}
+<div data-page="deployment-detail" data-deployment-id="{{ d.id }}" data-terminal="{{ 1 if d.is_terminal else 0 }}" data-production="{{ 1 if d.environment.is_production else 0 }}">
+{% if d.environment.is_production %}<div class="alert alert-danger py-2"><i class="fa-solid fa-triangle-exclamation me-2"></i>Production deployment.</div>{% endif %}
+<div class="row">
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header"><h3 class="card-title">Summary</h3></div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          {{ kv('Application', '<a href="' ~ url_for('web.application_detail', app_id=d.application_id) ~ '">' ~ d.application.code ~ '</a>') }}
+          {{ kv('Version', '<code>' ~ d.version.version ~ '</code>' ~ (' <span class="text-muted small">replacing ' ~ d.previous_version.version ~ '</span>' if d.previous_version else '')) }}
+          {{ kv('Target', '<a href="' ~ url_for('web.host_detail', host_id=d.target_id) ~ '">' ~ d.target.name ~ '</a> ' ~ d.target.runtime_type|runtime_icon) }}
+          {{ kv('Environment', d.environment.code|env_badge(d.environment.is_production)) }}
+          {{ kv('Strategy', d.strategy) }}{{ kv('Auto rollback', 'yes' if d.auto_rollback else 'no') }}
+          {{ kv('Requested by', d.requested_by.username if d.requested_by else '-') }}{{ kv('Reason', d.reason) }}
+          {{ kv('Batch', d.batch.reference if d.batch else '-') }}{{ kv('Request id', '<code>' ~ (d.request_id or '-') ~ '</code>') }}{{ kv('Job id', '<code class="small">' ~ (d.job_id or '-') ~ '</code>') }}
+          {{ kv('Created', d.created_at|dt) }}{{ kv('Started', d.started_at|dt) }}{{ kv('Completed', d.completed_at|dt) }}{{ kv('Duration', d.duration_seconds|duration) }}
+        </dl>
+      </div>
+      <div class="card-footer d-flex flex-wrap gap-2">
+        {% if can('logs.download') %}<a class="btn btn-sm btn-outline-secondary" href="{{ url_for('api.download_deployment_log', deployment_id=d.id) }}"><i class="fa-solid fa-download me-1"></i>Download log</a>{% endif %}
+        {% if d.status in ('QUEUED', 'CREATED', 'PENDING_APPROVAL', 'APPROVED') and can('deployment.cancel') %}<button class="btn btn-sm btn-outline-danger" id="btn-cancel"><i class="fa-solid fa-ban me-1"></i>Cancel</button>{% endif %}
+        {% if d.status == 'PENDING_APPROVAL' and can('deployment.approve') %}<button class="btn btn-sm btn-success" id="btn-approve"><i class="fa-solid fa-check me-1"></i>Approve</button><button class="btn btn-sm btn-outline-danger" id="btn-reject"><i class="fa-solid fa-xmark me-1"></i>Reject</button>{% endif %}
+        {% if d.status in ('ROLLBACK_REQUIRED', 'HEALTH_CHECK_FAILED', 'START_FAILED', 'FAILED') and d.previous_version and can('deployment.rollback', d.environment.is_production) %}
+        <button class="btn btn-sm btn-warning" data-action="rollback" data-app="{{ d.application_id }}" data-host="{{ d.target_id }}" data-app-code="{{ d.application.code }}" data-host-name="{{ d.target.name }}" data-env="{{ d.environment.code }}" data-version="{{ d.version.version }}" data-previous-version="{{ d.previous_version.version }}" data-target-version="{{ d.previous_version.id }}" data-production="{{ 1 if d.environment.is_production else 0 }}"><i class="fa-solid fa-clock-rotate-left me-1"></i>Rollback to {{ d.previous_version.version }}</button>
+        {% endif %}
+      </div>
+    </div>
+    {% if d.approvals %}
+    <div class="card"><div class="card-header"><h3 class="card-title">Approvals</h3></div><div class="card-body p-0"><ul class="list-group list-group-flush small">{% for a in d.approvals %}<li class="list-group-item">{{ a.status|status_badge }} requested by {{ a.requested_by.username if a.requested_by else '-' }}{% if a.decided_by %}, decided by <b>{{ a.decided_by.username }}</b> {{ a.decided_at|dt }}{% endif %}{% if a.comment %}<div class="text-muted">{{ a.comment }}</div>{% endif %}</li>{% endfor %}</ul></div></div>
+    {% endif %}
+    {% if d.preflight_result %}
+    <div class="card"><div class="card-header"><h3 class="card-title">Pre-flight</h3></div><div class="card-body p-0"><ul class="list-group list-group-flush small">{% for c in d.preflight_result.checks %}<li class="list-group-item d-flex justify-content-between"><span>{{ c.label }}<div class="text-muted">{{ c.message }}</div></span>{{ c.status|status_badge }}</li>{% endfor %}</ul></div></div>
+    {% endif %}
+  </div>
+  <div class="col-lg-8">
+    <div id="dep-error" class="alert alert-danger {{ '' if d.error_message else 'd-none' }}"><b>{{ d.error_code or 'ERROR' }}</b> <span id="dep-error-msg">{{ d.error_message }}</span></div>
+    <div class="card">
+      <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-list-check me-2"></i>Steps</h3><div class="card-tools small text-muted" id="poll-indicator">{% if not d.is_terminal %}<span class="spinner-border spinner-border-sm me-1"></span>live{% endif %}</div></div>
+      <div class="card-body">
+        <ul class="step-list" id="step-list">
+          {% for s in d.steps %}
+          <li class="step-{{ s.status }}" data-step="{{ s.name }}">
+            <span class="step-icon">{% if s.status == 'SUCCESS' %}<i class="fa-solid fa-circle-check"></i>{% elif s.status == 'FAILED' %}<i class="fa-solid fa-circle-xmark"></i>{% elif s.status == 'RUNNING' %}<i class="fa-solid fa-spinner fa-spin"></i>{% elif s.status == 'SKIPPED' %}<i class="fa-solid fa-forward"></i>{% else %}<i class="fa-regular fa-circle"></i>{% endif %}</span>
+            <div class="flex-grow-1">
+              <div><b>{{ s.label }}</b> <span class="small text-muted">{{ s.status }}</span>{% if s.error_message %}<div class="text-danger small">{{ s.error_message }}</div>{% endif %}</div>
+              {% if s.stdout or s.stderr %}<details class="small"><summary class="text-muted">output</summary><pre class="scarlet-log mt-1">{{ s.stdout }}{% if s.stderr %}
+--- stderr ---
+{{ s.stderr }}{% endif %}</pre></details>{% endif %}
+            </div>
+            <span class="step-duration">{{ s.duration_seconds|duration if s.duration_seconds is not none else '' }}</span>
+          </li>
+          {% else %}<li class="text-muted">Steps will appear when execution starts.</li>{% endfor %}
+        </ul>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-timeline me-2"></i>Timeline</h3></div>
+      <div class="card-body scarlet-timeline" id="timeline">
+        {% for e in timeline %}<div><span class="time">{{ e.time|dt('%H:%M:%S') }}</span>{{ e.state }} <span class="text-muted">{{ e.label }}</span>{% if e.duration_seconds is defined and e.duration_seconds is not none %} <span class="text-muted">({{ e.duration_seconds|duration }})</span>{% endif %}</div>{% endfor %}
+      </div>
+    </div>
+    {% if d.plan %}
+    <div class="card"><div class="card-header"><h3 class="card-title"><i class="fa-solid fa-diagram-project me-2"></i>Deployment plan</h3></div><div class="card-body"><details><summary class="small text-muted">Desired state and planned steps (JSON)</summary><pre class="small bg-body-tertiary p-2 rounded mt-2">{{ d.plan|tojson(indent=2) }}</pre></details></div></div>
+    {% endif %}
+  </div>
+</div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/pages/deployments.js') }}"></script>{% endblock %}

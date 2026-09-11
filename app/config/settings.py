@@ -132,7 +132,9 @@ class Config:
     REMEMBER_COOKIE_HTTPONLY: bool = True
     WTF_CSRF_ENABLED: bool = True
     WTF_CSRF_TIME_LIMIT: int | None = None
-    WTF_CSRF_CHECK_DEFAULT: bool = True
+    WTF_CSRF_CHECK_DEFAULT: bool = (
+        False  # enforced explicitly per blueprint (API token calls are exempt)
+    )
     SCARLET_LOGIN_RATE_LIMIT: str = "5 per minute"
     SCARLET_API_RATE_LIMIT: str = "600 per minute"
     RATELIMIT_STORAGE_URI: str = "memory://"
@@ -237,9 +239,7 @@ def build_config(overrides: dict[str, Any] | None = None) -> Config:
         SCARLET_PROD_REQUIRE_REASON=env_bool("SCARLET_PROD_REQUIRE_REASON", True),
         SCARLET_AUTO_ROLLBACK=env_bool("SCARLET_AUTO_ROLLBACK", False),
         SCARLET_ALLOW_DIAGNOSTIC_SHELL=env_bool("SCARLET_ALLOW_DIAGNOSTIC_SHELL", False),
-        SCARLET_ARTIFACT_RETENTION_COUNT=env_int(
-            "SCARLET_ARTIFACT_RETENTION_COUNT", 10, minimum=2
-        ),
+        SCARLET_ARTIFACT_RETENTION_COUNT=env_int("SCARLET_ARTIFACT_RETENTION_COUNT", 10, minimum=2),
         SCARLET_LOG_RETENTION_DAYS=env_int("SCARLET_LOG_RETENTION_DAYS", 90, minimum=1),
         SCARLET_OPERATION_LOG_RETENTION_DAYS=env_int(
             "SCARLET_OPERATION_LOG_RETENTION_DAYS", 180, minimum=1
@@ -299,7 +299,9 @@ def build_config(overrides: dict[str, Any] | None = None) -> Config:
     if not cfg.is_production and not cfg.SECRET_KEY:
         cfg.SECRET_KEY = "dev-only-insecure-secret-key-" + cfg.SCARLET_ENV
     if not cfg.is_production and not cfg.SCARLET_CREDENTIAL_ENCRYPTION_KEY:
-        cfg.SCARLET_CREDENTIAL_ENCRYPTION_KEY = "dev-only-insecure-credential-key-" + cfg.SCARLET_ENV
+        cfg.SCARLET_CREDENTIAL_ENCRYPTION_KEY = (
+            "dev-only-insecure-credential-key-" + cfg.SCARLET_ENV
+        )
 
     validate_config(cfg)
     return cfg

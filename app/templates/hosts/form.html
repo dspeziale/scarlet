@@ -1,0 +1,62 @@
+{% extends "layout/base.html" %}
+{% block title %}{{ 'Edit host' if host else 'New host' }}{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item"><a href="{{ url_for('web.hosts_list') }}">Hosts</a></li><li class="breadcrumb-item active">{{ host.name if host else 'New' }}</li>{% endblock %}
+{% block content %}
+<div data-page="host-form" data-host-id="{{ host.id if host else '' }}" data-production="{{ 1 if host and host.is_production else 0 }}">
+<form id="host-form" class="needs-validation" novalidate>
+<div class="row">
+  <div class="col-lg-7">
+    <div class="card card-primary card-outline">
+      <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-server me-2"></i>Connection</h3></div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-6"><label class="form-label">Name *</label><input class="form-control" name="name" required pattern="[A-Za-z0-9][A-Za-z0-9._-]{1,63}" value="{{ host.name if host else '' }}" placeholder="prod-app-01"><div class="form-text">Unique short name used in SCARLET.</div></div>
+          <div class="col-md-6"><label class="form-label">Environment *</label><select class="form-select" name="environment_id" required>{% for e in environments %}<option value="{{ e.id }}" {% if host and host.environment_id == e.id %}selected{% endif %}>{{ e.code }} — {{ e.name }}</option>{% endfor %}</select></div>
+          <div class="col-md-8"><label class="form-label">Hostname (FQDN) *</label><input class="form-control" name="hostname" required value="{{ host.hostname if host else '' }}" placeholder="prod-app-01.example.internal"></div>
+          <div class="col-md-4"><label class="form-label">IP address</label><input class="form-control" name="ip_address" value="{{ host.ip_address or '' if host else '' }}" placeholder="10.20.1.21"><div class="form-text">If set, SSH connects to the IP.</div></div>
+          <div class="col-md-8"><label class="form-label">SSH username *</label><input class="form-control" name="ssh_username" required pattern="[a-z_][a-z0-9_-]{0,31}" value="{{ host.ssh_username if host else 'scarlet' }}"></div>
+          <div class="col-md-4"><label class="form-label">SSH port *</label><input class="form-control" type="number" name="ssh_port" min="1" max="65535" required value="{{ host.ssh_port if host else 22 }}"></div>
+          <div class="col-12"><label class="form-label">Description</label><textarea class="form-control" name="description" rows="2" maxlength="2000">{{ host.description if host else '' }}</textarea></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-cube me-2"></i>Runtime</h3></div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-4"><label class="form-label">Container runtime *</label><select class="form-select" name="runtime_type" id="runtime_type">{% for rt in ['PODMAN', 'DOCKER', 'KUBERNETES', 'NONE'] %}<option value="{{ rt }}" {% if host and host.runtime_type == rt %}selected{% endif %}>{{ rt }}</option>{% endfor %}</select><div class="form-text">Use DISCOVER after saving to detect what is installed.</div></div>
+          <div class="col-md-4 k8s-only"><label class="form-label">Kubernetes namespace</label><input class="form-control" name="kubernetes_namespace" value="{{ host.kubernetes_namespace or '' if host else '' }}" placeholder="default"></div>
+          <div class="col-md-4 k8s-only"><label class="form-label">kubeconfig context</label><input class="form-control" name="kubernetes_context" value="{{ host.kubernetes_context or '' if host else '' }}"></div>
+          <div class="col-md-8"><label class="form-label">Remote base path</label><input class="form-control" name="remote_base_path" value="{{ host.remote_base_path or '' if host else '' }}" placeholder="{{ config.SCARLET_REMOTE_BASE_PATH }}"><div class="form-text">Leave empty to use the default <code>{{ config.SCARLET_REMOTE_BASE_PATH }}</code>.</div></div>
+          <div class="col-md-4"><label class="form-label">Host groups</label><select class="form-select" name="group_ids" multiple size="4">{% for g in groups %}<option value="{{ g.id }}" {% if host and g in host.groups %}selected{% endif %}>{{ g.name }}</option>{% endfor %}</select></div>
+          <div class="col-12"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" name="enabled" id="enabled" {% if not host or host.enabled %}checked{% endif %}><label class="form-check-label" for="enabled">Enabled (disabled hosts are excluded from deployments and reconciliation)</label></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="d-flex gap-2 mb-4">
+      <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk me-1"></i>{{ 'Save changes' if host else 'Create host' }}</button>
+      <a href="{{ url_for('web.host_detail', host_id=host.id) if host else url_for('web.hosts_list') }}" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card card-outline card-info">
+      <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-circle-info me-2"></i>Next steps</h3></div>
+      <div class="card-body small">
+        <ol class="mb-0 ps-3">
+          <li>Create the host record (this form).</li>
+          <li>Add an SSH credential (private key recommended) under <b>Security → Credentials</b>.</li>
+          <li>Run <b>Scan host key</b> and approve the fingerprint after verifying it on the server console.</li>
+          <li>Run <b>Test connection</b> and <b>Discover</b> to detect OS and runtime.</li>
+          <li>Set the runtime if it was NONE and start deploying.</li>
+        </ol>
+        <hr>
+        <p class="mb-1"><b>Remote user requirements</b> (see docs/ssh.md):</p>
+        <ul class="ps-3 mb-0"><li>can write to the base path (default <code>/opt/scarlet</code>)</li><li>can run <code>podman</code>/<code>docker</code>/<code>kubectl</code> (rootless Podman recommended)</li><li>has <code>tar</code>, <code>sha256sum</code>, <code>curl</code>, <code>nc</code> available</li></ul>
+      </div>
+    </div>
+  </div>
+</div>
+</form>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/pages/hosts.js') }}"></script>{% endblock %}

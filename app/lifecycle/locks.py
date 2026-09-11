@@ -45,7 +45,9 @@ def host_lock_key(target_id: int) -> str:
 
 
 class LockBackend:
-    def acquire(self, key: str, owner: str, ttl_seconds: int) -> bool:  # pragma: no cover - interface
+    def acquire(
+        self, key: str, owner: str, ttl_seconds: int
+    ) -> bool:  # pragma: no cover - interface
         raise NotImplementedError
 
     def release(self, key: str, owner: str) -> bool:  # pragma: no cover - interface
@@ -69,7 +71,9 @@ class RedisLockBackend(LockBackend):
         return bool(self.redis.eval(_RELEASE_SCRIPT, 1, f"scarlet:lock:{key}", owner))
 
     def extend(self, key: str, owner: str, ttl_seconds: int) -> bool:
-        return bool(self.redis.eval(_EXTEND_SCRIPT, 1, f"scarlet:lock:{key}", owner, ttl_seconds * 1000))
+        return bool(
+            self.redis.eval(_EXTEND_SCRIPT, 1, f"scarlet:lock:{key}", owner, ttl_seconds * 1000)
+        )
 
     def info(self, key: str) -> dict[str, Any] | None:
         owner = self.redis.get(f"scarlet:lock:{key}")
@@ -89,7 +93,9 @@ class DatabaseLockBackend(LockBackend):
         from app.models.lifecycle import DistributedLock
 
         now = utcnow()
-        existing = db.session.execute(db.select(DistributedLock).where(DistributedLock.key == key)).scalar_one_or_none()
+        existing = db.session.execute(
+            db.select(DistributedLock).where(DistributedLock.key == key)
+        ).scalar_one_or_none()
         if existing is not None:
             if existing.expires_at > now and not existing.released:
                 return False
@@ -100,7 +106,14 @@ class DatabaseLockBackend(LockBackend):
             db.session.commit()
             return True
         try:
-            db.session.add(DistributedLock(key=key, owner=owner, acquired_at=now, expires_at=now + timedelta(seconds=ttl_seconds)))
+            db.session.add(
+                DistributedLock(
+                    key=key,
+                    owner=owner,
+                    acquired_at=now,
+                    expires_at=now + timedelta(seconds=ttl_seconds),
+                )
+            )
             db.session.commit()
             return True
         except IntegrityError:
@@ -111,7 +124,9 @@ class DatabaseLockBackend(LockBackend):
         from app.extensions import db
         from app.models.lifecycle import DistributedLock
 
-        existing = db.session.execute(db.select(DistributedLock).where(DistributedLock.key == key)).scalar_one_or_none()
+        existing = db.session.execute(
+            db.select(DistributedLock).where(DistributedLock.key == key)
+        ).scalar_one_or_none()
         if existing is None or existing.owner != owner:
             return False
         db.session.delete(existing)
@@ -122,7 +137,9 @@ class DatabaseLockBackend(LockBackend):
         from app.extensions import db
         from app.models.lifecycle import DistributedLock
 
-        existing = db.session.execute(db.select(DistributedLock).where(DistributedLock.key == key)).scalar_one_or_none()
+        existing = db.session.execute(
+            db.select(DistributedLock).where(DistributedLock.key == key)
+        ).scalar_one_or_none()
         if existing is None or existing.owner != owner:
             return False
         existing.expires_at = utcnow() + timedelta(seconds=ttl_seconds)
@@ -133,10 +150,16 @@ class DatabaseLockBackend(LockBackend):
         from app.extensions import db
         from app.models.lifecycle import DistributedLock
 
-        existing = db.session.execute(db.select(DistributedLock).where(DistributedLock.key == key)).scalar_one_or_none()
+        existing = db.session.execute(
+            db.select(DistributedLock).where(DistributedLock.key == key)
+        ).scalar_one_or_none()
         if existing is None or existing.expires_at <= utcnow() or existing.released:
             return None
-        return {"owner": existing.owner, "acquired_at": existing.acquired_at.isoformat(), "expires_at": existing.expires_at.isoformat()}
+        return {
+            "owner": existing.owner,
+            "acquired_at": existing.acquired_at.isoformat(),
+            "expires_at": existing.expires_at.isoformat(),
+        }
 
 
 class LockManager:
@@ -145,7 +168,9 @@ class LockManager:
         self.default_ttl = default_ttl
 
     @contextmanager
-    def hold(self, key: str, *, owner: str | None = None, ttl: int | None = None, description: str = ""):
+    def hold(
+        self, key: str, *, owner: str | None = None, ttl: int | None = None, description: str = ""
+    ):
         owner = owner or f"{uuid.uuid4()}"
         ttl = ttl or self.default_ttl
         if not self.backend.acquire(key, owner, ttl):
@@ -154,12 +179,17 @@ class LockManager:
                 f"Another operation is already running ({description or key}). Please wait for it to finish.",
                 details={"lock_key": key, "holder": info},
             )
-        log.debug("lock acquired", extra={"extra_data": {"lock_key": key, "owner": owner, "ttl": ttl}})
+        log.debug(
+            "lock acquired", extra={"extra_data": {"lock_key": key, "owner": owner, "ttl": ttl}}
+        )
         try:
             yield owner
         finally:
             released = self.backend.release(key, owner)
-            log.debug("lock released", extra={"extra_data": {"lock_key": key, "owner": owner, "released": released}})
+            log.debug(
+                "lock released",
+                extra={"extra_data": {"lock_key": key, "owner": owner, "released": released}},
+            )
 
     def is_locked(self, key: str) -> bool:
         return self.backend.info(key) is not None
@@ -176,13 +206,18 @@ def get_lock_manager() -> LockManager:
         return manager
     ttl = int(current_app.config.get("SCARLET_LOCK_TIMEOUT", 1800))
     backend: LockBackend
-    if current_app.config.get("TESTING") or current_app.config.get("SCARLET_LOCK_BACKEND") == "database":
+    if (
+        current_app.config.get("TESTING")
+        or current_app.config.get("SCARLET_LOCK_BACKEND") == "database"
+    ):
         backend = DatabaseLockBackend()
     else:
         try:
             import redis
 
-            client = redis.Redis.from_url(current_app.config["REDIS_URL"], socket_connect_timeout=2, socket_timeout=2)
+            client = redis.Redis.from_url(
+                current_app.config["REDIS_URL"], socket_connect_timeout=2, socket_timeout=2
+            )
             client.ping()
             backend = RedisLockBackend(client)
         except Exception as exc:  # noqa: BLE001

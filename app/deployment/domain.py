@@ -20,7 +20,9 @@ from app.utils.time import duration_seconds, utcnow
 
 @dataclass(frozen=True)
 class HealthSpec:
-    check_type: str = "CONTAINER_STATUS"  # HTTP|HTTPS|TCP|COMMAND|CONTAINER_STATUS|KUBERNETES_STATUS
+    check_type: str = (
+        "CONTAINER_STATUS"  # HTTP|HTTPS|TCP|COMMAND|CONTAINER_STATUS|KUBERNETES_STATUS
+    )
     path: str = "/health"
     port: int | None = None
     expected_status: int = 200
@@ -110,10 +112,16 @@ class DriftReport:
     details: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        return {"detected": self.detected, "drift_type": self.drift_type.value, "details": self.details}
+        return {
+            "detected": self.detected,
+            "drift_type": self.drift_type.value,
+            "details": self.details,
+        }
 
 
-def compute_drift(desired: DesiredApplicationState | None, actual: ActualApplicationState) -> DriftReport:
+def compute_drift(
+    desired: DesiredApplicationState | None, actual: ActualApplicationState
+) -> DriftReport:
     """Compare desired and actual state and classify the difference."""
     if desired is None:
         return DriftReport(False, DriftType.NONE)
@@ -133,7 +141,10 @@ def compute_drift(desired: DesiredApplicationState | None, actual: ActualApplica
         return DriftReport(False, DriftType.NONE, details)  # cannot judge; not drift
     if actual.version and actual.version != desired.version:
         return DriftReport(True, DriftType.VERSION, details)
-    if desired.state == DesiredState.RUNNING and actual.state in {ApplicationState.STOPPED, ApplicationState.FAILED}:
+    if desired.state == DesiredState.RUNNING and actual.state in {
+        ApplicationState.STOPPED,
+        ApplicationState.FAILED,
+    }:
         return DriftReport(True, DriftType.UNEXPECTED_STOP, details)
     if desired.state == DesiredState.STOPPED and actual.state == ApplicationState.RUNNING:
         return DriftReport(True, DriftType.STATE, details)

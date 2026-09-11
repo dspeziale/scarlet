@@ -1,0 +1,81 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: scarlet-data
+  namespace: scarlet
+spec:
+  accessModes: ["ReadWriteMany"]      # web + worker pods share artifacts; use RWO with a single node otherwise
+  resources:
+    requests:
+      storage: 50Gi
+  # storageClassName: nfs-client
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: scarlet-postgres
+  namespace: scarlet
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scarlet-postgres
+  namespace: scarlet
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector: { matchLabels: { app: scarlet-postgres } }
+  template:
+    metadata: { labels: { app: scarlet-postgres } }
+    spec:
+      containers:
+        - name: postgres
+          image: docker.io/library/postgres:16-alpine
+          env:
+            - { name: POSTGRES_DB, value: scarlet }
+            - { name: POSTGRES_USER, value: scarlet }
+            - name: POSTGRES_PASSWORD
+              valueFrom: { secretKeyRef: { name: scarlet-postgres, key: password } }
+          ports: [{ containerPort: 5432 }]
+          volumeMounts: [{ name: data, mountPath: /var/lib/postgresql/data }]
+          readinessProbe: { exec: { command: ["pg_isready", "-U", "scarlet"] }, periodSeconds: 10 }
+      volumes:
+        - name: data
+          persistentVolumeClaim: { claimName: scarlet-postgres }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: scarlet-postgres, namespace: scarlet }
+spec:
+  selector: { app: scarlet-postgres }
+  ports: [{ port: 5432, targetPort: 5432 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scarlet-redis
+  namespace: scarlet
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: scarlet-redis } }
+  template:
+    metadata: { labels: { app: scarlet-redis } }
+    spec:
+      containers:
+        - name: redis
+          image: docker.io/library/redis:7-alpine
+          args: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "noeviction"]
+          ports: [{ containerPort: 6379 }]
+          readinessProbe: { exec: { command: ["redis-cli", "ping"] }, periodSeconds: 10 }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: scarlet-redis, namespace: scarlet }
+spec:
+  selector: { app: scarlet-redis }
+  ports: [{ port: 6379, targetPort: 6379 }]

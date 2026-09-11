@@ -1,0 +1,53 @@
+{% macro item(endpoint, label, icon, perm=None, match=None) -%}
+{% if perm is none or can(perm) %}
+{% set href = url_for(endpoint) %}
+<li class="nav-item">
+  <a href="{{ href }}" class="nav-link{% if active_path == href or (match and active_path.startswith(match)) %} active{% endif %}">
+    <i class="nav-icon {{ icon }}"></i><p>{{ label }}</p>
+  </a>
+</li>
+{% endif %}
+{%- endmacro %}
+<aside class="app-sidebar bg-body-secondary shadow" data-bs-theme="dark">
+  <div class="sidebar-brand">
+    <a href="{{ url_for('web.dashboard') }}" class="brand-link">
+      <span class="brand-image scarlet-logo"><i class="fa-solid fa-cubes"></i></span>
+      <span class="brand-text fw-light">SCARLET</span>
+    </a>
+  </div>
+  <div class="sidebar-wrapper">
+    <nav class="mt-2">
+      <ul class="nav sidebar-menu flex-column" data-lte-toggle="treeview" role="navigation" data-accordion="false">
+        {{ item('web.dashboard', 'Dashboard', 'fa-solid fa-gauge-high', 'dashboard.view') }}
+        <li class="nav-header">INFRASTRUCTURE</li>
+        {{ item('web.hosts_list', 'Hosts', 'fa-solid fa-server', 'host.view', '/hosts') }}
+        {{ item('web.host_groups', 'Host Groups', 'fa-solid fa-layer-group', 'host.view') }}
+        {{ item('web.environments', 'Environments', 'fa-solid fa-sitemap', 'host.view') }}
+        <li class="nav-header">APPLICATIONS</li>
+        {{ item('web.applications_list', 'Applications', 'fa-solid fa-cube', 'application.view', '/applications') }}
+        {{ item('web.releases_list', 'Releases', 'fa-solid fa-tags', 'package.view') }}
+        {{ item('web.packages_list', 'Packages', 'fa-solid fa-box-archive', 'package.view', '/packages') }}
+        <li class="nav-header">OPERATIONS</li>
+        {{ item('web.deployments_list', 'Deployments', 'fa-solid fa-rocket', 'deployment.view', '/deployments') }}
+        {{ item('web.operations_list', 'Lifecycle Operations', 'fa-solid fa-arrows-rotate', 'deployment.view', '/operations') }}
+        {{ item('web.jobs', 'Jobs', 'fa-solid fa-list-check', 'deployment.view') }}
+        <li class="nav-header">MONITORING</li>
+        {{ item('web.monitoring_health', 'Health', 'fa-solid fa-heart-pulse', 'health.view') }}
+        {{ item('web.monitoring_logs', 'Logs', 'fa-solid fa-scroll', 'logs.view') }}
+        <li class="nav-header">SECURITY</li>
+        {{ item('web.users', 'Users', 'fa-solid fa-users', 'user.manage') }}
+        {{ item('web.roles', 'Roles', 'fa-solid fa-user-shield', 'user.manage') }}
+        {{ item('web.credentials', 'Credentials', 'fa-solid fa-key', 'credential.manage') }}
+        <li class="nav-header">AUDIT</li>
+        {{ item('web.audit_log', 'Audit Log', 'fa-solid fa-clipboard-list', 'audit.view') }}
+        {{ item('web.security_events', 'Security Events', 'fa-solid fa-shield-halved', 'audit.view') }}
+        <li class="nav-header">SYSTEM</li>
+        {{ item('web.settings', 'Settings', 'fa-solid fa-sliders', 'system.manage') }}
+        {% if api_docs_enabled %}
+        <li class="nav-item"><a href="{{ url_for('api.swagger_ui') }}" class="nav-link"><i class="nav-icon fa-solid fa-book"></i><p>API Docs</p></a></li>
+        {% endif %}
+        {{ item('web.about', 'About', 'fa-solid fa-circle-info') }}
+      </ul>
+    </nav>
+  </div>
+</aside>

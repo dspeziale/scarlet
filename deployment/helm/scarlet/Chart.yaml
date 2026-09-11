@@ -1,0 +1,9 @@
+apiVersion: v2
+name: scarlet
+description: SCARLET - System Container Application Release, Lifecycle & Environment Tool (control plane)
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords: [deployment, podman, docker, kubernetes, lifecycle]
+maintainers:
+  - name: Platform Operations
