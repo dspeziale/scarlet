@@ -1,0 +1,23 @@
+.guida-body { background: #f4f6f9; color: #212529; }
+.guida-header { background: linear-gradient(90deg, #7a0f1f, #b3172c); color: #fff; padding: .9rem 0; position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 6px rgba(0,0,0,.2); }
+.guida-layout { display: grid; grid-template-columns: 270px 1fr; gap: 2rem; padding: 1.5rem 0 4rem; }
+.guida-toc { position: sticky; top: 76px; align-self: start; max-height: calc(100vh - 90px); overflow: auto; background: #fff; border-radius: .5rem; padding: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,.08); font-size: .85rem; }
+.guida-toc ol { padding-left: 1.2rem; margin: 0; }
+.guida-toc li { margin: .15rem 0; }
+.guida-toc a { text-decoration: none; color: #333; }
+.guida-toc a.active, .guida-toc a:hover { color: #b3172c; font-weight: 600; }
+.guida-content { background: #fff; border-radius: .5rem; padding: 2rem 2.5rem; box-shadow: 0 1px 3px rgba(0,0,0,.08); max-width: 1000px; }
+.guida-content section { padding-top: .5rem; margin-bottom: 2.5rem; scroll-margin-top: 86px; }
+.guida-content h1 { font-size: 1.45rem; color: #7a0f1f; border-bottom: 2px solid #f0d5d9; padding-bottom: .35rem; margin-bottom: 1rem; }
+.guida-content h2 { font-size: 1.1rem; margin-top: 1.4rem; color: #333; }
+.guida-content pre { background: #1e1e1e; color: #e6e6e6; padding: .8rem 1rem; border-radius: .4rem; font-size: .82rem; overflow: auto; }
+.guida-content code { background: #f1e3e5; color: #7a0f1f; padding: .05rem .3rem; border-radius: .2rem; font-size: .9em; }
+.guida-content pre code { background: none; color: inherit; }
+.guida-content table { font-size: .9rem; }
+.callout { border-left: 4px solid; padding: .75rem 1rem; border-radius: .3rem; margin: 1rem 0; }
+.callout-info { border-color: #0d6efd; background: #eef4ff; }
+.callout-warning { border-color: #ffc107; background: #fff8e1; }
+@media (max-width: 900px) { .guida-layout { grid-template-columns: 1fr; } .guida-toc { position: static; max-height: none; } .guida-content { padding: 1.2rem; } }
+@media print { .guida-header, .guida-toc { display: none; } .guida-layout { display: block; padding: 0; } .guida-content { box-shadow: none; padding: 0; max-width: none; } .guida-content section { page-break-inside: avoid; } }
+.guida-toc li.toc-highlight a { color: #b3172c; }
+.guida-toc li.toc-highlight a::before { content: "★ "; }

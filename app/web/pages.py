@@ -336,6 +336,41 @@ def about():
     return render_template("system/about.html", runtimes=RuntimeFactory.supported())
 
 
+@web.get("/lang/<code>")
+def set_language(code: str):
+    """Switch UI language (session + cookie) and go back to the previous page."""
+    from urllib.parse import urlparse
+
+    from flask import make_response, redirect, session
+
+    from app.i18n import COOKIE, SUPPORTED_LOCALES
+
+    if code not in SUPPORTED_LOCALES:
+        abort(404)
+    session["lang"] = code
+    target = request.args.get("next") or request.referrer or "/"
+    parsed = urlparse(target)
+    if parsed.netloc or not target.startswith("/") or target.startswith("//"):
+        target = "/"
+    response = make_response(redirect(target))
+    response.set_cookie(
+        COOKIE,
+        code,
+        max_age=365 * 24 * 3600,
+        samesite="Lax",
+        httponly=True,
+        secure=request.is_secure,
+    )
+    return response
+
+
+@web.get("/guida")
+@require_permission("dashboard.view")
+def guida():
+    """Complete user guide (Italian), opened in a new window from the menu."""
+    return render_template("help/guida.html")
+
+
 @web.get("/healthz")
 def healthz():  # simple unauthenticated liveness for load balancers (mirrors /api/health)
     from app.api.health import health

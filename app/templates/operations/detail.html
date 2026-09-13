@@ -3,13 +3,13 @@
 {% set o = operation %}
 {% block title %}{{ o.reference }}{% endblock %}
 {% block page_title %}{{ o.operation_type }} {{ o.reference }} <span id="op-status">{{ o.status|status_badge }}</span>{% endblock %}
-{% block breadcrumb %}<li class="breadcrumb-item"><a href="{{ url_for('web.operations_list') }}">Operations</a></li><li class="breadcrumb-item active">{{ o.reference }}</li>{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item"><a href="{{ url_for('web.operations_list') }}">{{ _('Operations') }}</a></li><li class="breadcrumb-item active">{{ o.reference }}</li>{% endblock %}
 {% block content %}
 <div data-page="operation-detail" data-operation-id="{{ o.id }}" data-terminal="{{ 1 if o.status_enum.is_terminal else 0 }}">
 <div class="row">
   <div class="col-lg-4">
     <div class="card">
-      <div class="card-header"><h3 class="card-title">Summary</h3></div>
+      <div class="card-header"><h3 class="card-title">{{ _('Summary') }}</h3></div>
       <div class="card-body"><dl class="row mb-0">
         {{ kv('Type', o.operation_type) }}
         {{ kv('Application', ('<a href="' ~ url_for('web.application_detail', app_id=o.application_id) ~ '">' ~ o.application.code ~ '</a>') if o.application else '-') }}
@@ -21,22 +21,22 @@
         {{ kv('Created', o.created_at|dt) }}{{ kv('Started', o.started_at|dt) }}{{ kv('Completed', o.completed_at|dt) }}{{ kv('Duration', o.duration_seconds|duration) }}{{ kv('Retries', o.retries) }}
       </dl></div>
       <div class="card-footer d-flex gap-2">
-        {% if can('logs.download') %}<a class="btn btn-sm btn-outline-secondary" href="{{ url_for('api.download_operation_log', operation_id=o.id) }}"><i class="fa-solid fa-download me-1"></i>Download log</a>{% endif %}
-        {% if o.status == 'QUEUED' and can('deployment.cancel') %}<button class="btn btn-sm btn-outline-danger" id="btn-cancel-op"><i class="fa-solid fa-ban me-1"></i>Cancel</button>{% endif %}
+        {% if can('logs.download') %}<a class="btn btn-sm btn-outline-secondary" href="{{ url_for('api.download_operation_log', operation_id=o.id) }}"><i class="fa-solid fa-download me-1"></i>{{ _('Download log') }}</a>{% endif %}
+        {% if o.status == 'QUEUED' and can('deployment.cancel') %}<button class="btn btn-sm btn-outline-danger" id="btn-cancel-op"><i class="fa-solid fa-ban me-1"></i>{{ _('Cancel') }}</button>{% endif %}
       </div>
     </div>
   </div>
   <div class="col-lg-8">
     <div id="op-error" class="alert alert-danger {{ '' if o.error_message else 'd-none' }}"><b>{{ o.error_code or 'ERROR' }}</b> <span id="op-error-msg">{{ o.error_message }}</span></div>
     <div class="card">
-      <div class="card-header"><h3 class="card-title">Result <span id="op-result-code">{% if o.result_code %}{{ o.result_code|status_badge }}{% endif %}</span></h3></div>
-      <div class="card-body" id="op-result">{% if o.status_enum.is_terminal %}<pre class="small bg-body-tertiary p-2 rounded mb-0">{{ o.result|tojson(indent=2) }}</pre>{% else %}<div class="text-muted"><span class="spinner-border spinner-border-sm me-2"></span>Running…</div>{% endif %}</div>
+      <div class="card-header"><h3 class="card-title">{{ _('Result') }} <span id="op-result-code">{% if o.result_code %}{{ o.result_code|status_badge }}{% endif %}</span></h3></div>
+      <div class="card-body" id="op-result">{% if o.status_enum.is_terminal %}<pre class="small bg-body-tertiary p-2 rounded mb-0">{{ o.result|tojson(indent=2) }}</pre>{% else %}<div class="text-muted"><span class="spinner-border spinner-border-sm me-2"></span>{{ _('Running…') }}</div>{% endif %}</div>
     </div>
     <div class="card">
-      <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-terminal me-2"></i>Command log</h3></div>
+      <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-terminal me-2"></i>{{ _('Command log') }}</h3></div>
       <div class="card-body p-0">
         <table class="table table-sm mb-0 font-monospace-sm" id="op-log">
-          <thead><tr><th style="width:170px">Time</th><th style="width:70px">Level</th><th>Message / command</th><th style="width:60px">Exit</th><th style="width:80px">Time (s)</th></tr></thead>
+          <thead><tr><th style="width:170px">{{ _('Time') }}</th><th style="width:70px">{{ _('Level') }}</th><th>{{ _('Message / command') }}</th><th style="width:60px">{{ _('Exit') }}</th><th style="width:80px">{{ _('Time (s)') }}</th></tr></thead>
           <tbody>
           {% for l in o.logs %}
           <tr class="{{ 'table-danger' if l.level in ('ERROR', 'WARNING') and l.exit_code not in (None, 0) }}">
@@ -44,7 +44,7 @@
             <td>{{ l.message }}{% if l.command %}<div class="text-primary">$ {{ l.command }}</div>{% endif %}{% if l.stdout %}<details><summary class="text-muted">stdout</summary><pre class="scarlet-log">{{ l.stdout }}</pre></details>{% endif %}{% if l.stderr %}<details><summary class="text-warning-emphasis">stderr</summary><pre class="scarlet-log">{{ l.stderr }}</pre></details>{% endif %}</td>
             <td>{{ l.exit_code if l.exit_code is not none else '' }}</td><td>{{ l.duration_seconds if l.duration_seconds is not none else '' }}</td>
           </tr>
-          {% else %}<tr><td colspan="5" class="text-center text-muted py-3">No log entries yet.</td></tr>{% endfor %}
+          {% else %}<tr><td colspan="5" class="text-center text-muted py-3">{{ _('No log entries yet.') }}</td></tr>{% endfor %}
           </tbody>
         </table>
       </div>

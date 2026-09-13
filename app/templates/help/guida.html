@@ -1,0 +1,651 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Guida utente · SCARLET</title>
+  <link rel="stylesheet" href="{{ asset('fontawesome_css') }}">
+  <link rel="stylesheet" href="{{ asset('adminlte_css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/scarlet.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/guida.css') }}">
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+</head>
+<body class="guida-body">
+<header class="guida-header">
+  <div class="container-xl d-flex align-items-center gap-3">
+    <span class="scarlet-logo"><i class="fa-solid fa-cubes"></i></span>
+    <div>
+      <div class="fw-bold fs-5">SCARLET — Guida utente</div>
+      <div class="small text-white-50">System Container Application Release, Lifecycle &amp; Environment Tool · versione {{ scarlet_version }}</div>
+    </div>
+    <div class="ms-auto d-none d-md-flex gap-2">
+      <a class="btn btn-sm btn-outline-light" href="{{ url_for('web.dashboard') }}"><i class="fa-solid fa-gauge-high me-1"></i>Torna alla console</a>
+      <button class="btn btn-sm btn-outline-light" id="btn-print"><i class="fa-solid fa-print me-1"></i>Stampa</button>
+    </div>
+  </div>
+</header>
+
+<div class="container-xl guida-layout">
+<nav class="guida-toc" aria-label="Indice">
+  <div class="small text-uppercase text-muted fw-bold mb-2">Indice</div>
+  <ol>
+    <li><a href="#introduzione">Cos'è SCARLET</a></li>
+    <li><a href="#concetti">Concetti fondamentali</a></li>
+    <li><a href="#prerequisiti">Cosa installare su ogni macchina</a></li>
+    <li class="toc-highlight"><a href="#esempio-zero">Esempio completo 1: da zero a una macchina online</a></li>
+    <li class="toc-highlight"><a href="#esempio-texa">Esempio completo 2: TEXA ARES in DEV e PROD</a></li>
+    <li><a href="#accesso">Accesso, ruoli e permessi</a></li>
+    <li><a href="#dashboard">Dashboard</a></li>
+    <li><a href="#host">Host (server di destinazione)</a></li>
+    <li><a href="#credenziali">Credenziali SSH</a></li>
+    <li><a href="#fingerprint">Approvazione fingerprint SSH</a></li>
+    <li><a href="#discover">Test connessione e Discover</a></li>
+    <li><a href="#gruppi">Gruppi di host e ambienti</a></li>
+    <li><a href="#applicazioni">Applicazioni</a></li>
+    <li><a href="#pacchetti">Pacchetti di rilascio</a></li>
+    <li><a href="#upload">Caricamento di un pacchetto</a></li>
+    <li><a href="#configurazione">Configurazione e segreti</a></li>
+    <li><a href="#deploy">Deployment guidato (wizard)</a></li>
+    <li><a href="#prod">Operazioni in PRODUZIONE</a></li>
+    <li><a href="#approvazione">Approvazione a due persone</a></li>
+    <li><a href="#lifecycle">Start, Stop, Restart, Status</a></li>
+    <li><a href="#log">Consultare i log</a></li>
+    <li><a href="#health">Health check</a></li>
+    <li><a href="#rollback">Rollback</a></li>
+    <li><a href="#drift">Stato desiderato, stato reale e drift</a></li>
+    <li><a href="#operazioni">Operazioni e job</a></li>
+    <li><a href="#audit">Audit e eventi di sicurezza</a></li>
+    <li><a href="#notifiche">Notifiche</a></li>
+    <li><a href="#utenti">Utenti, ruoli e token API</a></li>
+    <li><a href="#impostazioni">Impostazioni di sistema</a></li>
+    <li><a href="#api">Uso dell'API</a></li>
+    <li><a href="#problemi">Risoluzione dei problemi</a></li>
+    <li><a href="#stati">Glossario degli stati</a></li>
+    <li><a href="#buone-pratiche">Buone pratiche</a></li>
+  </ol>
+</nav>
+
+<main class="guida-content">
+
+<section id="introduzione">
+  <h1>1. Cos'è SCARLET</h1>
+  <p>SCARLET è la console centrale con cui il team operativo gestisce il <strong>ciclo di vita delle applicazioni</strong> installate sui server Oracle Linux aziendali che usano <strong>Docker</strong>, <strong>Podman</strong> o <strong>Kubernetes</strong>. Da un'unica interfaccia web si registrano i server, si caricano i pacchetti di rilascio preparati dai team di sviluppo, si eseguono i deployment e si controllano le applicazioni (avvio, arresto, riavvio, stato, log, health check, rollback) <strong>senza mai aprire una sessione SSH a mano</strong>.</p>
+  <p>SCARLET si collega ai server via SSH con credenziali cifrate, esegue soltanto comandi controllati e registra ogni azione nel registro di audit. Le differenze tra Docker, Podman e Kubernetes sono gestite internamente: l'operatore vede sempre la stessa interfaccia.</p>
+  <div class="callout callout-info"><i class="fa-solid fa-circle-info me-2"></i>Questa guida è pensata per amministratori e operatori con conoscenze limitate dei container. Le procedure passo-passo con precondizioni, errori e ripristino sono nel documento <code>docs/RUNBOOK.md</code>; il contratto tecnico per i team di sviluppo è in <code>docs/APPLICATION_RELEASE_CONTRACT.md</code>.</div>
+</section>
+
+<section id="concetti">
+  <h1>2. Concetti fondamentali</h1>
+  <table class="table table-sm table-bordered">
+    <thead><tr><th style="width:22%">Termine</th><th>Significato</th></tr></thead>
+    <tbody>
+      <tr><td><b>Host</b></td><td>Un server remoto Oracle Linux raggiunto via SSH. Ha un ambiente (DEV o PROD), un runtime (Docker, Podman, Kubernetes) e una credenziale SSH cifrata.</td></tr>
+      <tr><td><b>Ambiente</b></td><td><span class="badge text-bg-success">DEV</span> sviluppo/test; <span class="badge text-bg-danger">PROD</span> produzione. Le operazioni in PROD richiedono permessi aggiuntivi, un motivo e una frase di conferma digitata.</td></tr>
+      <tr><td><b>Applicazione</b></td><td>Un'applicazione di business (es. <code>customer-api</code>) con il suo runtime, le regole sui target consentiti e i parametri di health check.</td></tr>
+      <tr><td><b>Versione / Release</b></td><td>Una versione immutabile dell'applicazione (es. 2.5.0), creata dal caricamento di un pacchetto valido. Non può essere modificata: per cambiare qualcosa si pubblica una nuova versione.</td></tr>
+      <tr><td><b>Pacchetto</b></td><td>File <code>nome-versione.scarlet.tar.gz</code> contenente <code>manifest.yaml</code> e i file dell'applicazione. Viene validato prima di diventare una release.</td></tr>
+      <tr><td><b>Istanza</b></td><td>La combinazione applicazione + host. Per ogni istanza SCARLET conserva lo <b>stato desiderato</b> (cosa ha chiesto l'operatore) e lo <b>stato reale</b> (cosa osserva sul server).</td></tr>
+      <tr><td><b>Deployment</b></td><td>L'operazione che porta una versione su un host: validazione, trasferimento, installazione, attivazione, avvio, health check. Ogni passo è registrato.</td></tr>
+      <tr><td><b>Operazione</b></td><td>Un'azione sul ciclo di vita (START, STOP, RESTART, STATUS, HEALTH, LOGS, VERSION) eseguita in background e tracciata con un riferimento <code>OP-…</code>.</td></tr>
+      <tr><td><b>Drift</b></td><td>Differenza tra stato desiderato e stato reale (es. versione diversa, container fermo inaspettatamente). Viene rilevata periodicamente e segnalata.</td></tr>
+      <tr><td><b>Rollback</b></td><td>Ritorno alla release precedente, con riattivazione, riavvio e health check. È un'operazione tracciata come un deployment di tipo ROLLBACK.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="prerequisiti">
+  <h1>3. Cosa installare su ogni macchina</h1>
+  <p>SCARLET è <b>senza agente</b>: sui server gestiti non si installa nessun componente SCARLET, basta SSH e il runtime dei container. Le macchine coinvolte sono quattro tipi.</p>
+  <table class="table table-sm table-bordered">
+    <thead><tr><th style="width:24%">Macchina</th><th>Da installare</th><th style="width:34%">Note</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><b>Server SCARLET</b><br><span class="text-muted small">una sola macchina centrale, Oracle Linux 8.8+/9</span></td>
+        <td><ul class="mb-0"><li><code>podman</code> + <code>podman-compose</code> (oppure Docker Engine + plugin compose)</li><li><code>git</code> o il pacchetto del repository, <code>firewalld</code>, <code>policycoreutils-python-utils</code> (SELinux)</li><li>certificato TLS (CA interna o Let's Encrypt)</li></ul></td>
+        <td>PostgreSQL 16, Redis 7, nginx e l'applicazione girano come container del compose (<code>deployment/docker-compose.yml</code>). Requisiti: 2–4 vCPU, 4–8 GB RAM, 40–100 GB disco. Dettagli in <code>docs/installation.md</code>. Nessun Python da installare sul sistema: è dentro l'immagine.</td>
+      </tr>
+      <tr>
+        <td><b>Server di destinazione</b><br><span class="text-muted small">ogni Oracle Linux su cui girano le applicazioni</span></td>
+        <td><ul class="mb-0"><li><code>openssh-server</code> (già presente)</li><li>un runtime: <code>podman</code> (consigliato) oppure Docker Engine, oppure <code>kubectl</code> configurato per il cluster</li><li>utilità: <code>tar gzip coreutils curl nmap-ncat</code> (<code>dnf install -y podman tar gzip curl nmap-ncat</code>)</li><li>un utente Linux dedicato (es. <code>scarlet</code>) con la chiave pubblica di SCARLET e accesso in scrittura a <code>/opt/scarlet</code>; per Podman rootless <code>loginctl enable-linger</code></li></ul></td>
+        <td>Nessun agente, nessun Python, nessun sudo. Le immagini arrivano dal registry aziendale raggiungibile dall'host oppure dentro il pacchetto (<code>image.archive</code>) per host isolati. Aprire sul firewall la porta SSH verso il server SCARLET e le porte delle applicazioni.</td>
+      </tr>
+      <tr>
+        <td><b>PC degli operatori</b></td>
+        <td>Solo un browser moderno (Chrome, Edge, Firefox).</td>
+        <td>Nessuna installazione: tutto avviene dalla console web. Chi usa l'API da script ha bisogno soltanto di <code>curl</code> o di qualsiasi client HTTP e di un token personale.</td>
+      </tr>
+      <tr>
+        <td><b>PC / pipeline del team applicativo</b><br><span class="text-muted small">chi produce i pacchetti</span></td>
+        <td><ul class="mb-0"><li>il proprio strumento di build dell'immagine (Docker/Podman) e <code>docker save</code> se l'immagine viaggia nel pacchetto</li><li>Python 3.12+ con il repository SCARLET per <code>scripts/build-scarlet-package.py</code> (<code>pip install -r requirements/base.txt</code>), oppure qualunque tool che produca un <code>tar.gz</code> conforme al contratto</li></ul></td>
+        <td>Il builder valida il pacchetto con le stesse regole dell'upload, così gli errori emergono prima di consegnarlo alle operations. Il caricamento può essere automatizzato via API con un token.</td>
+      </tr>
+      <tr>
+        <td><b>PC di sviluppo di SCARLET</b><br><span class="text-muted small">solo per chi modifica SCARLET stesso</span></td>
+        <td>Docker Desktop o Podman Desktop (con compose), Python 3.12+, git.</td>
+        <td><code>docker compose --profile dev up -d --build</code> avvia tutto, compresi i due server simulati <code>mockhost</code> (DEV) e <code>mockhost-prod</code> (PROD). Vedi <code>docs/development.md</code>.</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="callout callout-info"><i class="fa-solid fa-circle-info me-2"></i>Versioni minime: Podman 4.x (5.x consigliato), Docker Engine 24+, Kubernetes 1.27+, PostgreSQL 13+ (16 nel compose), Redis 6+ (7 nel compose). SELinux può e deve restare in modalità <i>enforcing</i>: i volumi sono etichettati automaticamente (<code>:Z</code>).</div>
+
+  <h2>Porte da aprire sui firewall</h2>
+  <table class="table table-sm table-bordered">
+    <thead><tr><th>Da</th><th>Verso</th><th>Porta</th><th>Scopo</th><th>Obbligatoria</th></tr></thead>
+    <tbody>
+      <tr><td>Browser degli operatori</td><td>Server SCARLET</td><td>443/tcp (80/tcp solo per il redirect)</td><td>console web e API</td><td>sì</td></tr>
+      <tr><td>Server SCARLET</td><td>ogni server di destinazione</td><td>22/tcp (o la porta SSH configurata)</td><td>SSH/SFTP: deploy, operazioni, discover, riconciliazione, log</td><td>sì</td></tr>
+      <tr><td>Server SCARLET</td><td>API server Kubernetes</td><td>6443/tcp</td><td>solo host Kubernetes in modalità API (kubeconfig); con kubectl via SSH basta la 22</td><td>opzionale</td></tr>
+      <tr><td>Server di destinazione</td><td>registry immagini</td><td>443/tcp</td><td><code>podman pull</code> se l'immagine non è dentro il pacchetto (<code>image.archive</code>)</td><td>opzionale</td></tr>
+      <tr><td>Server di destinazione</td><td>dipendenze applicative (DB, code, API esterne)</td><td>specifiche</td><td>le applicazioni distribuite</td><td>dipende dall'app</td></tr>
+      <tr><td>Utenti / sistemi client</td><td>server di destinazione</td><td>porte delle applicazioni (es. 8080, 5100)</td><td>uso delle applicazioni</td><td>sì</td></tr>
+      <tr><td>Server SCARLET</td><td>relay SMTP</td><td>587/tcp</td><td>notifiche e-mail, solo se abilitate</td><td>opzionale</td></tr>
+      <tr><td>Sistema di monitoraggio</td><td>Server SCARLET</td><td>443/tcp (<code>/api/metrics</code>, <code>/api/health</code>)</td><td>Prometheus / probe</td><td>opzionale</td></tr>
+      <tr><td>Server SCARLET</td><td>cdn.jsdelivr.net</td><td>443/tcp</td><td>asset grafici in modalità CDN; non serve con <code>SCARLET_ASSET_MODE=local</code></td><td>opzionale</td></tr>
+    </tbody>
+  </table>
+  <p class="small text-muted">Gli health check delle applicazioni vengono eseguiti dal server di destinazione stesso su <code>127.0.0.1</code>: non serve alcun flusso da SCARLET verso le porte applicative. I server di destinazione non devono mai raggiungere SCARLET (nessun agente, nessuna callback). PostgreSQL, Redis e gunicorn parlano solo nella rete interna dei container.</p>
+</section>
+
+<section id="esempio-zero">
+  <h1>4. Esempio completo 1 — Da zero a una macchina online</h1>
+  <p>Questo esempio parte da una installazione SCARLET vuota e arriva a un'applicazione in esecuzione su un server, seguendo esattamente l'ordine con cui lavorereste in produzione. Tempo stimato: 30–40 minuti. Ruolo necessario: <b>ADMIN</b> (per host, credenziali e fingerprint) e <b>OPERATOR</b> per il deployment. Dove non avete ancora un server reale, il passo 0 spiega come usare il server simulato incluso in SCARLET.</p>
+
+  <h2>Passo 0 — Cosa serve</h2>
+  <ul>
+    <li>SCARLET avviato (<code>docker compose --profile dev up -d --build</code>) e raggiungibile, es. <code>http://localhost:8090</code>; credenziali dell'utente <code>admin</code> (password iniziale da <code>SCARLET_INITIAL_ADMIN_PASSWORD</code>, cambiata al primo accesso).</li>
+    <li>Un server Oracle Linux 8/9 raggiungibile via SSH dal server SCARLET. <b>In alternativa</b> il profilo <code>dev</code> di Docker Compose avvia due server simulati: <code>mockhost</code> (da registrare come DEV) e <code>mockhost-prod</code> (da registrare come PROD), entrambi con utente <code>scarlet</code>, password <code>scarlet-dev</code>, Podman già installato, raggiungibili dai container SCARLET con quei nomi (dall'esterno sulle porte 2222 e 2223).</li>
+    <li>Il pacchetto di esempio <code>examples/podman-app</code> del repository (applicazione <code>customer-api</code>, immagine nginx).</li>
+  </ul>
+
+  <h2>Passo 1 — Preparare il server (una volta sola, come root sul server)</h2>
+<pre>sudo dnf install -y podman tar gzip nmap-ncat curl
+sudo useradd -m scarlet
+sudo mkdir -p /opt/scarlet &amp;&amp; sudo chown scarlet:scarlet /opt/scarlet
+sudo loginctl enable-linger scarlet
+sudo firewall-cmd --permanent --add-service=ssh &amp;&amp; sudo firewall-cmd --reload
+# porta dell'applicazione (nell'esempio 8080)
+sudo firewall-cmd --permanent --add-port=8080/tcp &amp;&amp; sudo firewall-cmd --reload</pre>
+  <p>Generare sul <b>server SCARLET</b> (o sul vostro PC) una coppia di chiavi dedicata e installare la chiave pubblica sul server di destinazione:</p>
+<pre>ssh-keygen -t ed25519 -N "" -f scarlet_ed25519 -C "scarlet@scarlet-server"
+ssh-copy-id -i scarlet_ed25519.pub scarlet@srv-app-01.azienda.it     # oppure copiare a mano in ~scarlet/.ssh/authorized_keys
+ssh -i scarlet_ed25519 scarlet@srv-app-01.azienda.it 'podman --version &amp;&amp; touch /opt/scarlet/.ok'   # verifica</pre>
+  <p>Leggere e annotare il fingerprint della chiave host del server (servirà al passo 4):</p>
+<pre>ssh scarlet@srv-app-01.azienda.it 'ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub'
+# 256 SHA256:Ab3dEf...   root@srv-app-01 (ED25519)</pre>
+  <div class="callout callout-info"><i class="fa-solid fa-circle-info me-2"></i>Con il server simulato questo passo è già fatto: utente, Podman e permessi sono predisposti dall'immagine <code>docker/mockhost</code>. Si usa l'autenticazione a password (<code>scarlet-dev</code>) solo perché è un ambiente di prova.</div>
+
+  <h2>Passo 2 — Registrare l'host in SCARLET</h2>
+  <ol>
+    <li>Login come <code>admin</code> → <b>Infrastructure → Hosts → New host</b>.</li>
+    <li>Compilare: Name <code>srv-app-01</code> (o <code>mockhost</code>), Hostname <code>srv-app-01.azienda.it</code> (o <code>mockhost</code>), SSH username <code>scarlet</code>, porta <code>22</code>, Environment <b>DEV</b>, Runtime <b>PODMAN</b>.</li>
+    <li><b>Create host</b>. Stato: UNKNOWN, chiave host: UNKNOWN.</li>
+  </ol>
+
+  <h2>Passo 3 — Inserire la credenziale</h2>
+  <ol>
+    <li><b>Security → Credentials</b> → riga dell'host → <b>Add / rotate</b>.</li>
+    <li>Tipo <b>SSH private key</b>, incollare il contenuto di <code>scarlet_ed25519</code> (per il server simulato: tipo <b>SSH password</b>, valore <code>scarlet-dev</code>).</li>
+    <li><b>Save credential</b>. La credenziale compare come ACTIVE con il fingerprint della chiave; il valore non sarà mai più visibile.</li>
+  </ol>
+
+  <h2>Passo 4 — Approvare il fingerprint del server</h2>
+  <ol>
+    <li>Pagina dell'host → <b>Scan host key</b>. Compare il riquadro giallo "SSH host key pending approval" con il fingerprint <code>SHA256:…</code>.</li>
+    <li>Confrontarlo con quello annotato al passo 1: deve coincidere carattere per carattere.</li>
+    <li><b>Approve fingerprint</b> → digitare il fingerprint → conferma. Stato chiave: <span class="badge text-bg-success">APPROVED</span>.</li>
+  </ol>
+  <p>Se SCARLET è in modalità <code>tofu</code> (solo sviluppo) il passo è automatico al primo Test connection.</p>
+
+  <h2>Passo 5 — Test connessione e Discover</h2>
+  <p><b>Test connection</b> → finestra con esito <span class="badge text-bg-success">SUCCESS</span> <code>ONLINE</code>, utente remoto <code>scarlet</code>, latenza in ms. Poi <b>Discover</b>: esempio di risultato reale sul server simulato:</p>
+<pre>OS            Oracle Linux Server 9.6
+Kernel / arch x86_64        CPU 8      Memory 7.4 GB   Disk 120 GB free su /
+SELinux       (assente nel simulatore; "Enforcing" su un server reale)
+Runtimes      PODMAN  ONLINE  5.8.2 rootful
+              DOCKER  OFFLINE docker not found in PATH
+              KUBERNETES OFFLINE kubectl not found</pre>
+  <p>La pagina dell'host mostra ora sistema operativo, risorse e capacità rilevate. Se il runtime era NONE, premere <b>Edit</b> e impostarlo a PODMAN.</p>
+
+  <h2>Passo 6 — Registrare l'applicazione</h2>
+  <p><b>Applications → New application</b>: Name <code>Customer API</code>, Code <code>customer-api</code>, Runtime <b>PODMAN</b>, Default port <code>8080</code>, Health check <b>HTTP</b> path <code>/</code> porta <code>8080</code>, Allowed environments DEV e PROD, <b>Allow deployment hooks</b> attivo (il pacchetto di esempio contiene script di hook). <b>Create application</b>.</p>
+
+  <h2>Passo 7 — Costruire e caricare il pacchetto</h2>
+  <p>Dal repository SCARLET, sul PC dell'operatore o del team applicativo:</p>
+<pre>python scripts/build-scarlet-package.py --source examples/podman-app --version 1.0.0 --output dist/
+package : dist/customer-api-1.0.0.scarlet.tar.gz
+app     : customer-api 1.0.0 (podman)
+sha256  : 57c6a9d0…</pre>
+  <p><b>Applications → Packages → Upload</b>: trascinare il file, <b>Upload &amp; validate</b> → <span class="badge text-bg-success">VALID</span>, "Release created". Il manifest dichiara il segreto <code>DB_PASSWORD</code>: senza configurarlo il pre-flight fallirà (voluto).</p>
+
+  <h2>Passo 8 — Configurare il segreto richiesto</h2>
+  <p><b>Applications → Customer API → Configuration → scheda DEV → Add entry</b>: Key <code>DB_PASSWORD</code>, tipo <b>SECRET</b>, valore a scelta, Save. La voce appare mascherata (••••••••); nasce la versione di configurazione v1.</p>
+
+  <h2>Passo 9 — Deployment con il wizard</h2>
+  <ol>
+    <li><b>Operations → Deployments → New deployment</b> → Application <code>customer-api</code> → Version <code>1.0.0</code> → Target <code>srv-app-01</code> → Environment (DEV, strategia SEQUENTIAL) → <b>Next</b>.</li>
+    <li>Pre-flight: tutte le voci PASS (SSH, chiave, credenziale, runtime PODMAN 5.8.2, disco, memoria, porte 8080 libera, pacchetto verificato, segreti configurati, nessun conflitto).</li>
+    <li>Confirmation: Reason <code>prima installazione</code> → <b>Deploy</b>.</li>
+    <li>Execution: i passi si completano in sequenza; esito reale registrato sul server simulato:</li>
+  </ol>
+<pre>[SUCCESS] Validate package            [SUCCESS] Check target             [SUCCESS] Prepare remote layout
+[SUCCESS] Transfer package            [SUCCESS] Verify checksum          [SUCCESS] Extract release
+[SUCCESS] Render configuration        [SUCCESS] Run pre-deploy hooks     [SUCCESS] Run migration hooks
+[SUCCESS] Install release (podman pull docker.io/library/nginx:1.27-alpine)
+[SUCCESS] Activate release (current -> releases/1.0.0)
+[SUCCESS] Start application (podman run -d --name customer-api …)
+[SUCCESS] Health check (HTTP 200 su http://127.0.0.1:8080/)
+[SUCCESS] Run post-deploy hooks       [SUCCESS] Finalize                 [SUCCESS] Clean staging
+SUCCESS — Version 1.0.0 deployed successfully.</pre>
+  <p>La macchina è <b>online</b>: <b>Applications → Customer API</b> mostra l'istanza su <code>srv-app-01</code> con desiderato 1.0.0/RUNNING, reale 1.0.0/RUNNING, health HEALTHY, "in sync". Dal server: <code>curl http://srv-app-01.azienda.it:8080/</code> risponde con la pagina nginx.</p>
+
+  <h2>Passo 10 — Esercizio quotidiano</h2>
+  <ul>
+    <li><b>Status</b> → <code>RUNNING</code>, version <code>1.0.0</code>, Drift: none.</li>
+    <li><b>Logs</b> → ultime righe di <code>podman logs customer-api</code>, es. <code>"GET / HTTP/1.1" 200 615 "-" "curl/7.76.1"</code> generata dall'health check.</li>
+    <li><b>Stop</b> → <code>STOPPED</code>; <b>Start</b> → <code>STARTED</code>; <b>Restart</b> → <code>RESTARTED</code>.</li>
+    <li>Seconda versione: <code>build-scarlet-package.py --version 1.1.0</code>, upload, deploy → l'istanza mostra current 1.1.0 e previous 1.0.0. <b>Rollback</b> → deployment <code>RBK-…</code> SUCCESS, current torna 1.0.0. Tutto è consultabile in <b>Audit → Audit Log</b>.</li>
+  </ul>
+</section>
+
+<section id="esempio-texa">
+  <h1>5. Esempio completo 2 — TEXA ARES 118 in DEV e in PROD</h1>
+  <p>TEXA ARES 118 è una webapp Flask reale dell'azienda (telematica di flotta) oggi distribuita con uno script PowerShell (<code>build_and_deploy.ps1</code>) che costruisce l'immagine Docker, la esporta in <code>texa_ares_webapp-X.Y.Z.tar.gz</code>, la copia via SSH sull'host e riavvia il container <code>texa_ares_webapp</code> sulla porta 5100 con <code>sudo docker</code>, leggendo la configurazione da <code>~/texa_deploy/texa.dev.env</code> o <code>texa.prod.env</code>. Questo esempio mostra come lo stesso rilascio viene gestito da SCARLET, con un ambiente DEV e uno PROD. Il progetto originale <b>non è stato modificato</b>: tutto il materiale SCARLET vive nella copia di lavoro <code>scarlet/work/texa-ares</code>.</p>
+
+  <h2>1. Il pacchetto SCARLET di TEXA</h2>
+  <p>Il team applicativo continua a produrre l'immagine come oggi; cambia solo il confezionamento finale. La copia di lavoro contiene:</p>
+<pre>work/texa-ares/
+├── manifest.yaml                 contratto SCARLET (sotto)
+├── application/image.tar.gz      copia di texa/deploy_package/texa_ares_webapp-1.0.1.tar.gz (docker save)
+├── config/texa.env               chiavi NON segrete (TEXA_ENV, TEXA_CLIENT_ID, EVENTHUB_CONSUMER_GROUP, …)
+└── README.md                     come rigenerare il pacchetto a ogni release</pre>
+  <p>Il manifest traduce <code>deploy.sh</code> e <code>docker-compose.yml</code> nel contratto SCARLET:</p>
+<pre>manifest_version: 1
+application: texa-ares
+version: 1.0.1
+runtime: podman                          # sugli host con Docker l'applicazione consente anche DOCKER
+image:
+  name: webapp-webapp                    # tag prodotto da build_and_deploy.ps1
+  tag: 1.0.1
+  archive: application/image.tar.gz      # immagine dentro il pacchetto: nessun registry sull'host
+  pull_policy: never
+ports: [{ container: 5100, host: 5100 }]
+environment: { FLASK_ENV: production, PYTHONUNBUFFERED: "1" }
+environment_files: [config/texa.env]
+secrets: [SECRET_KEY, TEXA_CLIENT_SECRET, EVENTHUB_CONNECTION_STRING, DATABASE_URL]
+volumes: [{ name: status, mount: /app/status, shared: data }]
+healthcheck: { type: tcp, port: 5100, retries: 10, interval: 6 }
+deployment: { strategy: recreate, restart_policy: always, stop_grace_period: 15 }
+resources: { cpu: "1", memory: 1Gi }</pre>
+  <p>Punti chiave: <b>nessun segreto nel pacchetto</b> (i quattro valori sensibili di <code>texa.*.env</code> diventano voci SECRET in SCARLET, distinte per ambiente); l'immagine viaggia dentro il pacchetto (200 MB) perché gli host non hanno accesso a un registry; l'health check è TCP perché la home page richiede Oracle.</p>
+<pre>python scripts/build-scarlet-package.py --source work/texa-ares --version 1.0.1 --output dist/
+package : dist/texa-ares-1.0.1.scarlet.tar.gz   (199,8 MB, 5 membri)
+app     : texa-ares 1.0.1 (podman)
+sha256  : 2390fb4c…</pre>
+
+  <h2>2. Registrazione in SCARLET</h2>
+  <ol>
+    <li><b>Hosts</b>: l'host DEV (nell'esempio il simulato <code>mockhost</code>; in azienda <code>bc-test-ws-dkr50</code>) come <b>DEV</b>, e l'host PROD (<code>mockhost-prod</code>; in azienda il server di produzione) come <b>PROD</b>, entrambi runtime PODMAN o DOCKER a seconda dell'host, con credenziale e fingerprint approvato (Esempio completo 1, passi 2–5). Nota: SCARLET non usa <code>sudo</code>; l'utente SSH deve poter eseguire <code>podman</code>/<code>docker</code> direttamente (gruppo <code>docker</code> o Podman rootless).</li>
+    <li><b>Applications → New application</b>: Name <code>TEXA ARES 118</code>, Code <code>texa-ares</code>, Runtime PODMAN, Allowed runtimes PODMAN + DOCKER, Allowed environments DEV + PROD, porta 5100, health check TCP 5100.</li>
+    <li><b>Configuration → DEV</b>: SECRET <code>SECRET_KEY</code>, <code>TEXA_CLIENT_SECRET</code>, <code>EVENTHUB_CONNECTION_STRING</code>, <code>DATABASE_URL</code> con i valori di <code>texa.dev.env</code>; CONFIG <code>TEXA_ENV=test</code>, <code>EVENTHUB_CONSUMER_GROUP=&lt;gruppo dev&gt;</code>. <b>Configuration → PROD</b>: gli stessi nomi con i valori di <code>texa.prod.env</code> (consumer group <b>diverso</b>, come richiede TEXA). In questo esempio sono stati usati valori fittizi: la webapp parte ma non raggiunge Oracle/TEXA.</li>
+    <li><b>Packages → Upload</b> di <code>texa-ares-1.0.1.scarlet.tar.gz</code> → VALID → release 1.0.1.</li>
+  </ol>
+
+  <h2>3. Deployment in DEV</h2>
+  <p>Wizard: <code>texa-ares</code> → <code>1.0.1</code> → <code>mockhost</code> → pre-flight (segreti configurati, porta 5100 libera, spazio disco sufficiente per i 200 MB) → Reason <code>prima installazione TEXA in DEV via SCARLET</code> → <b>Deploy</b>. Esito reale:</p>
+<pre>[SUCCESS] Validate package            0.1 s     [SUCCESS] Check target              0.4 s
+[SUCCESS] Prepare remote layout      0.4 s     [SUCCESS] Transfer package          1.4 s  (199,8 MB, rete interna)
+[SUCCESS] Verify checksum            0.1 s     [SUCCESS] Extract release           1.5 s
+[SUCCESS] Render configuration       0.0 s     [SUCCESS] Install release          10.4 s  (podman load dell'immagine)
+[SUCCESS] Activate release           0.1 s     [SUCCESS] Start application         0.5 s
+[SUCCESS] Health check              12.1 s     (TCP 5100 aperto al 3° tentativo)
+[SUCCESS] Finalize                   0.1 s     [SUCCESS] Clean staging             0.0 s
+DEP-20260913-000002 SUCCESS</pre>
+  <p>L'immagine è stata caricata sull'host con <code>podman load -i …/releases/1.0.1/application/image.tar.gz</code>, il container <code>texa-ares</code> è partito con <code>--env-file shared/config/scarlet.env</code> (che riunisce manifest, <code>config/texa.env</code> e i SECRET di DEV) e il probe TCP sulla 5100 ha confermato che gunicorn ascolta. <b>Status</b>: <code>RUNNING, version 1.0.1, Drift: none</code>. <b>Logs</b>: le righe di gunicorn; con i segreti fittizi usati in questo esempio compare anche l'errore Oracle <code>Name or service not known</code> e il worker si riavvia: con i valori reali di <code>texa.dev.env</code> l'applicazione è pienamente operativa. Il probe TCP verifica soltanto che il servizio ascolti; per un controllo funzionale completo si può aggiungere alla webapp un endpoint <code>/health</code> senza dipendenze e passare al probe HTTP.</p>
+
+  <h2>4. Promozione in PROD</h2>
+  <p>Stessa release, host PROD. Le differenze rispetto a DEV sono tutte controlli di sicurezza:</p>
+  <ul>
+    <li>servono i permessi <code>prod.deployment.execute</code> (ruolo PROD_OPERATOR o ADMIN);</li>
+    <li>il campo <b>Reason</b> è obbligatorio (es. <code>CHG-0001 go-live TEXA</code>);</li>
+    <li>va digitata la frase <code>{{ prod_phrase }}</code>; senza, la richiesta è rifiutata con <code>PRODUCTION_SAFETY</code> (verificato: <code>403 PRODUCTION_SAFETY — "Production confirmation failed. Type exactly: DEPLOY TO PROD"</code>);</li>
+    <li>se l'ambiente PROD richiede approvazione, il deployment resta PENDING APPROVAL finché un secondo utente non approva (capitolo Approvazione a due persone).</li>
+  </ul>
+  <p>Esito reale del deployment PROD:</p>
+<pre>DEP-20260913-000003 SUCCESS — 13 passi, 22 secondi complessivi
+Install release 11.5 s (podman load) · Start application 0.6 s · Health check 6.1 s (TCP 5100)</pre>
+  <p>Al termine <b>Applications → TEXA ARES 118</b> mostra due istanze: <code>mockhost (DEV) RUNNING 1.0.1 HEALTHY · mockhost-prod (PROD) RUNNING 1.0.1 HEALTHY</code>. Il pannello Health le tiene sotto controllo ogni 10 minuti; il reconciler segnala DRIFT se qualcuno fermasse o sostituisse il container a mano sull'host.</p>
+
+  <h2>5. Ciclo di vita successivo</h2>
+  <ul>
+    <li><b>Nuova release</b> (es. 1.0.2): il team aggiorna <code>APP_VERSION</code>, costruisce l'immagine come oggi, copia il nuovo tar.gz in <code>work/texa-ares/application/image.tar.gz</code>, esegue il builder con <code>--version 1.0.2</code>, carica il pacchetto. Deploy prima in DEV, poi in PROD con conferma.</li>
+    <li><b>Rollback</b> in PROD: istanza → Rollback → motivo → <code>ROLLBACK PROD</code> → SCARLET riattiva <code>releases/1.0.1</code> (già sull'host, nessun trasferimento) e riavvia; equivale all'attuale <code>./deploy.sh prod 1.0.1</code> ma tracciato e senza SSH manuale.</li>
+    <li><b>Cambio di un segreto</b> (es. rotazione <code>TEXA_CLIENT_SECRET</code>): Configuration → PROD → modifica della voce SECRET → Restart dell'istanza (rigenera <code>scarlet.env</code> al prossimo deploy; per applicarlo subito eseguire un nuovo deployment della stessa versione).</li>
+    <li><b>Log e stato</b>: Monitoring → Logs con l'istanza <code>texa-ares @ mockhost-prod</code>; Status mostra versione e drift.</li>
+  </ul>
+
+  <h2>6. Differenze da tenere presenti</h2>
+  <table class="table table-sm table-bordered">
+    <thead><tr><th>Oggi (script PowerShell)</th><th>Con SCARLET</th></tr></thead>
+    <tbody>
+      <tr><td>container <code>texa_ares_webapp</code></td><td>container <code>texa-ares</code> (codice applicazione), etichettato <code>scarlet.version=1.0.1</code></td></tr>
+      <tr><td><code>sudo docker …</code> con password SSH dell'utente</td><td>nessun sudo: utente dedicato con accesso diretto al runtime, chiave SSH cifrata in SCARLET</td></tr>
+      <tr><td>configurazione in <code>~/texa_deploy/texa.*.env</code></td><td>configurazione versionata in SCARLET, segreti cifrati, resa in <code>shared/config/scarlet.env</code></td></tr>
+      <tr><td>bind mount di <code>~/docker_status.json</code> (pannello Info sistema)</td><td>directory <code>shared/data/status</code> montata su <code>/app/status</code>: il pannello resta vuoto finché la webapp non legge da lì</td></tr>
+      <tr><td>conferma interattiva "prod" nello script</td><td>permessi <code>prod.*</code>, motivo, frase <code>{{ prod_phrase }}</code>, approvazione opzionale, audit</td></tr>
+      <tr><td>rollback con <code>./deploy.sh prod &lt;versione&gt;</code> sull'host</td><td>pulsante Rollback, storico release e versione precedente gestiti da SCARLET</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="accesso">
+  <h1>6. Accesso, ruoli e permessi</h1>
+  <p>Si accede dalla pagina di login con nome utente e password. Al primo accesso (o dopo un reset da parte di un amministratore) viene richiesto di cambiare la password: minimo 12 caratteri con almeno tre tipi tra minuscole, maiuscole, cifre e simboli. Dopo 10 tentativi errati l'account viene bloccato per 15 minuti.</p>
+  <table class="table table-sm table-bordered">
+    <thead><tr><th>Ruolo</th><th>Cosa può fare</th></tr></thead>
+    <tbody>
+      <tr><td><b>VIEWER</b></td><td>Sola lettura: dashboard, host, applicazioni, deployment, log, health.</td></tr>
+      <tr><td><b>AUDITOR</b></td><td>Come VIEWER più consultazione ed esportazione del registro di audit.</td></tr>
+      <tr><td><b>OPERATOR</b></td><td>Opera sugli host <b>DEV</b>: caricamento pacchetti, deployment, start/stop/restart, rollback, configurazione. Sugli host PROD è in sola lettura.</td></tr>
+      <tr><td><b>PROD_OPERATOR</b></td><td>Come OPERATOR ma anche su <b>PROD</b>; può approvare deployment di produzione richiesti da altri.</td></tr>
+      <tr><td><b>ADMIN</b></td><td>Tutto, inclusi utenti, ruoli, credenziali, approvazione fingerprint, impostazioni di sistema.</td></tr>
+    </tbody>
+  </table>
+  <p>I pulsanti non disponibili per il proprio ruolo appaiono disabilitati con il permesso mancante nel suggerimento; in ogni caso il controllo è applicato dal server, non solo dall'interfaccia.</p>
+  <p>Dal menu utente (in alto a destra) si cambia la password, si gestiscono i <a href="#api">token API</a> personali e si esce dalla sessione. La sessione dura 8 ore.</p>
+</section>
+
+<section id="dashboard">
+  <h1>7. Dashboard</h1>
+  <p>La pagina iniziale riassume lo stato della piattaforma:</p>
+  <ul>
+    <li><b>Riquadri</b>: numero di host (DEV/PROD), applicazioni, deployment di oggi e riusciti, guasti (deployment falliti, applicazioni in errore, health check non superati).</li>
+    <li><b>Grafico</b> dei deployment degli ultimi 14 giorni (riusciti/falliti).</li>
+    <li><b>Deployment e operazioni recenti</b> con collegamento al dettaglio.</li>
+    <li><b>Istanze</b>: quante applicazioni sono in esecuzione, ferme, in errore.</li>
+    <li><b>Host con problemi</b>: host non raggiungibili o con fingerprint SSH da approvare.</li>
+    <li><b>Unhealthy / drift</b>: istanze con health check fallito o con differenze tra stato desiderato e reale.</li>
+    <li><b>Eventi di sicurezza</b> non ancora presi in carico e ultimi eventi di audit.</li>
+  </ul>
+  <p>L'icona a campanella mostra le notifiche non lette; il contatore <i class="fa-solid fa-gears"></i> indica le operazioni in corso in questo momento.</p>
+</section>
+
+<section id="host">
+  <h1>8. Host (server di destinazione)</h1>
+  <h2>5.1 Aggiungere un host</h2>
+  <ol>
+    <li><b>Infrastructure → Hosts → New host</b>.</li>
+    <li>Compilare: <b>Name</b> (identificativo breve, es. <code>prod-app-01</code>), <b>Hostname</b> (FQDN), eventuale <b>IP</b> (se indicato, SSH si collega all'IP), <b>SSH username</b> (utente dedicato, es. <code>scarlet</code>), <b>porta</b>, <b>Environment</b>, <b>Runtime</b> (PODMAN consigliato; NONE se non si sa ancora: si scoprirà con Discover).</li>
+    <li>Facoltativo: gruppi di host, percorso base remoto (default <code>/opt/scarlet</code>), descrizione.</li>
+    <li>Salvare. L'host compare con stato <span class="badge text-bg-secondary">UNKNOWN</span>.</li>
+  </ol>
+  <p>La pagina del nuovo host elenca i passi successivi: aggiungere la credenziale, approvare il fingerprint, testare la connessione, eseguire Discover.</p>
+  <h2>5.2 Preparare il server</h2>
+  <p>Sul server di destinazione deve esistere un utente Linux dedicato (senza privilegi speciali) con accesso in scrittura al percorso base e con installati il runtime (<code>podman</code>/<code>docker</code>/<code>kubectl</code>) e gli strumenti <code>tar</code>, <code>gzip</code>, <code>curl</code>, <code>nc</code>. I comandi esatti sono mostrati nella pagina <b>Security → Credentials</b> e in <code>docs/ssh.md</code>. Per Podman rootless abilitare il "linger" dell'utente (<code>loginctl enable-linger scarlet</code>) così i container restano attivi dopo la disconnessione.</p>
+  <h2>5.3 Modificare, disabilitare, eliminare</h2>
+  <p>Dalla pagina dell'host: <b>Edit</b> (matita), <b>Disable</b> (l'host viene escluso da deployment, operazioni e riconciliazione senza toccare le applicazioni in esecuzione), <b>Delete</b> (solo se non ha storico di deployment; altrimenti va disabilitato per conservare la tracciabilità). Su PROD le azioni distruttive richiedono motivo e conferma digitata.</p>
+</section>
+
+<section id="credenziali">
+  <h1>9. Credenziali SSH</h1>
+  <p><b>Security → Credentials</b> elenca per ogni host le credenziali attive e storiche. Con <b>Add / rotate</b> si inserisce:</p>
+  <ul>
+    <li><b>Chiave privata SSH</b> (consigliata, formato OpenSSH o PEM, preferibilmente ed25519) ed eventuale passphrase;</li>
+    <li><b>Password SSH</b> (sconsigliata, utile solo per il primo accesso);</li>
+    <li><b>kubeconfig</b> (solo per host Kubernetes in modalità API).</li>
+  </ul>
+  <p>Il segreto è cifrato immediatamente con la chiave di cifratura dell'applicazione e <b>non viene mai più mostrato</b>, né nelle pagine, né nell'API, né nei log o nell'audit. Aggiungere una nuova credenziale disattiva la precedente (rotazione), che resta in elenco come INACTIVE. <b>Revoke</b> disattiva la credenziale corrente: l'host non sarà raggiungibile finché non se ne aggiunge una nuova.</p>
+  <div class="callout callout-warning"><i class="fa-solid fa-triangle-exclamation me-2"></i>Non riutilizzare per SCARLET chiavi usate da persone. Se una credenziale è compromessa: revocarla, rimuovere la chiave pubblica dai server, generarne una nuova e controllare l'audit (RUNBOOK §30).</div>
+</section>
+
+<section id="fingerprint">
+  <h1>10. Approvazione del fingerprint SSH</h1>
+  <p>Per evitare attacchi "man-in-the-middle", SCARLET non si fida automaticamente della chiave pubblica del server. La prima volta (o quando la chiave cambia) la connessione viene bloccata e il fingerprint viene registrato come <span class="badge text-bg-warning text-dark">PENDING APPROVAL</span>.</p>
+  <ol>
+    <li>Nella pagina dell'host premere <b>Scan host key</b> (o <b>Test connection</b>).</li>
+    <li>Leggere il <b>fingerprint reale</b> sul server tramite un canale indipendente (console: <code>ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub</code>) e confrontarlo carattere per carattere con quello mostrato.</li>
+    <li>Premere <b>Approve fingerprint</b> e digitare il fingerprint nella finestra di conferma.</li>
+  </ol>
+  <p>Se lo stato è <span class="badge text-bg-danger">MISMATCH</span> significa che il server presenta una chiave diversa da quella approvata: potrebbe essere stato reinstallato oppure qualcuno sta intercettando la connessione. <b>Non approvare</b> finché non si è verificato con il responsabile del server; l'evento è registrato in Audit → Security Events con gravità CRITICAL.</p>
+</section>
+
+<section id="discover">
+  <h1>11. Test connessione e Discover</h1>
+  <p><b>Test connection</b> verifica che SCARLET riesca a collegarsi con la credenziale e la chiave approvata: mostra l'utente remoto e il tempo di risposta e imposta lo stato dell'host a <span class="badge text-bg-success">ONLINE</span> o <span class="badge text-bg-danger">OFFLINE</span>.</p>
+  <p><b>Discover</b> legge, <b>senza modificare nulla</b>, sistema operativo, kernel, CPU, memoria, disco, modalità SELinux e i runtime installati (Podman/Docker/Kubernetes con versione e modalità rootless). Se il runtime dell'host era NONE, il risultato suggerisce quello rilevato: modificare l'host per impostarlo. <b>Refresh status</b> ripete il solo test di connessione.</p>
+  <p>Le operazioni sono eseguite in background: una finestra mostra l'avanzamento e il risultato; il dettaglio completo (comandi eseguiti, output) è in <b>Operations</b>.</p>
+</section>
+
+<section id="gruppi">
+  <h1>12. Gruppi di host e ambienti</h1>
+  <p><b>Host Groups</b> (es. <code>PROD-API</code>) raggruppano host dello stesso ambiente per selezionarli in blocco nel wizard di deployment e per limitare a quali gruppi un'applicazione può essere distribuita.</p>
+  <p><b>Environments</b> mostra DEV e PROD con le regole: richiesta di conferma digitata, approvazione a due persone, rollback consentito, numero massimo di deployment in parallelo. Per PROD vale sempre la regola più restrittiva tra quella dell'ambiente e le impostazioni globali.</p>
+</section>
+
+<section id="applicazioni">
+  <h1>13. Applicazioni</h1>
+  <p><b>Applications → New application</b>. Il <b>Code</b> (es. <code>customer-api</code>, minuscole e trattini) deve coincidere con il campo <code>application</code> del manifest dei pacchetti e non è modificabile una volta pubblicate delle versioni. Si impostano:</p>
+  <ul>
+    <li><b>Runtime</b> principale e runtime aggiuntivi consentiti (es. un pacchetto Podman eseguibile anche su host Docker);</li>
+    <li><b>Ambienti</b> e <b>gruppi di host</b> consentiti (vuoto = nessuna restrizione);</li>
+    <li><b>Health check</b> predefinito (tipo, percorso, porta, stato atteso, timeout, tentativi) usato quando il manifest non lo specifica;</li>
+    <li><b>Allow hooks</b>: consente ai pacchetti di eseguire script (<code>scripts/*.sh</code>) sul server prima/dopo il deployment. Da abilitare solo per pipeline di rilascio fidate.</li>
+  </ul>
+  <p>La pagina di dettaglio mostra le <b>versioni</b> (con manifest e verifica di integrità dell'artefatto), le <b>istanze</b> con stato desiderato/reale/health/drift e i pulsanti di azione, e lo <b>storico dei deployment</b>. Da qui si avvia il wizard di deployment con l'applicazione preselezionata.</p>
+</section>
+
+<section id="pacchetti">
+  <h1>14. Pacchetti di rilascio</h1>
+  <p>Un pacchetto è un archivio <code>nome-versione.scarlet.tar.gz</code> prodotto dal team di sviluppo, tipicamente con lo strumento <code>scripts/build-scarlet-package.py</code>. Contiene:</p>
+<pre>customer-api-2.5.0.scarlet.tar.gz
+├── manifest.yaml        obbligatorio: applicazione, versione, runtime, immagine, porte, health check…
+├── application/         file dell'applicazione o archivio immagine per host senza accesso al registry
+├── config/              file di variabili d'ambiente non segrete
+├── scripts/             script hook (pre-deploy, migrate, post-deploy)
+├── docker-compose.yml   opzionale (modalità compose)
+└── kubernetes/          manifest YAML per il runtime Kubernetes</pre>
+  <p>SCARLET verifica estensione, integrità dell'archivio, assenza di percorsi pericolosi (es. <code>../</code>), link e file speciali, dimensione, schema del manifest, esistenza dell'applicazione, compatibilità del runtime, univocità della versione e file richiesti. Il contenuto <b>non viene mai eseguito</b> sul server SCARLET.</p>
+  <p>Le <b>Releases</b> elencano tutte le versioni pubblicate con checksum SHA-256; una versione può essere <b>disattivata</b> (non più distribuibile) ma non cancellata né modificata.</p>
+</section>
+
+<section id="upload">
+  <h1>15. Caricamento di un pacchetto</h1>
+  <ol>
+    <li><b>Applications → Packages → Upload</b>.</li>
+    <li>Trascinare il file nell'area tratteggiata o cliccare per sceglierlo. Viene mostrato il checksum calcolato localmente.</li>
+    <li>Facoltativo: selezionare l'applicazione per un controllo incrociato e inserire note di rilascio. Lasciare attivo "Create the release automatically".</li>
+    <li>Premere <b>Upload &amp; validate</b>. La barra mostra il trasferimento; al termine compare il risultato <span class="badge text-bg-success">VALID</span> o <span class="badge text-bg-danger">INVALID</span> con l'elenco completo degli errori e degli avvisi.</li>
+    <li>Se valido, la release è creata e il pulsante <b>Deploy this release</b> apre il wizard.</li>
+  </ol>
+  <p>Errori tipici: applicazione non registrata (crearla o correggere il manifest), versione già esistente con contenuto diverso (pubblicare una nuova versione), hook presenti ma non abilitati sull'applicazione, file troppo grande (limite in Impostazioni). I pacchetti INVALID possono essere rivalidati o eliminati.</p>
+</section>
+
+<section id="configurazione">
+  <h1>16. Configurazione e segreti</h1>
+  <p><b>Applications → applicazione → Configuration</b>, una scheda per ambiente (DEV, PROD). Ogni voce è una variabile d'ambiente consegnata all'applicazione al momento del deployment:</p>
+  <ul>
+    <li><b>CONFIG</b>: valore visibile (es. <code>LOG_LEVEL=info</code>);</li>
+    <li><b>SECRET</b>: valore cifrato, visibile solo al momento dell'inserimento, mai più mostrato (es. <code>DB_PASSWORD</code>). Per cambiarlo si inserisce un nuovo valore; lasciando vuoto il campo si mantiene quello esistente.</li>
+  </ul>
+  <p>Le voci qui definite prevalgono sui valori predefiniti del manifest. I segreti dichiarati dal pacchetto (<code>secrets:</code>) devono essere configurati <b>prima</b> del deployment, altrimenti il pre-flight fallisce. Ogni modifica crea una nuova versione della configurazione (elenco a destra) ed è registrata in audit senza i valori dei segreti. In PROD la modifica richiede permesso PROD e motivo.</p>
+</section>
+
+<section id="deploy">
+  <h1>17. Deployment guidato (wizard)</h1>
+  <p><b>Operations → Deployments → New deployment</b> (o <b>Deploy</b> dalla pagina dell'applicazione o dell'host). Il wizard ha nove passi:</p>
+  <ol>
+    <li><b>Application</b>: scegliere l'applicazione.</li>
+    <li><b>Version</b>: scegliere la release (solo versioni attive con pacchetto valido).</li>
+    <li><b>Targets</b>: uno o più host; quelli incompatibili sono in grigio con il motivo (ambiente non consentito, runtime diverso, host disabilitato…). Il menu "Quick select host group" seleziona un intero gruppo.</li>
+    <li><b>Environment</b>: riepilogo degli ambienti coinvolti; strategia <b>SEQUENTIAL</b> (un host per volta, si ferma al primo errore) o <b>PARALLEL</b> (fino al limite configurato); rollback automatico (sì/no/predefinito).</li>
+    <li><b>Pre-flight</b>: controlli automatici su ogni host — connettività SSH, chiave approvata, credenziale, runtime installato, spazio disco, memoria, porte libere, integrità del pacchetto, segreti configurati, assenza di operazioni in conflitto, limite di parallelismo. Con esiti FAIL non si può proseguire: correggere e premere "Re-run checks".</li>
+    <li><b>Confirmation</b>: riepilogo, campo <b>Reason</b> (obbligatorio in PROD, consigliato sempre: es. numero di change) e, per PROD, la frase da digitare (<code>{{ prod_phrase }}</code>).</li>
+    <li><b>Execution</b>: elenco dei passi aggiornato in tempo reale (validazione, trasferimento, verifica checksum, estrazione, configurazione, hook, installazione, attivazione, avvio).</li>
+    <li><b>Health check</b>: esito della verifica di salute con i tentativi effettuati.</li>
+    <li><b>Result</b>: <b>SUCCESS</b> con la versione distribuita, oppure gli errori per host con link al dettaglio.</li>
+  </ol>
+  <p>Il dettaglio del deployment (<b>Deployments → riferimento DEP-…</b>) mostra riepilogo, approvazioni, pre-flight, ogni passo con durata e output dei comandi remoti, timeline e piano. Il log completo si scarica con <b>Download log</b>. I deployment in coda o in attesa di approvazione si possono <b>annullare</b>.</p>
+  <h2>14.1 Cosa succede sul server</h2>
+  <p>SCARLET crea la struttura <code>/opt/scarlet/applications/&lt;app&gt;/</code> con <code>releases/&lt;versione&gt;</code> (release immutabili), <code>current</code> (link alla release attiva, cambiato in modo atomico), <code>shared/</code> (configurazione, dati e log persistenti tra le versioni), <code>staging/</code> e <code>backups/</code>. La release precedente non viene cancellata: è il candidato per il rollback.</p>
+</section>
+
+<section id="prod">
+  <h1>18. Operazioni in PRODUZIONE</h1>
+  <p>Gli host PROD sono contrassegnati dal badge rosso <span class="badge text-bg-danger">PROD</span> e da un banner nelle pagine di dettaglio. Per ogni operazione che modifica un sistema di produzione (deploy, stop, restart, rollback, cancellazione, modifica configurazione) servono:</p>
+  <ul>
+    <li>il permesso <code>prod.*</code> corrispondente (ruoli PROD_OPERATOR o ADMIN);</li>
+    <li>un <b>motivo</b> (registrato nell'audit);</li>
+    <li>la <b>frase di conferma</b> digitata esattamente: <code>{{ prod_phrase }}</code> per il deployment, <code>STOP PROD</code>, <code>RESTART PROD</code>, <code>ROLLBACK PROD</code>, <code>DELETE PROD</code> per le altre;</li>
+    <li>se abilitata, l'<a href="#approvazione">approvazione</a> di un secondo utente.</li>
+  </ul>
+  <p>In PROD il numero di deployment paralleli è limitato (predefinito 1). Le operazioni di sola lettura (status, health, log) non richiedono conferma.</p>
+</section>
+
+<section id="approvazione">
+  <h1>19. Approvazione a due persone</h1>
+  <p>Se l'ambiente o l'impostazione globale richiede l'approvazione, il deployment PROD resta in stato <span class="badge text-bg-warning text-dark">PENDING APPROVAL</span> e gli utenti con permesso di approvazione ricevono una notifica. Nel dettaglio del deployment un utente <b>diverso dal richiedente</b> preme <b>Approve</b> (digitando <code>APPROVE</code> e un commento) oppure <b>Reject</b>. All'approvazione l'esecuzione parte subito; richiedente, approvatore e commento restano nell'audit.</p>
+</section>
+
+<section id="lifecycle">
+  <h1>20. Start, Stop, Restart, Status</h1>
+  <p>Dalla riga dell'istanza (pagina applicazione, pagina host o Monitoring → Health):</p>
+  <table class="table table-sm table-bordered">
+    <tbody>
+      <tr><td><b>Status</b></td><td>Interroga il runtime: stato del container/deployment, versione in esecuzione, dettagli tecnici e verdetto di drift. Nessuna conferma.</td></tr>
+      <tr><td><b>Start</b></td><td>Avvia la versione desiderata. Se già in esecuzione restituisce <code>ALREADY_RUNNING</code>. Imposta lo stato desiderato a RUNNING.</td></tr>
+      <tr><td><b>Stop</b></td><td>Arresta l'applicazione (attesa graduale, poi terminazione forzata). Se già ferma: <code>ALREADY_STOPPED</code>. Imposta lo stato desiderato a STOPPED (nessun drift per un arresto voluto).</td></tr>
+      <tr><td><b>Restart</b></td><td>Riavvia sempre l'applicazione.</td></tr>
+      <tr><td><b>Health</b></td><td>Esegue il controllo di salute configurato e aggiorna lo stato.</td></tr>
+      <tr><td><b>Logs</b></td><td>Recupera le ultime righe di log dal runtime (vedi il capitolo Consultare i log).</td></tr>
+      <tr><td><b>Rollback</b></td><td>Torna alla release precedente (vedi il capitolo Rollback).</td></tr>
+    </tbody>
+  </table>
+  <p>Ogni operazione apre una finestra che segue l'esecuzione in tempo reale e mostra il risultato e i comandi eseguiti. Due operazioni sullo stesso host/applicazione non possono sovrapporsi: la seconda viene rifiutata con "Another operation is already running".</p>
+</section>
+
+<section id="log">
+  <h1>21. Consultare i log</h1>
+  <p><b>Monitoring → Logs</b>: scegliere l'istanza (applicazione @ host), il numero di righe (100–5000), l'intervallo (ultimi 10 minuti, 1 ora…), un testo da cercare, poi <b>Fetch</b>. Le righe con "error" sono evidenziate in rosso, i "warning" in giallo, il testo cercato è marcato. <b>Auto-refresh</b> aggiorna ogni 10 secondi; <b>Download</b> salva il risultato. I log provengono esclusivamente dal runtime (<code>podman logs</code>, <code>docker logs</code>, <code>kubectl logs</code>): non è possibile leggere file arbitrari del server.</p>
+</section>
+
+<section id="health">
+  <h1>22. Health check</h1>
+  <p>Il tipo di controllo è definito dal manifest del pacchetto (o dai valori predefiniti dell'applicazione): <b>HTTP/HTTPS</b> (richiesta a un percorso con stato atteso), <b>TCP</b> (porta aperta), <b>COMMAND</b> (comando dentro il container), <b>CONTAINER_STATUS</b> (container in esecuzione), <b>KUBERNETES_STATUS</b> (repliche pronte). Il controllo è eseguito <b>sul server di destinazione</b>, con tentativi e intervallo configurati. Viene eseguito alla fine di ogni deployment, su richiesta e automaticamente ogni 10 minuti per le istanze in esecuzione.</p>
+  <p><b>Monitoring → Health</b> mostra tutte le istanze con stato reale, salute, ultimo controllo, messaggio e drift; <b>Check all running</b> mette in coda un controllo per tutte. Il primo passaggio a UNHEALTHY genera una notifica e un evento di audit.</p>
+</section>
+
+<section id="rollback">
+  <h1>23. Rollback</h1>
+  <p>Dal pulsante <b>Rollback</b> dell'istanza (o dal dettaglio di un deployment fallito dopo l'attivazione). La finestra indica la versione corrente e quella di destinazione (la precedente riuscita). Serve un motivo e, in PROD, la frase <code>ROLLBACK PROD</code>. SCARLET riattiva la release precedente già presente sul server, riavvia l'applicazione, esegue gli hook di rollback e l'health check, e aggiorna la versione corrente. La release sostituita non viene cancellata e diventa a sua volta il nuovo candidato di rollback.</p>
+  <p>Se è attivo il <b>rollback automatico</b>, un deployment che fallisce dopo l'attivazione (avvio o health check) torna da solo alla versione precedente e termina con stato <span class="badge text-bg-warning text-dark">ROLLED BACK</span>; altrimenti termina con <span class="badge text-bg-warning text-dark">ROLLBACK REQUIRED</span> e mostra il pulsante di rollback manuale.</p>
+</section>
+
+<section id="drift">
+  <h1>24. Stato desiderato, stato reale e drift</h1>
+  <p>Per ogni istanza SCARLET conserva due informazioni: lo <b>stato desiderato</b> (versione e RUNNING/STOPPED richiesti dall'operatore tramite deployment e operazioni) e lo <b>stato reale</b> osservato sul server. Il processo di <b>riconciliazione</b> confronta periodicamente le due cose (ogni 5 minuti per impostazione predefinita, o su richiesta con <b>Reconcile</b> nella pagina host) e segnala il <b>drift</b>:</p>
+  <table class="table table-sm table-bordered">
+    <tbody>
+      <tr><td><b>VERSION</b></td><td>sul server gira una versione diversa da quella desiderata (es. qualcuno ha modificato il container a mano)</td></tr>
+      <tr><td><b>UNEXPECTED_STOP</b></td><td>l'applicazione dovrebbe essere in esecuzione ma è ferma o in errore</td></tr>
+      <tr><td><b>STATE</b></td><td>dovrebbe essere ferma ma è in esecuzione, oppure numero di repliche diverso</td></tr>
+      <tr><td><b>MISSING</b></td><td>nessun container e nessuna release installata</td></tr>
+      <tr><td><b>RUNTIME</b></td><td>il runtime dell'host è cambiato</td></tr>
+    </tbody>
+  </table>
+  <p>Il drift è evidenziato in dashboard, in Monitoring → Health e nella pagina dell'applicazione. Per risolverlo: rieseguire il deployment della versione corretta oppure usare Start/Stop. Solo in DEV, e solo se l'amministratore lo abilita, la riconciliazione può riallineare da sola lo stato (riavviando un container fermo).</p>
+</section>
+
+<section id="operazioni">
+  <h1>25. Operazioni e job</h1>
+  <p><b>Operations → Lifecycle Operations</b> elenca ogni operazione con tipo, applicazione, host, esito, richiedente, durata; il dettaglio mostra il risultato e il <b>registro dei comandi</b> eseguiti sul server (comando, codice di uscita, output). <b>Jobs</b> mostra ciò che è in corso adesso (operazioni e deployment) e permette di cercare un job per identificativo. Le operazioni in coda si possono annullare.</p>
+  <p>Ogni operazione ha un riferimento leggibile (<code>OP-20260911-000123</code>, <code>DEP-…</code>, <code>RBK-…</code>) e un <b>request id</b> (visibile nel piè di pagina e negli errori) che collega quanto vedete nel browser ai log del server: citatelo quando chiedete assistenza.</p>
+</section>
+
+<section id="audit">
+  <h1>26. Audit e eventi di sicurezza</h1>
+  <p><b>Audit → Audit Log</b>: registro <b>immutabile</b> di ogni azione (login, creazione/modifica host, cambio credenziali, approvazione fingerprint, caricamenti, deployment avviati/completati/falliti, start/stop/restart, rollback, health check falliti, modifiche di configurazione e impostazioni) con utente, IP, esito, entità coinvolte e dettagli (senza segreti). Filtri per utente, azione, entità, ambiente, esito e data; ricerca testuale; <b>esportazione CSV/JSON</b> per chi ha il permesso.</p>
+  <p><b>Audit → Security Events</b>: eventi rilevanti per la sicurezza (fingerprint SSH cambiato, account bloccato, checksum di un artefatto non corrispondente). Gli amministratori possono prenderli in carico (<b>acknowledge</b>).</p>
+</section>
+
+<section id="notifiche">
+  <h1>27. Notifiche</h1>
+  <p>La campanella in alto mostra le notifiche non lette: deployment riusciti o falliti, rollback, health check falliti, host non raggiungibile, drift rilevato, richieste di approvazione. La pagina <b>Notifications</b> (dal menu a tendina) le elenca tutte e permette di segnarle come lette. Se l'amministratore ha configurato il server di posta, gli eventi critici vengono inviati anche via e-mail.</p>
+</section>
+
+<section id="utenti">
+  <h1>28. Utenti, ruoli e token API</h1>
+  <p><b>Security → Users</b> (solo ADMIN): creazione utenti con password iniziale (da cambiare al primo accesso), assegnazione ruoli, attivazione/disattivazione, sblocco, reset password, eliminazione (non si può eliminare l'ultimo amministratore né sé stessi). <b>Security → Roles</b>: ruoli di sistema e ruoli personalizzati con permessi granulari; i permessi <code>prod.*</code> sono evidenziati in rosso.</p>
+  <p><b>Token API</b> (menu utente → API tokens): token personali per script e pipeline (es. caricamento automatico dei pacchetti). Il token viene mostrato una sola volta al momento della creazione; ha una scadenza e può essere revocato. Eredita i permessi dell'utente e le sue azioni finiscono nell'audit con il nome dell'utente.</p>
+</section>
+
+<section id="impostazioni">
+  <h1>29. Impostazioni di sistema</h1>
+  <p><b>System → Settings</b> (solo ADMIN) permette di modificare a caldo, senza riavvio: timeout SSH e di deployment, parametri predefiniti dell'health check, limite di caricamento, politiche di conservazione (release, log, health check), controlli di produzione (conferma, approvazione, rollback, motivo, frase), rollback automatico, parallelismo, riconciliazione. Ogni modifica è registrata in audit. Le impostazioni non contengono mai segreti.</p>
+</section>
+
+<section id="api">
+  <h1>30. Uso dell'API</h1>
+  <p>Tutto ciò che fa l'interfaccia è disponibile come API REST JSON documentata in <b>System → API Docs</b> (Swagger). Esempio di caricamento pacchetto da una pipeline con un token:</p>
+<pre>curl -H "Authorization: Bearer scl_…" \
+     -F file=@dist/customer-api-2.5.0.scarlet.tar.gz \
+     https://scarlet.example.internal/api/packages/upload</pre>
+  <p>Le operazioni asincrone rispondono <code>202 Accepted</code> con l'indirizzo da interrogare (<code>meta.poll</code>) per seguire l'avanzamento. Le operazioni in PROD richiedono nel corpo JSON i campi <code>reason</code> e <code>confirmation</code>.</p>
+</section>
+
+<section id="problemi">
+  <h1>31. Risoluzione dei problemi più comuni</h1>
+  <table class="table table-sm table-bordered">
+    <thead><tr><th style="width:38%">Sintomo</th><th>Cosa fare</th></tr></thead>
+    <tbody>
+      <tr><td>Host OFFLINE, <code>SSH_CONNECTION_ERROR</code></td><td>Verificare rete/firewall e porta SSH; il server è acceso? Test connection dopo la correzione.</td></tr>
+      <tr><td><code>SSH_AUTHENTICATION_ERROR</code></td><td>Credenziale errata o revocata; permessi di <code>authorized_keys</code> sul server; aggiungere una nuova credenziale.</td></tr>
+      <tr><td>"host key is not approved" / PENDING APPROVAL</td><td>Approvare il fingerprint dopo verifica (capitolo Approvazione del fingerprint SSH).</td></tr>
+      <tr><td>MISMATCH del fingerprint</td><td>Non approvare finché non si è chiarito con il responsabile del server (RUNBOOK §31).</td></tr>
+      <tr><td>Discover: runtime non disponibile</td><td>Installare Podman/Docker sul server o correggere il runtime dell'host.</td></tr>
+      <tr><td>Pacchetto INVALID</td><td>Leggere gli errori: correggere il manifest, registrare l'applicazione, incrementare la versione, abilitare gli hook.</td></tr>
+      <tr><td>Pre-flight: porte occupate</td><td>Un altro servizio usa la porta sul server; cambiare porta nel pacchetto o liberare la porta.</td></tr>
+      <tr><td>Pre-flight: segreti mancanti</td><td>Configurare i SECRET richiesti in Configuration per quell'ambiente.</td></tr>
+      <tr><td>Deployment fallito su "Install release"</td><td>Immagine non trovata o registry non raggiungibile dal server; verificare nome/tag e credenziali del registry sul server.</td></tr>
+      <tr><td>Deployment fallito su "Health check"</td><td>Guardare i log; l'applicazione potrebbe partire lentamente (aumentare tentativi/intervallo nel manifest) o non ascoltare sulla porta attesa.</td></tr>
+      <tr><td>"Another operation is already running"</td><td>Attendere la fine dell'operazione in corso (pagina Jobs).</td></tr>
+      <tr><td>"Production confirmation failed"</td><td>Digitare esattamente la frase indicata, rispettando maiuscole e spazi.</td></tr>
+      <tr><td>Drift rilevato</td><td>Qualcuno ha modificato il server a mano: rieseguire il deployment o Start/Stop per riallineare.</td></tr>
+    </tbody>
+  </table>
+  <p>Per ogni segnalazione al supporto indicare il <b>request id</b> mostrato nell'errore e il riferimento dell'operazione o del deployment.</p>
+</section>
+
+<section id="stati">
+  <h1>32. Glossario degli stati</h1>
+  <table class="table table-sm table-bordered">
+    <tbody>
+      <tr><td><b>Host</b></td><td>ONLINE raggiungibile · OFFLINE ultimo collegamento fallito · UNKNOWN mai testato · DISABLED escluso dalle operazioni</td></tr>
+      <tr><td><b>Applicazione</b></td><td>RUNNING · STOPPED · STARTING · STOPPING · FAILED · UNKNOWN · NOT_INSTALLED</td></tr>
+      <tr><td><b>Health</b></td><td>HEALTHY · UNHEALTHY · UNKNOWN</td></tr>
+      <tr><td><b>Deployment</b></td><td>QUEUED → VALIDATING → PREFLIGHT → TRANSFERRING → INSTALLING → STARTING → HEALTH_CHECKING → SUCCESS; errori: VALIDATION_FAILED, PREFLIGHT_FAILED, TRANSFER_FAILED, INSTALL_FAILED, START_FAILED, HEALTH_CHECK_FAILED, ROLLBACK_REQUIRED, ROLLED_BACK, FAILED; altri: PENDING_APPROVAL, CANCELLED, REJECTED</td></tr>
+      <tr><td><b>Operazione</b></td><td>QUEUED · RUNNING · SUCCESS · FAILED · TIMEOUT · CANCELLED</td></tr>
+      <tr><td><b>Pacchetto</b></td><td>UPLOADED · VALIDATING · VALID · INVALID · QUARANTINED</td></tr>
+      <tr><td><b>Chiave host SSH</b></td><td>UNKNOWN · PENDING_APPROVAL · APPROVED · MISMATCH · REVOKED</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="buone-pratiche">
+  <h1>33. Buone pratiche</h1>
+  <ul>
+    <li>Provare sempre una nuova versione in <b>DEV</b> prima di portarla in PROD.</li>
+    <li>Indicare sempre un <b>motivo</b> significativo (numero di change, ticket): finisce nell'audit e aiuta chi verrà dopo.</li>
+    <li>Non modificare mai a mano container o file gestiti da SCARLET sui server: si genera drift e si perde la tracciabilità.</li>
+    <li>Verificare i fingerprint SSH tramite un canale indipendente; non approvare mai "per far funzionare".</li>
+    <li>Usare chiavi SSH dedicate a SCARLET, ruotarle periodicamente e revocarle subito in caso di dubbio.</li>
+    <li>Configurare i segreti in SCARLET, mai dentro i pacchetti.</li>
+    <li>Tenere le release recenti sui server (retention) per poter fare rollback rapidi.</li>
+    <li>Controllare regolarmente Dashboard e Monitoring → Health: drift e health check falliti vanno gestiti, non ignorati.</li>
+  </ul>
+  <p class="text-muted small mt-4">Documentazione completa nel repository: <code>docs/RUNBOOK.md</code>, <code>docs/APPLICATION_RELEASE_CONTRACT.md</code>, <code>docs/operations.md</code>, <code>docs/troubleshooting.md</code>.</p>
+</section>
+
+</main>
+</div>
+<script src="{{ url_for('static', filename='js/pages/guida.js') }}"></script>
+</body>
+</html>

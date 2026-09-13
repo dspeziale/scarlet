@@ -2,30 +2,39 @@
   <div class="container-fluid">
     <ul class="navbar-nav">
       <li class="nav-item">
-        <a class="nav-link" data-lte-toggle="sidebar" href="#" role="button" aria-label="Toggle sidebar"><i class="bi bi-list"></i></a>
+        <a class="nav-link" data-lte-toggle="sidebar" href="#" role="button" aria-label="{{ _('Toggle sidebar') }}"><i class="bi bi-list"></i></a>
       </li>
       <li class="nav-item d-none d-md-block">
         <span class="nav-link text-muted small">
           <i class="fa-solid fa-server me-1"></i>SCARLET
-          {% if scarlet_env == 'production' %}<span class="badge text-bg-danger ms-1">PRODUCTION INSTANCE</span>{% else %}<span class="badge text-bg-secondary ms-1">{{ scarlet_env|upper }}</span>{% endif %}
+          {% if scarlet_env == 'production' %}<span class="badge text-bg-danger ms-1">{{ _('PRODUCTION INSTANCE') }}</span>{% else %}<span class="badge text-bg-secondary ms-1">{{ scarlet_env|upper }}</span>{% endif %}
         </span>
       </li>
     </ul>
     <ul class="navbar-nav ms-auto">
       <li class="nav-item d-none d-lg-block">
-        <span class="nav-link small text-muted" id="active-ops-indicator" data-endpoint="/api/operations/active" title="Active background operations"><i class="fa-solid fa-gears me-1"></i><span id="active-ops-count">0</span> active</span>
+        <span class="nav-link small text-muted" id="active-ops-indicator" data-endpoint="/api/operations/active" title="{{ _('Active background operations') }}"><i class="fa-solid fa-gears me-1"></i><span id="active-ops-count">0</span> {{ _('active') }}</span>
+      </li>
+      <li class="nav-item dropdown" title="{{ _('Language') }}">
+        <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" aria-label="{{ _('Language') }}"><i class="fa-solid fa-language me-1"></i><span class="small text-uppercase">{{ current_locale }}</span></a>
+        <ul class="dropdown-menu dropdown-menu-end">
+          {% for code, info in supported_locales.items() %}<li><a class="dropdown-item{% if code == current_locale %} active{% endif %}" href="{{ url_for('web.set_language', code=code, next=request.full_path) }}">{{ info.flag }} {{ info.name }}</a></li>{% endfor %}
+        </ul>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('web.guida') }}" target="_blank" rel="noopener" title="Guida utente (nuova finestra)"><i class="fa-solid fa-circle-question"></i></a>
       </li>
       <li class="nav-item dropdown">
-        <a class="nav-link" data-bs-toggle="dropdown" href="#" aria-label="Notifications">
+        <a class="nav-link" data-bs-toggle="dropdown" href="#" aria-label="{{ _('Notifications') }}">
           <i class="bi bi-bell-fill"></i>
           <span class="navbar-badge badge text-bg-warning" id="notif-count">{{ unread_notifications if unread_notifications else '' }}</span>
         </a>
         <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end" id="notif-dropdown">
-          <span class="dropdown-item dropdown-header">Notifications</span>
+          <span class="dropdown-item dropdown-header">{{ _('Notifications') }}</span>
           <div class="dropdown-divider"></div>
-          <div id="notif-items"><span class="dropdown-item text-muted small">Loading…</span></div>
+          <div id="notif-items"><span class="dropdown-item text-muted small">{{ _('Loading…') }}</span></div>
           <div class="dropdown-divider"></div>
-          <a href="{{ url_for('web.notifications') }}" class="dropdown-item dropdown-footer">See all notifications</a>
+          <a href="{{ url_for('web.notifications') }}" class="dropdown-item dropdown-footer">{{ _('See all notifications') }}</a>
         </div>
       </li>
       <li class="nav-item dropdown user-menu">
@@ -38,11 +47,11 @@
             <p>{{ current_user_obj.full_name or current_user_obj.username if current_user_obj else '' }}<small>{{ current_user_obj.role_names|join(', ') if current_user_obj else '' }}</small></p>
           </li>
           <li class="user-footer d-flex justify-content-between">
-            <a href="{{ url_for('web_auth.change_password') }}" class="btn btn-default btn-flat"><i class="fa-solid fa-key me-1"></i>Password</a>
-            <a href="{{ url_for('web.tokens') }}" class="btn btn-default btn-flat"><i class="fa-solid fa-ticket me-1"></i>API tokens</a>
+            <a href="{{ url_for('web_auth.change_password') }}" class="btn btn-default btn-flat"><i class="fa-solid fa-key me-1"></i>{{ _('Password') }}</a>
+            <a href="{{ url_for('web.tokens') }}" class="btn btn-default btn-flat"><i class="fa-solid fa-ticket me-1"></i>{{ _('API tokens') }}</a>
             <form method="post" action="{{ url_for('web_auth.logout') }}" class="d-inline">
               <input type="hidden" name="csrf_token" value="{{ csrf_token_value }}">
-              <button type="submit" class="btn btn-default btn-flat"><i class="fa-solid fa-right-from-bracket me-1"></i>Sign out</button>
+              <button type="submit" class="btn btn-default btn-flat"><i class="fa-solid fa-right-from-bracket me-1"></i>{{ _('Sign out') }}</button>
             </form>
           </li>
         </ul>

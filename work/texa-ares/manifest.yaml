@@ -1,0 +1,81 @@
+# Pacchetto SCARLET per TEXA ARES 118 (webapp Flask, immagine Docker esportata).
+# Copia di lavoro: il progetto originale in ../texa NON viene toccato.
+# Build:  python scripts/build-scarlet-package.py --source work/texa-ares --version 1.0.1 --output dist/
+manifest_version: 1
+application: texa-ares
+version: 1.0.1
+runtime: podman                    # sugli host reali con Docker l'app SCARLET consente anche DOCKER
+description: TEXA ARES 118 - webapp Flask per telematica di flotta (dashboard, mappa, missioni, allarmi)
+
+image:
+  name: webapp-webapp              # tag dell'immagine prodotta da build_and_deploy.ps1 (docker save)
+  tag: 1.0.1
+  archive: application/image.tar.gz   # immagine inclusa nel pacchetto: nessun registry richiesto sull'host
+  pull_policy: never
+
+ports:
+  - container: 5100
+    host: 5100
+    protocol: tcp
+
+# Valori NON segreti, uguali per tutti gli ambienti. Le credenziali (SECRET_KEY,
+# TEXA_CLIENT_SECRET, EVENTHUB_CONNECTION_STRING, DATABASE_URL) vanno inserite in
+# SCARLET -> Applications -> texa-ares -> Configuration, come voci SECRET, per DEV e PROD.
+environment:
+  FLASK_ENV: production
+  PYTHONUNBUFFERED: "1"
+
+environment_files:
+  - config/texa.env
+
+secrets:
+  - SECRET_KEY
+  - TEXA_CLIENT_SECRET
+  - EVENTHUB_CONNECTION_STRING
+  - DATABASE_URL
+
+volumes:
+  - name: status                   # sostituisce il bind mount ~/docker_status.json (pannello "Info sistema")
+    mount: /app/status
+    shared: data
+
+healthcheck:
+  type: tcp                        # la home page richiede Oracle: il probe TCP verifica solo che gunicorn ascolti
+  port: 5100
+  timeout: 5
+  retries: 10
+  interval: 6
+
+deployment:
+  strategy: recreate
+  start_timeout: 120
+  stop_timeout: 60
+  stop_grace_period: 15
+  restart_policy: always
+  replicas: 1
+
+resources:
+  cpu: "1"
+  memory: 1Gi
+
+dependencies:
+  - name: oracle
+    type: database
+    required: true
+    description: Oracle (DATABASE_URL) - anagrafica mezzi e storico telemetria
+  - name: texa-sdk
+    type: service
+    required: true
+    description: API TEXA (ssohub/apihub.tmdproject.com)
+  - name: eventhub
+    type: queue
+    required: true
+    description: Azure Event Hub telemetria (consumer group distinto per DEV e PROD)
+
+rollback:
+  enabled: true
+  keep_releases: 5
+
+metadata:
+  team: ISED - ARES 118
+  origin: C:/JobArea/Ised/Codice/texa (build_and_deploy.ps1)

@@ -92,3 +92,19 @@ def test_summaries():
     assert S.CANCELLED.summary == "CANCELLED"
     assert S.START_FAILED.summary == "FAILED" and S.START_FAILED.is_failure
     assert S.INSTALLING.summary == "RUNNING"
+
+
+def test_celery_tasks_are_registered(app):
+    from app.tasks.celery_app import celery
+
+    names = {n for n in celery.tasks if n.startswith("scarlet.")}
+    assert {
+        "scarlet.deploy.deploy_application",
+        "scarlet.deploy.run_deployment_batch",
+        "scarlet.lifecycle.run_operation",
+        "scarlet.host.test_ssh_connection",
+        "scarlet.host.discover_host",
+        "scarlet.maintenance.reconcile",
+        "scarlet.maintenance.cleanup",
+        "scarlet.maintenance.health_sweep",
+    } <= names

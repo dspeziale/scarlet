@@ -12,6 +12,7 @@ from typing import Any
 from flask import current_app
 
 from app.audit import audit
+from app.errors import ValidationError
 from app.extensions import db
 from app.models import Application, ApplicationVersion, Environment, HostGroup, TargetHost
 from app.models.enums import EnvironmentType, HealthCheckType, RuntimeType
@@ -73,13 +74,17 @@ def seed_admin() -> bool:
     )
     if not password:
         return False
-    UserService().create_user(
-        username="admin",
-        password=password,
-        roles=[ROLE_ADMIN],
-        full_name="Administrator",
-        must_change_password=True,
-    )
+    try:
+        UserService().create_user(
+            username="admin",
+            password=password,
+            roles=[ROLE_ADMIN],
+            full_name="Administrator",
+            must_change_password=True,
+        )
+    except ValidationError as exc:
+        problems = " ".join(exc.errors.get("password", [exc.message]))
+        return f"SKIPPED: SCARLET_INITIAL_ADMIN_PASSWORD rejected by policy ({problems})"
     return True
 
 

@@ -1,17 +1,17 @@
 {% extends "layout/base.html" %}
 {% from "partials/macros.html" import data_table with context %}
-{% block title %}Security Events{% endblock %}
-{% block breadcrumb %}<li class="breadcrumb-item"><a href="{{ url_for('web.audit_log') }}">Audit</a></li><li class="breadcrumb-item active">Security events</li>{% endblock %}
+{% block title %}{{ _('Security Events') }}{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item"><a href="{{ url_for('web.audit_log') }}">{{ _('Audit log') }}</a></li><li class="breadcrumb-item active">{{ _('Security events') }}</li>{% endblock %}
 {% block content %}
 <div data-page="security-events">
 <div class="card">
-  <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-shield-halved me-2"></i>Security events</h3></div>
+  <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-shield-halved me-2"></i>{{ _('Security events') }}</h3></div>
   <div class="card-body">
     {% call data_table('events-table', [{'label': 'Timestamp', 'sort': 'timestamp'}, {'label': 'Severity', 'sort': 'severity'}, {'label': 'Type'}, {'label': 'Message'}, {'label': 'Host'}, {'label': 'IP'}, {'label': 'Ack'}, {'label': '', 'width': '80px'}], '/api/security-events', empty='No security events.') %}
-      <select name="severity" class="form-select form-select-sm" style="width:auto"><option value="">All severities</option><option>LOW</option><option>MEDIUM</option><option>HIGH</option><option>CRITICAL</option></select>
+      <select name="severity" class="form-select form-select-sm" style="width:auto"><option value="">{{ _('All severities') }}</option><option>{{ _('LOW') }}</option><option>{{ _('MEDIUM') }}</option><option>{{ _('HIGH') }}</option><option>{{ _('CRITICAL') }}</option></select>
     {% endcall %}
   </div>
-  <div class="card-footer small text-muted">Events: SSH host key mismatch, account lockouts, artifact checksum mismatch, denied production operations. Acknowledging an event is itself audited.</div>
+  <div class="card-footer small text-muted">{{ _('Events: SSH host key mismatch, account lockouts, artifact checksum mismatch, denied production operations. Acknowledging an event is itself audited.') }}</div>
 </div>
 </div>
 {% endblock %}

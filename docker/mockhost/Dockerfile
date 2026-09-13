@@ -15,7 +15,7 @@ RUN dnf -y install openssh-server podman podman-docker fuse-overlayfs slirp4netn
 # rootless podman inside a container: use vfs/fuse-overlayfs and disable systemd cgroups
 RUN mkdir -p /etc/containers \
     && printf '[storage]\ndriver = "overlay"\n[storage.options.overlay]\nmount_program = "/usr/bin/fuse-overlayfs"\n' > /etc/containers/storage.conf \
-    && printf '[engine]\ncgroup_manager = "cgroupfs"\nevents_logger = "file"\n' > /etc/containers/containers.conf
+    && printf '[containers]\ncgroups = "disabled"\n[engine]\ncgroup_manager = "cgroupfs"\nevents_logger = "file"\n' > /etc/containers/containers.conf
 
 COPY entrypoint.sh /usr/local/bin/mockhost-entrypoint
 RUN chmod +x /usr/local/bin/mockhost-entrypoint

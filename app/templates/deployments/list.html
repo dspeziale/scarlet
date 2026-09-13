@@ -1,20 +1,20 @@
 {% extends "layout/base.html" %}
 {% from "partials/macros.html" import data_table with context %}
-{% block title %}Deployments{% endblock %}
-{% block breadcrumb %}<li class="breadcrumb-item active">Deployments</li>{% endblock %}
+{% block title %}{{ _('Deployments') }}{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active">{{ _('Deployments') }}</li>{% endblock %}
 {% block content %}
 <div data-page="deployments-list" data-preselect-app="{{ request.args.get('application_id', '') }}" data-preselect-batch="{{ request.args.get('batch', '') }}">
 <div class="card">
-  <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-rocket me-2"></i>Deployments</h3><div class="card-tools">{% if can('deployment.execute') %}<a href="{{ url_for('web.deployments_wizard') }}" class="btn btn-sm btn-success"><i class="fa-solid fa-plus me-1"></i>New deployment</a>{% endif %}</div></div>
+  <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-rocket me-2"></i>{{ _('Deployments') }}</h3><div class="card-tools">{% if can('deployment.execute') %}<a href="{{ url_for('web.deployments_wizard') }}" class="btn btn-sm btn-success"><i class="fa-solid fa-plus me-1"></i>{{ _('New deployment') }}</a>{% endif %}</div></div>
   <div class="card-body">
     {% call data_table('deployments-table', [{'label': 'Reference', 'sort': 'reference'}, {'label': 'Kind'}, {'label': 'Application'}, {'label': 'Version'}, {'label': 'Target'}, {'label': 'Env'}, {'label': 'Status', 'sort': 'status'}, {'label': 'Requested by'}, {'label': 'Created', 'sort': 'created_at'}, {'label': 'Duration'}, {'label': '', 'width': '90px'}], '/api/deployments', empty='No deployments match the filters.') %}
-      <select name="application_id" class="form-select form-select-sm" style="width:auto"><option value="">All applications</option>{% for a in applications %}<option value="{{ a.id }}">{{ a.code }}</option>{% endfor %}</select>
-      <select name="host_id" class="form-select form-select-sm" style="width:auto"><option value="">All hosts</option>{% for h in hosts %}<option value="{{ h.id }}">{{ h.name }}</option>{% endfor %}</select>
-      <select name="environment" class="form-select form-select-sm" style="width:auto"><option value="">All environments</option>{% for e in environments %}<option value="{{ e.code }}">{{ e.code }}</option>{% endfor %}</select>
-      <select name="status" class="form-select form-select-sm" style="width:auto"><option value="">All statuses</option><option>QUEUED</option><option>RUNNING</option><option>PENDING_APPROVAL</option><option>SUCCESS</option><option>FAILED</option><option>ROLLED_BACK</option><option>CANCELLED</option></select>
-      <select name="kind" class="form-select form-select-sm" style="width:auto"><option value="">Deploy + rollback</option><option>DEPLOY</option><option>ROLLBACK</option></select>
-      <input type="date" name="date_from" class="form-control form-control-sm" style="width:auto" title="From">
-      <input type="date" name="date_to" class="form-control form-control-sm" style="width:auto" title="To">
+      <select name="application_id" class="form-select form-select-sm" style="width:auto"><option value="">{{ _('All applications') }}</option>{% for a in applications %}<option value="{{ a.id }}">{{ a.code }}</option>{% endfor %}</select>
+      <select name="host_id" class="form-select form-select-sm" style="width:auto"><option value="">{{ _('All hosts') }}</option>{% for h in hosts %}<option value="{{ h.id }}">{{ h.name }}</option>{% endfor %}</select>
+      <select name="environment" class="form-select form-select-sm" style="width:auto"><option value="">{{ _('All environments') }}</option>{% for e in environments %}<option value="{{ e.code }}">{{ e.code }}</option>{% endfor %}</select>
+      <select name="status" class="form-select form-select-sm" style="width:auto"><option value="">{{ _('All statuses') }}</option><option>{{ _('QUEUED') }}</option><option>{{ _('RUNNING') }}</option><option>{{ _('PENDING APPROVAL') }}</option><option>{{ _('SUCCESS') }}</option><option>{{ _('FAILED') }}</option><option>{{ _('ROLLED BACK') }}</option><option>{{ _('CANCELLED') }}</option></select>
+      <select name="kind" class="form-select form-select-sm" style="width:auto"><option value="">{{ _('Deploy + rollback') }}</option><option>DEPLOY</option><option>ROLLBACK</option></select>
+      <input type="date" name="date_from" class="form-control form-control-sm" style="width:auto" title="{{ _('From') }}">
+      <input type="date" name="date_to" class="form-control form-control-sm" style="width:auto" title="{{ _('To') }}">
     {% endcall %}
   </div>
 </div>

@@ -1,63 +1,63 @@
 {% extends "layout/base.html" %}
 {% set app = application %}
-{% block title %}{{ 'Edit ' ~ app.code if app else 'New application' }}{% endblock %}
-{% block breadcrumb %}<li class="breadcrumb-item"><a href="{{ url_for('web.applications_list') }}">Applications</a></li><li class="breadcrumb-item active">{{ app.code if app else 'New' }}</li>{% endblock %}
+{% block title %}{{ (_('Edit') ~ ' ' ~ app.code) if app else _('New application') }}{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item"><a href="{{ url_for('web.applications_list') }}">{{ _('Applications') }}</a></li><li class="breadcrumb-item active">{{ app.code if app else _('New') }}</li>{% endblock %}
 {% block content %}
 <div data-page="application-form" data-app-id="{{ app.id if app else '' }}">
 <form id="app-form" novalidate>
 <div class="row">
   <div class="col-lg-7">
     <div class="card card-primary card-outline">
-      <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-cube me-2"></i>Application</h3></div>
+      <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-cube me-2"></i>{{ _('Application') }}</h3></div>
       <div class="card-body">
         <div class="row g-3">
-          <div class="col-md-6"><label class="form-label">Name *</label><input class="form-control" name="name" required minlength="2" maxlength="128" value="{{ app.name if app else '' }}" placeholder="Customer API"></div>
-          <div class="col-md-6"><label class="form-label">Code *</label><input class="form-control font-monospace" name="code" required pattern="[a-z][a-z0-9]*(-[a-z0-9]+)*" value="{{ app.code if app else '' }}" placeholder="customer-api" {% if app and app.versions %}readonly{% endif %}><div class="form-text">Must match <code>application:</code> in the package manifest. Immutable once versions exist.</div></div>
-          <div class="col-12"><label class="form-label">Description</label><textarea class="form-control" name="description" rows="2" maxlength="4000">{{ app.description if app else '' }}</textarea></div>
-          <div class="col-md-6"><label class="form-label">Owner</label><input class="form-control" name="owner" maxlength="128" value="{{ app.owner if app else '' }}" placeholder="Team Customer"></div>
-          <div class="col-md-6"><label class="form-label">Repository</label><input class="form-control" name="repository" maxlength="255" value="{{ app.repository if app else '' }}" placeholder="https://git.example.internal/customer-api"></div>
-          <div class="col-md-4"><label class="form-label">Runtime *</label><select class="form-select" name="runtime_type">{% for rt in ['PODMAN', 'DOCKER', 'KUBERNETES'] %}<option value="{{ rt }}" {% if app and app.runtime_type == rt %}selected{% endif %}>{{ rt }}</option>{% endfor %}</select></div>
-          <div class="col-md-4"><label class="form-label">Artifact type</label><input class="form-control" name="artifact_type" maxlength="32" value="{{ app.artifact_type if app else 'container-image' }}"></div>
-          <div class="col-md-4"><label class="form-label">Default port</label><input class="form-control" type="number" min="1" max="65535" name="default_port" value="{{ app.default_port or '' if app else '' }}"></div>
+          <div class="col-md-6"><label class="form-label">{{ _('Name *') }}</label><input class="form-control" name="name" required minlength="2" maxlength="128" value="{{ app.name if app else '' }}" placeholder="Customer API"></div>
+          <div class="col-md-6"><label class="form-label">{{ _('Code *') }}</label><input class="form-control font-monospace" name="code" required pattern="[a-z][a-z0-9]*(-[a-z0-9]+)*" value="{{ app.code if app else '' }}" placeholder="customer-api" {% if app and app.versions %}readonly{% endif %}><div class="form-text">{{ _('Must match <code>application:</code> in the package manifest. Immutable once versions exist.') }}</div></div>
+          <div class="col-12"><label class="form-label">{{ _('Description') }}</label><textarea class="form-control" name="description" rows="2" maxlength="4000">{{ app.description if app else '' }}</textarea></div>
+          <div class="col-md-6"><label class="form-label">{{ _('Owner') }}</label><input class="form-control" name="owner" maxlength="128" value="{{ app.owner if app else '' }}" placeholder="Team Customer"></div>
+          <div class="col-md-6"><label class="form-label">{{ _('Repository') }}</label><input class="form-control" name="repository" maxlength="255" value="{{ app.repository if app else '' }}" placeholder="https://git.example.internal/customer-api"></div>
+          <div class="col-md-4"><label class="form-label">{{ _('Runtime *') }}</label><select class="form-select" name="runtime_type">{% for rt in ['PODMAN', 'DOCKER', 'KUBERNETES'] %}<option value="{{ rt }}" {% if app and app.runtime_type == rt %}selected{% endif %}>{{ rt }}</option>{% endfor %}</select></div>
+          <div class="col-md-4"><label class="form-label">{{ _('Artifact type') }}</label><input class="form-control" name="artifact_type" maxlength="32" value="{{ app.artifact_type if app else 'container-image' }}"></div>
+          <div class="col-md-4"><label class="form-label">{{ _('Default port') }}</label><input class="form-control" type="number" min="1" max="65535" name="default_port" value="{{ app.default_port or '' if app else '' }}"></div>
         </div>
       </div>
     </div>
     <div class="card">
-      <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-heart-pulse me-2"></i>Health check defaults</h3></div>
+      <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-heart-pulse me-2"></i>{{ _('Health check defaults') }}</h3></div>
       <div class="card-body">
-        <p class="small text-muted">Defaults used when the package manifest does not declare a <code>healthcheck</code> block.</p>
+        <p class="small text-muted">{{ _('Defaults used when the package manifest does not declare a <code>healthcheck</code> block.') }}</p>
         <div class="row g-3">
-          <div class="col-md-4"><label class="form-label">Type</label><select class="form-select" name="healthcheck_type">{% for t in ['CONTAINER_STATUS', 'HTTP', 'HTTPS', 'TCP', 'COMMAND', 'KUBERNETES_STATUS'] %}<option value="{{ t }}" {% if app and app.healthcheck_type == t %}selected{% endif %}>{{ t }}</option>{% endfor %}</select></div>
-          <div class="col-md-5"><label class="form-label">HTTP path</label><input class="form-control" name="healthcheck_url" value="{{ app.healthcheck_url or '' if app else '/health' }}" placeholder="/health"></div>
-          <div class="col-md-3"><label class="form-label">Port</label><input class="form-control" type="number" min="1" max="65535" name="healthcheck_port" value="{{ app.healthcheck_port or '' if app else '' }}"></div>
-          <div class="col-md-12"><label class="form-label">Command (type COMMAND, executed inside the container)</label><input class="form-control font-monospace" name="healthcheck_command" maxlength="512" value="{{ app.healthcheck_command or '' if app else '' }}" placeholder="/app/healthcheck.sh"></div>
-          <div class="col-md-3"><label class="form-label">Expected HTTP status</label><input class="form-control" type="number" min="100" max="599" name="healthcheck_expected_status" value="{{ app.healthcheck_expected_status if app else 200 }}"></div>
-          <div class="col-md-3"><label class="form-label">Timeout (s)</label><input class="form-control" type="number" min="1" max="300" name="healthcheck_timeout" value="{{ app.healthcheck_timeout if app else 10 }}"></div>
-          <div class="col-md-3"><label class="form-label">Retries</label><input class="form-control" type="number" min="1" max="50" name="healthcheck_retries" value="{{ app.healthcheck_retries if app else 5 }}"></div>
-          <div class="col-md-3"><label class="form-label">Interval (s)</label><input class="form-control" type="number" min="0" max="300" name="healthcheck_interval" value="{{ app.healthcheck_interval if app else 3 }}"></div>
+          <div class="col-md-4"><label class="form-label">{{ _('Type') }}</label><select class="form-select" name="healthcheck_type">{% for t in ['CONTAINER_STATUS', 'HTTP', 'HTTPS', 'TCP', 'COMMAND', 'KUBERNETES_STATUS'] %}<option value="{{ t }}" {% if app and app.healthcheck_type == t %}selected{% endif %}>{{ t }}</option>{% endfor %}</select></div>
+          <div class="col-md-5"><label class="form-label">{{ _('HTTP path') }}</label><input class="form-control" name="healthcheck_url" value="{{ app.healthcheck_url or '' if app else '/health' }}" placeholder="/health"></div>
+          <div class="col-md-3"><label class="form-label">{{ _('Port') }}</label><input class="form-control" type="number" min="1" max="65535" name="healthcheck_port" value="{{ app.healthcheck_port or '' if app else '' }}"></div>
+          <div class="col-md-12"><label class="form-label">{{ _('Command (type COMMAND, executed inside the container)') }}</label><input class="form-control font-monospace" name="healthcheck_command" maxlength="512" value="{{ app.healthcheck_command or '' if app else '' }}" placeholder="/app/healthcheck.sh"></div>
+          <div class="col-md-3"><label class="form-label">{{ _('Expected HTTP status') }}</label><input class="form-control" type="number" min="100" max="599" name="healthcheck_expected_status" value="{{ app.healthcheck_expected_status if app else 200 }}"></div>
+          <div class="col-md-3"><label class="form-label">{{ _('Timeout (s)') }}</label><input class="form-control" type="number" min="1" max="300" name="healthcheck_timeout" value="{{ app.healthcheck_timeout if app else 10 }}"></div>
+          <div class="col-md-3"><label class="form-label">{{ _('Retries') }}</label><input class="form-control" type="number" min="1" max="50" name="healthcheck_retries" value="{{ app.healthcheck_retries if app else 5 }}"></div>
+          <div class="col-md-3"><label class="form-label">{{ _('Interval (s)') }}</label><input class="form-control" type="number" min="0" max="300" name="healthcheck_interval" value="{{ app.healthcheck_interval if app else 3 }}"></div>
         </div>
       </div>
     </div>
     <div class="d-flex gap-2 mb-4">
-      <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk me-1"></i>{{ 'Save changes' if app else 'Create application' }}</button>
-      <a href="{{ url_for('web.application_detail', app_id=app.id) if app else url_for('web.applications_list') }}" class="btn btn-outline-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk me-1"></i>{{ _('Save changes') if app else _('Create application') }}</button>
+      <a href="{{ url_for('web.application_detail', app_id=app.id) if app else url_for('web.applications_list') }}" class="btn btn-outline-secondary">{{ _('Cancel') }}</a>
     </div>
   </div>
   <div class="col-lg-5">
     <div class="card card-outline card-warning">
-      <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-shield-halved me-2"></i>Target rules</h3></div>
+      <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-shield-halved me-2"></i>{{ _('Target rules') }}</h3></div>
       <div class="card-body">
-        <p class="small text-muted">Deployments to targets that violate these rules are refused. Empty = no restriction.</p>
-        <div class="mb-3"><label class="form-label">Allowed environments</label>
+        <p class="small text-muted">{{ _('Deployments to targets that violate these rules are refused. Empty = no restriction.') }}</p>
+        <div class="mb-3"><label class="form-label">{{ _('Allowed environments') }}</label>
           {% for e in environments %}<div class="form-check"><input class="form-check-input" type="checkbox" name="allowed_environments" value="{{ e.code }}" id="env-{{ e.code }}" {% if app and e.code in app.allowed_environments %}checked{% endif %}><label class="form-check-label" for="env-{{ e.code }}">{{ e.code|env_badge(e.is_production) }} {{ e.name }}</label></div>{% endfor %}
         </div>
-        <div class="mb-3"><label class="form-label">Allowed runtimes (besides the primary runtime)</label>
+        <div class="mb-3"><label class="form-label">{{ _('Allowed runtimes (besides the primary runtime)') }}</label>
           {% for rt in ['PODMAN', 'DOCKER', 'KUBERNETES'] %}<div class="form-check"><input class="form-check-input" type="checkbox" name="allowed_runtimes" value="{{ rt }}" id="rt-{{ rt }}" {% if app and rt in app.allowed_runtimes %}checked{% endif %}><label class="form-check-label" for="rt-{{ rt }}">{{ rt }}</label></div>{% endfor %}
         </div>
-        <div class="mb-3"><label class="form-label">Allowed host groups</label><select class="form-select" name="allowed_host_group_ids" multiple size="4">{% for g in groups %}<option value="{{ g.id }}" {% if app and g.id in app.allowed_host_group_ids %}selected{% endif %}>{{ g.name }}</option>{% endfor %}</select></div>
-        <div class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox" name="allow_hooks" id="allow_hooks" {% if app and app.allow_hooks %}checked{% endif %}><label class="form-check-label" for="allow_hooks">Allow deployment hooks (scripts in the package run on the host)</label></div>
-        <div class="form-check form-switch"><input class="form-check-input" type="checkbox" name="enabled" id="enabled" {% if not app or app.enabled %}checked{% endif %}><label class="form-check-label" for="enabled">Enabled</label></div>
-        <div class="alert alert-warning small mt-3 mb-0"><i class="fa-solid fa-triangle-exclamation me-1"></i>Hooks execute package-provided shell scripts on the target with the SSH user's privileges. Enable only for applications whose release pipeline is trusted.</div>
+        <div class="mb-3"><label class="form-label">{{ _('Allowed host groups') }}</label><select class="form-select" name="allowed_host_group_ids" multiple size="4">{% for g in groups %}<option value="{{ g.id }}" {% if app and g.id in app.allowed_host_group_ids %}selected{% endif %}>{{ g.name }}</option>{% endfor %}</select></div>
+        <div class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox" name="allow_hooks" id="allow_hooks" {% if app and app.allow_hooks %}checked{% endif %}><label class="form-check-label" for="allow_hooks">{{ _('Allow deployment hooks (scripts in the package run on the host)') }}</label></div>
+        <div class="form-check form-switch"><input class="form-check-input" type="checkbox" name="enabled" id="enabled" {% if not app or app.enabled %}checked{% endif %}><label class="form-check-label" for="enabled">{{ _('Enabled') }}</label></div>
+        <div class="alert alert-warning small mt-3 mb-0"><i class="fa-solid fa-triangle-exclamation me-1"></i>{{ _('Hooks execute package-provided shell scripts on the target with the SSH user\'s privileges. Enable only for applications whose release pipeline is trusted.') }}</div>
       </div>
     </div>
   </div>

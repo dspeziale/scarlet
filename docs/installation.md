@@ -93,6 +93,26 @@ sudo firewall-cmd --reload
 Outbound: 22/tcp (or the configured SSH port) to targets; 587/tcp to SMTP if enabled. Targets must
 allow inbound SSH from the SCARLET server only.
 
+## 8a. Firewall matrix (all flows)
+
+| From | To | Port / protocol | Purpose | Required |
+|---|---|---|---|---|
+| Operator browsers | SCARLET server | 443/tcp (HTTPS); 80/tcp only for the redirect to 443 | web console and API | yes |
+| SCARLET server (web + worker containers) | every target host | 22/tcp (or the configured SSH port) | SSH/SFTP: deployments, lifecycle operations, discovery, reconciliation, logs | yes |
+| SCARLET server | Kubernetes API server | 6443/tcp (or the cluster API port) | only for hosts in Kubernetes **API mode** (kubeconfig credential); kubectl-over-SSH mode needs only 22/tcp | optional |
+| Target hosts | container registry (internal or public) | 443/tcp | `podman pull` / `docker pull` when the image is not shipped inside the package (`image.archive`) | optional |
+| Target hosts | application dependencies (DB, queues, external APIs) | application specific | the deployed applications themselves | app specific |
+| Operator browsers / consumers | target hosts | application ports (e.g. 8080, 5100) | reaching the deployed applications | yes |
+| SCARLET server | SMTP relay | 587/tcp (or 25/465) | e-mail notifications, only if `SCARLET_MAIL_ENABLED=true` | optional |
+| SCARLET server | dnf / OS repositories, image registry | 443/tcp | installation and upgrades of the SCARLET stack | at install/upgrade time |
+| Monitoring system | SCARLET server | 443/tcp (`/api/metrics`, `/api/health`, `/api/ready`) | Prometheus scraping / probes | optional |
+| SCARLET server | CDN (cdn.jsdelivr.net) | 443/tcp | front-end assets in `SCARLET_ASSET_MODE=cdn`; not needed with `local` (vendored assets) | optional |
+
+Internal to the SCARLET server (container network, no firewall rules needed): nginx → gunicorn 8000/tcp,
+gunicorn/worker → PostgreSQL 5432/tcp and Redis 6379/tcp. Health probes to the applications run **from the
+target host itself** (`127.0.0.1:<port>`), so no extra flow is required from SCARLET to the application ports.
+Target hosts never need to reach SCARLET (agentless, no callbacks).
+
 ## 9. TLS
 
 Place the certificate chain and key in `/opt/scarlet-server/tls/scarlet.crt|scarlet.key`

@@ -17,7 +17,7 @@
     <p>{{ label }}</p>
   </div>
   <i class="{{ icon }} small-box-icon"></i>
-  {% if href %}<a href="{{ href }}" class="small-box-footer link-light link-underline-opacity-0 link-underline-opacity-50-hover">More info <i class="bi bi-link-45deg"></i></a>{% endif %}
+  {% if href %}<a href="{{ href }}" class="small-box-footer link-light link-underline-opacity-0 link-underline-opacity-50-hover">{{ _('More info') }} <i class="bi bi-link-45deg"></i></a>{% endif %}
 </div>
 {%- endmacro %}
 
@@ -26,12 +26,12 @@
   <div class="d-flex flex-wrap gap-2 align-items-center mb-2 scarlet-table-toolbar">
     <div class="input-group input-group-sm" style="max-width: 320px;">
       <span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
-      <input type="search" class="form-control" placeholder="Search…" data-role="search" aria-label="Search">
+      <input type="search" class="form-control" placeholder="{{ _('Search…') }}" data-role="search" aria-label="{{ _('Search') }}">
     </div>
     <div class="d-flex flex-wrap gap-2" data-role="filters">{{ caller() if caller }}</div>
     <div class="ms-auto d-flex gap-2 align-items-center">
       <span class="text-muted small" data-role="summary"></span>
-      <button type="button" class="btn btn-sm btn-outline-secondary" data-role="refresh" title="Refresh"><i class="fa-solid fa-rotate"></i></button>
+      <button type="button" class="btn btn-sm btn-outline-secondary" data-role="refresh" title="{{ _('Refresh') }}"><i class="fa-solid fa-rotate"></i></button>
     </div>
   </div>
   <div class="table-responsive">
@@ -39,15 +39,15 @@
       <thead>
         <tr>
           {% for col in columns %}
-          <th {% if col.sort %}class="sortable" data-sort="{{ col.sort }}"{% endif %} {% if col.width %}style="width: {{ col.width }}"{% endif %}>{{ col.label }}{% if col.sort %} <i class="fa-solid fa-sort text-muted small"></i>{% endif %}</th>
+          <th {% if col.sort %}class="sortable" data-sort="{{ col.sort }}"{% endif %} {% if col.width %}style="width: {{ col.width }}"{% endif %}>{{ _(col.label) }}{% if col.sort %} <i class="fa-solid fa-sort text-muted small"></i>{% endif %}</th>
           {% endfor %}
         </tr>
       </thead>
-      <tbody data-role="body"><tr><td colspan="{{ columns|length }}" class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm me-2"></div>Loading…</td></tr></tbody>
+      <tbody data-role="body"><tr><td colspan="{{ columns|length }}" class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm me-2"></div>{{ _('Loading…') }}</td></tr></tbody>
     </table>
   </div>
   <div class="d-flex justify-content-between align-items-center mt-2">
-    <span class="small text-muted" data-role="empty" hidden>{{ empty }}</span>
+    <span class="small text-muted" data-role="empty" hidden>{{ _(empty) }}</span>
     <nav><ul class="pagination pagination-sm mb-0" data-role="pagination"></ul></nav>
   </div>
 </div>

@@ -6,7 +6,7 @@
     const root = document.getElementById("audit-table");
     const table = new S.DataTable(root, (a) => "<tr>" +
       '<td class="small text-nowrap">' + S.fmtDate(a.timestamp) + "</td>" +
-      "<td><b>" + S.esc(a.username || "system") + "</b></td>" +
+      "<td><b>" + S.esc(a.username || S.t("system")) + "</b></td>" +
       "<td><code>" + S.esc(a.action) + "</code></td>" +
       '<td class="small">' + S.esc(a.entity_type || "") + (a.entity_id ? " #" + S.esc(a.entity_id) : "") + "</td>" +
       '<td class="small">' + (a.target_name ? '<a href="/hosts/' + a.target_id + '">' + S.esc(a.target_name) + "</a>" : "-") + "</td>" +

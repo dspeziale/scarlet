@@ -21,7 +21,19 @@ Redis, web, worker, beat, nginx, mock host).
 `docker/mockhost` is an Oracle Linux 9 image with sshd and rootless Podman (port 2222, user
 `scarlet`, password `scarlet-dev`, or set `MOCKHOST_AUTHORIZED_KEY`). Register it as a DEV host
 with hostname `mockhost` (inside the compose network) and runtime PODMAN. Because the mock host is
-`privileged` it is for development only.
+`privileged` it is for development only. Inside Docker Desktop rootless user namespaces are not
+available, so by default (`MOCKHOST_PODMAN_MODE=sudo`) the `scarlet` user reaches Podman through a
+sudo wrapper and SCARLET reports it as rootful; set `rootless` on a Linux host with real Podman.
+A second simulated host `mockhost-prod` (port 2223) is registered as PROD to exercise confirmation and
+approval flows. The user guide (Italian) is served at `/guida` and linked from the sidebar and the navbar
+help icon; it contains two worked examples (from zero to an online host; TEXA ARES in DEV and PROD).
+
+## Packaging a real application (work/)
+
+`work/<app>/` holds working copies used to package real company applications without touching their
+repositories (e.g. `work/texa-ares`, built from the sibling `texa` project's exported image). Image
+archives under `work/**/application/` are git-ignored; secrets are never stored there — they are
+configured in SCARLET as SECRET entries per environment.
 
 ## Tests
 

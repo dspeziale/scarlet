@@ -11,7 +11,7 @@
       const integ = document.getElementById("manifest-integrity");
       integ.innerHTML = v.integrity ? (v.integrity.ok ? '<span class="text-success"><i class="fa-solid fa-check"></i> artifact checksum verified</span>' : '<span class="text-danger"><i class="fa-solid fa-triangle-exclamation"></i> ARTIFACT CHECKSUM MISMATCH</span>') + ' <code>' + S.esc(v.checksum_sha256) + "</code>" : '<span class="text-muted">no artifact stored (metadata-only version)</span>';
       bootstrap.Modal.getOrCreateInstance(document.getElementById("manifest-modal")).show();
-    } catch (e) { S.showError(e, "Manifest"); }
+    } catch (e) { S.showError(e, S.t("Manifest")); }
   }
 
   S.pages["applications-list"] = function () {
@@ -23,7 +23,7 @@
       '<td class="small">' + S.esc(a.healthcheck.type) + (a.healthcheck.url ? " " + S.esc(a.healthcheck.url) : "") + "</td>" +
       "<td>" + ((a.allowed_environments || []).length ? a.allowed_environments.map((e) => S.envBadge(e)).join(" ") : '<span class="small text-muted">any</span>') + "</td>" +
       '<td class="text-center">' + a.version_count + "</td>" +
-      "<td>" + (a.enabled ? '<i class="fa-solid fa-check text-success"></i>' : S.badge("DISABLED")) + "</td>" +
+      "<td>" + (a.enabled ? '<i class="fa-solid fa-check text-success"></i>' : S.badge(S.t("DISABLED"))) + "</td>" +
       '<td class="text-end text-nowrap"><a class="btn btn-sm btn-outline-secondary" href="/applications/' + a.id + '"><i class="fa-solid fa-eye"></i></a> ' + (S.can("deployment.execute") ? '<a class="btn btn-sm btn-outline-success" href="/deployments/new?application_id=' + a.id + '" title="Deploy"><i class="fa-solid fa-rocket"></i></a>' : "") + "</td></tr>").load();
   };
 
@@ -34,9 +34,9 @@
     if (refresh) refresh.addEventListener("click", () => location.reload());
     const del = document.getElementById("btn-delete-app");
     if (del) del.addEventListener("click", async () => {
-      const answer = await S.confirm({ title: "Delete application " + root.dataset.appCode, danger: true, requirePhrase: true, phrase: "DELETE " + root.dataset.appCode, requireReason: false, body: "<p>Only possible when no deployment history exists. Nothing is changed on remote hosts.</p>" });
+      const answer = await S.confirm({ title: S.t("Delete application") + " " + root.dataset.appCode, danger: true, requirePhrase: true, phrase: "DELETE " + root.dataset.appCode, requireReason: false, body: S.t("<p>Only possible when no deployment history exists. Nothing is changed on remote hosts.</p>") });
       if (!answer) return;
-      try { await S.api("DELETE", "/api/applications/" + appId); window.location.href = "/applications"; } catch (e) { S.showError(e, "Delete"); }
+      try { await S.api("DELETE", "/api/applications/" + appId); window.location.href = "/applications"; } catch (e) { S.showError(e, S.t("Delete")); }
     });
   };
 
@@ -58,9 +58,9 @@
       const btn = form.querySelector('button[type="submit"]'); btn.disabled = true;
       try {
         const res = appId ? await S.api("PUT", "/api/applications/" + appId, payload) : await S.api("POST", "/api/applications", payload);
-        S.toast("Application saved", "success");
+        S.toast(S.t("Application saved"), "success");
         window.location.href = "/applications/" + res.data.id;
-      } catch (e) { S.showError(e, "Save application"); btn.disabled = false; }
+      } catch (e) { S.showError(e, S.t("Save application")); btn.disabled = false; }
     });
   };
 
@@ -81,15 +81,15 @@
           '<td class="small">' + S.esc(e.description || "") + "</td>" +
           '<td class="small text-muted">' + S.fmtDate(e.updated_at) + "</td>" +
           '<td class="text-end text-nowrap">' + (canEdit() ? '<button class="btn btn-sm btn-outline-secondary" data-edit-key="' + S.esc(e.key) + '" data-type="' + e.value_type + '" data-desc="' + S.esc(e.description || "") + '"><i class="fa-solid fa-pen"></i></button> <button class="btn btn-sm btn-outline-danger" data-del-key="' + S.esc(e.key) + '"><i class="fa-solid fa-trash"></i></button>' : "") + "</td></tr>").join("") : '<tr><td colspan="6" class="text-center text-muted py-3">No configuration entries for ' + S.esc(env) + ".</td></tr>";
-        document.getElementById("config-versions").innerHTML = (c.versions || []).map((v) => '<li class="list-group-item"><b>v' + v.version_number + "</b> " + (v.is_current ? '<span class="badge text-bg-success">current</span>' : "") + '<div class="text-muted">' + S.fmtDate(v.created_at) + " · " + S.esc(v.created_by || "system") + "</div><div>" + S.esc(v.change_summary) + '</div><div class="text-muted">keys: ' + v.keys.map(S.esc).join(", ") + "</div></li>").join("") || '<li class="list-group-item text-muted">No versions yet.</li>';
+        document.getElementById("config-versions").innerHTML = (c.versions || []).map((v) => '<li class="list-group-item"><b>v' + v.version_number + "</b> " + (v.is_current ? '<span class="badge text-bg-success">current</span>' : "") + '<div class="text-muted">' + S.fmtDate(v.created_at) + " · " + S.esc(v.created_by || S.t("system")) + "</div><div>" + S.esc(v.change_summary) + '</div><div class="text-muted">keys: ' + v.keys.map(S.esc).join(", ") + "</div></li>").join("") || '<li class="list-group-item text-muted">No versions yet.</li>';
         document.querySelectorAll("[data-edit-key]").forEach((b) => b.addEventListener("click", () => openModal({ key: b.dataset.editKey, value_type: b.dataset.type, description: b.dataset.desc })));
         document.querySelectorAll("[data-del-key]").forEach((b) => b.addEventListener("click", async () => {
-          const answer = await S.confirm({ title: "Remove " + b.dataset.delKey + " from " + env, production, operation: "DELETE", danger: true, showReason: true, requireReason: production, requirePhrase: false });
+          const answer = await S.confirm({ title: S.t("Remove") + " " + b.dataset.delKey + " " + S.t("from") + " " + env, production, operation: "DELETE", danger: true, showReason: true, requireReason: production, requirePhrase: false });
           if (!answer) return;
           try { await S.api("DELETE", "/api/applications/" + appId + "/configuration/" + env + "/" + encodeURIComponent(b.dataset.delKey)); load(); } catch (e) { S.showError(e); }
         }));
         const add = document.getElementById("btn-add-entry"); if (add) add.disabled = !canEdit();
-      } catch (e) { S.showError(e, "Load configuration"); }
+      } catch (e) { S.showError(e, S.t("Load configuration")); }
     }
     const modalEl = document.getElementById("entry-modal");
     const form = document.getElementById("entry-form");
@@ -99,8 +99,8 @@
       form.querySelector('[name="key"]').readOnly = !!entry;
       form.querySelector('[name="value_type"]').value = entry ? entry.value_type : "CONFIG";
       form.querySelector('[name="description"]').value = entry ? entry.description : "";
-      document.getElementById("entry-modal-title").textContent = entry ? "Edit " + entry.key : "Add entry";
-      document.getElementById("entry-value-help").textContent = entry && entry.value_type === "SECRET" ? "Leave empty to keep the existing secret." : "Single line, max 8 KiB.";
+      document.getElementById("entry-modal-title").textContent = entry ? "Edit " + entry.key : S.t("Add entry");
+      document.getElementById("entry-value-help").textContent = entry && entry.value_type === "SECRET" ? "Leave empty to keep the existing secret." : S.t("Single line, max 8 KiB.");
       bootstrap.Modal.getOrCreateInstance(modalEl).show();
     }
     const add = document.getElementById("btn-add-entry"); if (add) add.addEventListener("click", () => openModal(null));
@@ -111,11 +111,11 @@
       const value = fd.get("value");
       if (value !== "" || entry.value_type === "CONFIG") entry.value = value;
       if (production) {
-        const answer = await S.confirm({ title: "Update PROD configuration", production, operation: "UPDATE", requirePhrase: false, showReason: true, requireReason: true, details: { Key: "<code>" + S.esc(entry.key) + "</code>", Environment: S.envBadge(env, true) } });
+        const answer = await S.confirm({ title: S.t("Update PROD configuration"), production, operation: "UPDATE", requirePhrase: false, showReason: true, requireReason: true, details: { Key: "<code>" + S.esc(entry.key) + "</code>", Environment: S.envBadge(env, true) } });
         if (!answer) return;
         fd.set("change_summary", (fd.get("change_summary") || "") + " " + answer.reason);
       }
-      try { await S.api("PUT", "/api/applications/" + appId + "/configuration/" + env, { entries: [entry], change_summary: fd.get("change_summary") }); bootstrap.Modal.getInstance(modalEl).hide(); S.toast("Configuration saved", "success"); load(); } catch (e) { S.showError(e, "Save entry"); }
+      try { await S.api("PUT", "/api/applications/" + appId + "/configuration/" + env, { entries: [entry], change_summary: fd.get("change_summary") }); bootstrap.Modal.getInstance(modalEl).hide(); S.toast(S.t("Configuration saved"), "success"); load(); } catch (e) { S.showError(e, S.t("Save entry")); }
     });
     document.querySelectorAll("#env-tabs .nav-link").forEach((tab) => tab.addEventListener("click", (ev) => { ev.preventDefault(); document.querySelectorAll("#env-tabs .nav-link").forEach((t) => t.classList.remove("active")); tab.classList.add("active"); env = tab.dataset.env; production = tab.dataset.production === "1"; load(); }));
     load();
@@ -125,7 +125,7 @@
     document.querySelectorAll("[data-manifest]").forEach((b) => b.addEventListener("click", () => { const [a, v] = b.dataset.manifest.split("/"); showManifest(a, v); }));
     document.querySelectorAll("[data-deactivate]").forEach((b) => b.addEventListener("click", async () => {
       const [a, v] = b.dataset.deactivate.split("/");
-      const answer = await S.confirm({ title: "Deactivate version " + b.dataset.version, danger: true, requirePhrase: false, requireReason: false, body: "<p>Deactivated versions cannot be deployed or used for rollback. The artifact is kept. Versions currently deployed cannot be deactivated.</p>" });
+      const answer = await S.confirm({ title: S.t("Deactivate version") + " " + b.dataset.version, danger: true, requirePhrase: false, requireReason: false, body: S.t("<p>Deactivated versions cannot be deployed or used for rollback. The artifact is kept. Versions currently deployed cannot be deactivated.</p>") });
       if (!answer) return;
       try { await S.api("POST", "/api/applications/" + a + "/versions/" + v + "/deactivate"); location.reload(); } catch (e) { S.showError(e); }
     }));

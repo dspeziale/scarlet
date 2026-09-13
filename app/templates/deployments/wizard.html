@@ -1,6 +1,6 @@
 {% extends "layout/base.html" %}
-{% block title %}New deployment{% endblock %}
-{% block breadcrumb %}<li class="breadcrumb-item"><a href="{{ url_for('web.deployments_list') }}">Deployments</a></li><li class="breadcrumb-item active">New</li>{% endblock %}
+{% block title %}{{ _('New deployment') }}{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item"><a href="{{ url_for('web.deployments_list') }}">{{ _('Deployments') }}</a></li><li class="breadcrumb-item active">{{ _('New') }}</li>{% endblock %}
 {% block content %}
 <div data-page="deployment-wizard" data-preselect-app="{{ preselect_app or '' }}" data-preselect-host="{{ preselect_host or '' }}">
 <div class="wizard-steps" id="wizard-steps">
@@ -10,7 +10,7 @@
   <div class="card-body">
     <!-- 1 application -->
     <div class="wizard-pane active" data-pane="1">
-      <h5>Select the application</h5>
+      <h5>{{ _('Select the application') }}</h5>
       <div class="row g-2" id="app-list">
         {% for a in applications if a.enabled %}
         <div class="col-md-4"><div class="card host-pick h-100 mb-0" data-app-id="{{ a.id }}" data-app-code="{{ a.code }}" data-runtime="{{ a.runtime_type }}"><div class="card-body py-2"><b>{{ a.name }}</b> <code class="small">{{ a.code }}</code><div class="small text-muted">{{ a.runtime_type|runtime_icon }} · {{ a.owner or 'no owner' }}</div></div></div></div>
@@ -19,52 +19,52 @@
     </div>
     <!-- 2 version -->
     <div class="wizard-pane" data-pane="2">
-      <h5>Select the version / package</h5>
+      <h5>{{ _('Select the version / package') }}</h5>
       <div id="version-list" class="row g-2"></div>
     </div>
     <!-- 3 targets -->
     <div class="wizard-pane" data-pane="3">
-      <h5>Select target host(s)</h5>
+      <h5>{{ _('Select target host(s)') }}</h5>
       <div class="d-flex gap-2 align-items-center mb-2">
-        <label class="small text-muted">Quick select host group:</label>
+        <label class="small text-muted">{{ _('Quick select host group:') }}</label>
         <select class="form-select form-select-sm" style="width:auto" id="group-select"><option value="">—</option>{% for g in groups %}<option value="{{ g.id }}" data-hosts="{{ g.hosts|map(attribute='id')|join(',') }}">{{ g.name }}</option>{% endfor %}</select>
       </div>
       <div id="host-list" class="row g-2"></div>
     </div>
     <!-- 4 environment -->
     <div class="wizard-pane" data-pane="4">
-      <h5>Environment &amp; strategy</h5>
+      <h5>{{ _('Environment &amp; strategy') }}</h5>
       <div id="env-summary" class="mb-3"></div>
       <div class="row g-3">
-        <div class="col-md-4"><label class="form-label">Strategy (multi-host)</label><select class="form-select" id="strategy"><option value="SEQUENTIAL">SEQUENTIAL — one host at a time, stop on failure</option><option value="PARALLEL">PARALLEL — up to the configured limit</option></select></div>
-        <div class="col-md-4"><label class="form-label">Auto rollback on failure</label><select class="form-select" id="auto_rollback"><option value="">Use system default</option><option value="true">Yes</option><option value="false">No</option></select></div>
-        <div class="col-md-4"><div class="form-check form-switch mt-4"><input class="form-check-input" type="checkbox" id="stop_on_failure" checked><label class="form-check-label" for="stop_on_failure">Stop remaining hosts if one fails</label></div></div>
+        <div class="col-md-4"><label class="form-label">{{ _('Strategy (multi-host)') }}</label><select class="form-select" id="strategy"><option value="SEQUENTIAL">{{ _('SEQUENTIAL — one host at a time, stop on failure') }}</option><option value="PARALLEL">{{ _('PARALLEL — up to the configured limit') }}</option></select></div>
+        <div class="col-md-4"><label class="form-label">{{ _('Auto rollback on failure') }}</label><select class="form-select" id="auto_rollback"><option value="">{{ _('Use system default') }}</option><option value="true">{{ _('Yes') }}</option><option value="false">{{ _('No') }}</option></select></div>
+        <div class="col-md-4"><div class="form-check form-switch mt-4"><input class="form-check-input" type="checkbox" id="stop_on_failure" checked><label class="form-check-label" for="stop_on_failure">{{ _('Stop remaining hosts if one fails') }}</label></div></div>
       </div>
     </div>
     <!-- 5 preflight -->
     <div class="wizard-pane" data-pane="5">
-      <h5>Pre-flight checks</h5>
-      <div id="preflight-results"><div class="text-muted"><div class="spinner-border spinner-border-sm me-2"></div>Running checks on the target host(s)…</div></div>
+      <h5>{{ _('Pre-flight checks') }}</h5>
+      <div id="preflight-results"><div class="text-muted"><div class="spinner-border spinner-border-sm me-2"></div>{{ _('Running checks on the target host(s)…') }}</div></div>
     </div>
     <!-- 6 confirmation -->
     <div class="wizard-pane" data-pane="6">
-      <h5>Confirmation</h5>
+      <h5>{{ _('Confirmation') }}</h5>
       <div id="confirm-summary"></div>
-      <div class="mb-3"><label class="form-label">Reason <span id="reason-required" class="text-danger d-none">*</span></label><textarea class="form-control" id="reason" rows="2" maxlength="2000" placeholder="Change ticket, release notes reference…"></textarea></div>
-      <div class="mb-3 d-none" id="phrase-group"><label class="form-label">Type <code id="phrase-expected"></code> to confirm the production deployment</label><input class="form-control font-monospace" id="phrase" autocomplete="off"></div>
+      <div class="mb-3"><label class="form-label">{{ _('Reason') }} <span id="reason-required" class="text-danger d-none">*</span></label><textarea class="form-control" id="reason" rows="2" maxlength="2000" placeholder="Change ticket, release notes reference…"></textarea></div>
+      <div class="mb-3 d-none" id="phrase-group"><label class="form-label">{{ _('Type') }} <code id="phrase-expected"></code> {{ _('to confirm the production deployment') }}</label><input class="form-control font-monospace" id="phrase" autocomplete="off"></div>
     </div>
     <!-- 7 execution / 8 health / 9 result -->
     <div class="wizard-pane" data-pane="7">
-      <h5>Execution</h5>
+      <h5>{{ _('Execution') }}</h5>
       <div id="execution-view"></div>
     </div>
-    <div class="wizard-pane" data-pane="8"><h5>Health check</h5><div id="health-view"></div></div>
-    <div class="wizard-pane" data-pane="9"><h5>Result</h5><div id="result-view"></div></div>
+    <div class="wizard-pane" data-pane="8"><h5>{{ _('Health check') }}</h5><div id="health-view"></div></div>
+    <div class="wizard-pane" data-pane="9"><h5>{{ _('Result') }}</h5><div id="result-view"></div></div>
   </div>
   <div class="card-footer d-flex justify-content-between">
-    <button class="btn btn-outline-secondary" id="btn-back" disabled><i class="fa-solid fa-arrow-left me-1"></i>Back</button>
+    <button class="btn btn-outline-secondary" id="btn-back" disabled><i class="fa-solid fa-arrow-left me-1"></i>{{ _('Back') }}</button>
     <div class="text-muted small align-self-center" id="wizard-hint"></div>
-    <button class="btn btn-primary" id="btn-next" disabled>Next <i class="fa-solid fa-arrow-right ms-1"></i></button>
+    <button class="btn btn-primary" id="btn-next" disabled>{{ _('Next') }} <i class="fa-solid fa-arrow-right ms-1"></i></button>
   </div>
 </div>
 </div>

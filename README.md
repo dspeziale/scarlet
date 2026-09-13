@@ -39,8 +39,8 @@ docker compose exec scarlet-web flask scarlet seed --with-demo
 open http://localhost:8080                # admin / SCARLET_INITIAL_ADMIN_PASSWORD (forced change at first login)
 ```
 
-The `dev` profile starts a simulated Oracle Linux host (`mockhost`, SSH on port 2222, user
-`scarlet`, password `scarlet-dev`, rootless Podman). Register it as a DEV host, add the password
+The `dev` profile starts two simulated Oracle Linux hosts with Podman: `mockhost` (DEV, SSH port 2222)
+and `mockhost-prod` (PROD, SSH port 2223), user `scarlet`, password `scarlet-dev`. Register them, add the password
 credential, approve its host key, run **Discover**, then build and upload the example package:
 
 ```bash
@@ -84,6 +84,7 @@ tests/          unit · integration · security · e2e (149 tests, fake SSH host
 docker/         Dockerfile, nginx configs, entrypoint, mock Oracle Linux host
 deployment/     production compose, Kubernetes manifests, Helm chart, systemd unit
 examples/       podman-app · docker-app · kubernetes-app packages
+work/           working copies of real applications packaged for SCARLET (e.g. texa-ares; image archives are git-ignored)
 scripts/        build-scarlet-package.py, backup.sh, restore.sh, fetch-vendor-assets.sh
 docs/           documentation
 ```

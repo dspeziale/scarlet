@@ -1,23 +1,23 @@
 {% extends "layout/base.html" %}
-{% block title %}Users{% endblock %}
-{% block breadcrumb %}<li class="breadcrumb-item active">Users</li>{% endblock %}
+{% block title %}{{ _('Users') }}{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active">{{ _('Users') }}</li>{% endblock %}
 {% block content %}
 <div data-page="users">
 <div class="row">
   <div class="col-lg-8">
     <div class="card">
-      <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-users me-2"></i>Users</h3></div>
+      <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-users me-2"></i>{{ _('Users') }}</h3></div>
       <div class="card-body p-0">
         <table class="table table-sm table-hover mb-0 align-middle">
-          <thead><tr><th>Username</th><th>Name</th><th>E-mail</th><th>Roles</th><th>Status</th><th>Last login</th><th></th></tr></thead>
+          <thead><tr><th>{{ _('Username') }}</th><th>{{ _('Name') }}</th><th>{{ _('E-mail') }}</th><th>{{ _('Roles') }}</th><th>{{ _('Status') }}</th><th>{{ _('Last login') }}</th><th></th></tr></thead>
           <tbody>
           {% for u in users %}
           <tr data-user='{{ u.to_dict()|tojson|forceescape }}'>
             <td><b>{{ u.username }}</b></td><td>{{ u.full_name }}</td><td class="small">{{ u.email or '-' }}</td>
             <td>{% for r in u.role_names %}<span class="badge text-bg-{{ 'danger' if r == 'ADMIN' else ('warning text-dark' if r == 'PROD_OPERATOR' else 'secondary') }}">{{ r }}</span> {% endfor %}</td>
-            <td>{% if not u.is_active %}{{ 'DISABLED'|status_badge }}{% elif u.is_locked %}<span class="badge text-bg-warning text-dark">LOCKED</span>{% else %}<span class="badge text-bg-success">ACTIVE</span>{% endif %}{% if u.must_change_password %} <span class="badge text-bg-light text-dark border" title="Must change password">pwd</span>{% endif %}</td>
+            <td>{% if not u.is_active %}{{ 'DISABLED'|status_badge }}{% elif u.is_locked %}<span class="badge text-bg-warning text-dark">{{ _('LOCKED') }}</span>{% else %}<span class="badge text-bg-success">{{ _('ACTIVE') }}</span>{% endif %}{% if u.must_change_password %} <span class="badge text-bg-light text-dark border" title="{{ _('Must change password') }}">pwd</span>{% endif %}</td>
             <td class="small text-muted">{{ u.last_login_at|dt }}{% if u.last_login_ip %}<br>{{ u.last_login_ip }}{% endif %}</td>
-            <td class="text-end text-nowrap"><button class="btn btn-sm btn-outline-secondary" data-edit-user title="Edit"><i class="fa-solid fa-pen"></i></button> <button class="btn btn-sm btn-outline-warning" data-reset-user title="Reset password"><i class="fa-solid fa-key"></i></button> <button class="btn btn-sm btn-outline-danger" data-delete-user title="Delete"><i class="fa-solid fa-trash"></i></button></td>
+            <td class="text-end text-nowrap"><button class="btn btn-sm btn-outline-secondary" data-edit-user title="{{ _('Edit') }}"><i class="fa-solid fa-pen"></i></button> <button class="btn btn-sm btn-outline-warning" data-reset-user title="{{ _('Reset password') }}"><i class="fa-solid fa-key"></i></button> <button class="btn btn-sm btn-outline-danger" data-delete-user title="{{ _('Delete') }}"><i class="fa-solid fa-trash"></i></button></td>
           </tr>
           {% endfor %}
           </tbody>
@@ -27,19 +27,19 @@
   </div>
   <div class="col-lg-4">
     <div class="card card-primary card-outline">
-      <div class="card-header"><h3 class="card-title" id="user-form-title">New user</h3></div>
+      <div class="card-header"><h3 class="card-title" id="user-form-title">{{ _('New user') }}</h3></div>
       <form id="user-form" autocomplete="off">
         <input type="hidden" name="id">
         <div class="card-body">
-          <div class="mb-2"><label class="form-label">Username *</label><input class="form-control" name="username" required pattern="[a-zA-Z0-9][a-zA-Z0-9._-]{2,63}"></div>
-          <div class="mb-2"><label class="form-label">Full name</label><input class="form-control" name="full_name" maxlength="128"></div>
-          <div class="mb-2"><label class="form-label">E-mail</label><input class="form-control" type="email" name="email"></div>
-          <div class="mb-2" id="password-group"><label class="form-label">Initial password *</label><input class="form-control" type="password" name="password" minlength="12" autocomplete="new-password"><div class="form-text">Min 12 chars, 3 character classes. The user must change it at first login.</div></div>
-          <div class="mb-2"><label class="form-label">Roles *</label>{% for r in roles %}<div class="form-check"><input class="form-check-input" type="checkbox" name="roles" value="{{ r.name }}" id="role-{{ r.id }}"><label class="form-check-label" for="role-{{ r.id }}"><b>{{ r.name }}</b> <span class="text-muted small">{{ r.description }}</span></label></div>{% endfor %}</div>
-          <div class="form-check form-switch"><input class="form-check-input" type="checkbox" name="is_active" id="is_active" checked><label class="form-check-label" for="is_active">Active</label></div>
-          <div class="form-check form-switch"><input class="form-check-input" type="checkbox" name="unlock" id="unlock"><label class="form-check-label" for="unlock">Unlock account</label></div>
+          <div class="mb-2"><label class="form-label">{{ _('Username *') }}</label><input class="form-control" name="username" required pattern="[a-zA-Z0-9][a-zA-Z0-9._-]{2,63}"></div>
+          <div class="mb-2"><label class="form-label">{{ _('Full name') }}</label><input class="form-control" name="full_name" maxlength="128"></div>
+          <div class="mb-2"><label class="form-label">{{ _('E-mail') }}</label><input class="form-control" type="email" name="email"></div>
+          <div class="mb-2" id="password-group"><label class="form-label">{{ _('Initial password *') }}</label><input class="form-control" type="password" name="password" minlength="12" autocomplete="new-password"><div class="form-text">{{ _('Min 12 chars, 3 character classes. The user must change it at first login.') }}</div></div>
+          <div class="mb-2"><label class="form-label">{{ _('Roles *') }}</label>{% for r in roles %}<div class="form-check"><input class="form-check-input" type="checkbox" name="roles" value="{{ r.name }}" id="role-{{ r.id }}"><label class="form-check-label" for="role-{{ r.id }}"><b>{{ r.name }}</b> <span class="text-muted small">{{ r.description }}</span></label></div>{% endfor %}</div>
+          <div class="form-check form-switch"><input class="form-check-input" type="checkbox" name="is_active" id="is_active" checked><label class="form-check-label" for="is_active">{{ _('Active') }}</label></div>
+          <div class="form-check form-switch"><input class="form-check-input" type="checkbox" name="unlock" id="unlock"><label class="form-check-label" for="unlock">{{ _('Unlock account') }}</label></div>
         </div>
-        <div class="card-footer d-flex gap-2"><button type="submit" class="btn btn-primary">Save</button><button type="button" class="btn btn-outline-secondary" id="user-form-reset">Reset</button></div>
+        <div class="card-footer d-flex gap-2"><button type="submit" class="btn btn-primary">{{ _('Save') }}</button><button type="button" class="btn btn-outline-secondary" id="user-form-reset">{{ _('Reset') }}</button></div>
       </form>
     </div>
   </div>

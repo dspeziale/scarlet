@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="{{ current_locale }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -12,7 +12,7 @@
 <div class="container py-5">
   <div class="text-center mb-4"><span class="scarlet-logo-lg"><i class="fa-solid fa-cubes"></i></span><div><b>SCARLET</b></div></div>
   {% block content %}{% endblock %}
-  <p class="text-center mt-4"><a href="{{ url_for('web_auth.login') }}">Sign in</a></p>
+  <p class="text-center mt-4"><a href="{{ url_for('web_auth.login') }}">{{ _('Sign in') }}</a></p>
 </div>
 </body>
 </html>

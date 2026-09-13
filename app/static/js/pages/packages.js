@@ -38,12 +38,12 @@
           ev.preventDefault();
           try { const res = await S.api("GET", "/api/packages/" + el.dataset.pkg); document.getElementById("package-modal-title").textContent = res.data.original_filename; document.getElementById("package-modal-body").innerHTML = renderPackage(res.data); bootstrap.Modal.getOrCreateInstance(document.getElementById("package-modal")).show(); } catch (e) { S.showError(e); }
         }));
-        document.querySelectorAll("[data-release]").forEach((el) => el.addEventListener("click", async () => { try { const res = await S.api("POST", "/api/packages/" + el.dataset.release + "/release", {}); S.toast("Released version " + res.data.version, "success"); table.load(); } catch (e) { S.showError(e, "Release"); } }));
-        document.querySelectorAll("[data-revalidate]").forEach((el) => el.addEventListener("click", async () => { try { await S.api("POST", "/api/packages/" + el.dataset.revalidate + "/revalidate", {}); table.load(); } catch (e) { S.showError(e, "Re-validate"); } }));
+        document.querySelectorAll("[data-release]").forEach((el) => el.addEventListener("click", async () => { try { const res = await S.api("POST", "/api/packages/" + el.dataset.release + "/release", {}); S.toast(S.t("Released version") + " " + res.data.version, "success"); table.load(); } catch (e) { S.showError(e, S.t("Release")); } }));
+        document.querySelectorAll("[data-revalidate]").forEach((el) => el.addEventListener("click", async () => { try { await S.api("POST", "/api/packages/" + el.dataset.revalidate + "/revalidate", {}); table.load(); } catch (e) { S.showError(e, S.t("Re-validate")); } }));
         document.querySelectorAll("[data-delete]").forEach((el) => el.addEventListener("click", async () => {
-          const answer = await S.confirm({ title: "Delete package", danger: true, requirePhrase: false, requireReason: false, body: "<p>Only unreleased/invalid packages can be deleted.</p>" });
+          const answer = await S.confirm({ title: S.t("Delete package"), danger: true, requirePhrase: false, requireReason: false, body: S.t("<p>Only unreleased/invalid packages can be deleted.</p>") });
           if (!answer) return;
-          try { await S.api("DELETE", "/api/packages/" + el.dataset.delete); table.load(); } catch (e) { S.showError(e, "Delete"); }
+          try { await S.api("DELETE", "/api/packages/" + el.dataset.delete); table.load(); } catch (e) { S.showError(e, S.t("Delete")); }
         }));
       },
     });
@@ -57,16 +57,16 @@
     let file = null;
     const pick = (f) => {
       if (!f) return;
-      if (!/\.(tar\.gz|tgz)$/i.test(f.name)) { S.toast("Expected a .scarlet.tar.gz file", "warning"); return; }
-      if (f.size > maxBytes) { S.toast("File exceeds the maximum upload size of " + root.dataset.maxMb + " MB", "danger"); return; }
+      if (!/\.(tar\.gz|tgz)$/i.test(f.name)) { S.toast(S.t("Expected a .scarlet.tar.gz file"), "warning"); return; }
+      if (f.size > maxBytes) { S.toast(S.t("File exceeds the maximum upload size of") + " " + root.dataset.maxMb + " MB", "danger"); return; }
       file = f;
       document.getElementById("fi-name").textContent = f.name;
       document.getElementById("fi-size").textContent = S.fmtBytes(f.size);
       info.classList.remove("d-none"); resultCard.classList.add("d-none");
-      const sha = document.getElementById("fi-sha"); sha.textContent = "computing…";
+      const sha = document.getElementById("fi-sha"); sha.textContent = S.t("computing…");
       if (window.crypto && crypto.subtle && f.size <= 256 * 1024 * 1024) {
         f.arrayBuffer().then((buf) => crypto.subtle.digest("SHA-256", buf)).then((h) => { sha.textContent = Array.from(new Uint8Array(h)).map((b) => b.toString(16).padStart(2, "0")).join(""); }).catch(() => { sha.textContent = "n/a"; });
-      } else sha.textContent = "computed server-side";
+      } else sha.textContent = S.t("computed server-side");
     };
     dz.addEventListener("click", () => input.click());
     dz.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") input.click(); });
@@ -95,13 +95,13 @@
         if (xhr.status >= 200 && xhr.status < 300 && body && body.ok) { showResult(body.data); }
         else { const err = (body && body.error) || { message: "Upload failed (HTTP " + xhr.status + ")" }; S.toast(err.message + (err.errors ? " " + JSON.stringify(err.errors) : ""), "danger", 10000); }
       };
-      xhr.onerror = () => { document.getElementById("btn-upload").disabled = false; S.toast("Network error during upload", "danger"); };
+      xhr.onerror = () => { document.getElementById("btn-upload").disabled = false; S.toast(S.t("Network error during upload"), "danger"); };
       xhr.send(fd);
     });
     function showResult(p) {
       resultCard.classList.remove("d-none");
       document.getElementById("result-status").innerHTML = S.badge(p.status);
-      document.getElementById("result-meta").innerHTML = [["Application", p.application_code || p.manifest_application || "-"], ["Version", p.manifest_version || "-"], ["Runtime", p.manifest_runtime || "-"], ["Size", S.fmtBytes(p.size_bytes)], ["SHA-256", "<code>" + S.esc(p.checksum_sha256) + "</code>"], ["Members", p.file_count], ["Release", p.version_id ? '<span class="text-success">version created</span>' : "not released"]].map(([k, v]) => '<dt class="col-3">' + k + '</dt><dd class="col-9">' + v + "</dd>").join("");
+      document.getElementById("result-meta").innerHTML = [[S.t("Application"), p.application_code || p.manifest_application || "-"], [S.t("Version"), p.manifest_version || "-"], [S.t("Runtime"), p.manifest_runtime || "-"], ["Size", S.fmtBytes(p.size_bytes)], ["SHA-256", "<code>" + S.esc(p.checksum_sha256) + "</code>"], [S.t("Members"), p.file_count], [S.t("Release"), p.version_id ? '<span class="text-success">version created</span>' : S.t("not released")]].map(([k, v]) => '<dt class="col-3">' + k + '</dt><dd class="col-9">' + v + "</dd>").join("");
       document.getElementById("result-errors").innerHTML = (p.validation_errors || []).length ? '<div class="alert alert-danger py-2"><b>Validation errors</b><ul class="mb-0 small">' + p.validation_errors.map((e) => "<li>" + S.esc(e) + "</li>").join("") + "</ul></div>" : (p.status === "VALID" ? '<div class="alert alert-success py-2"><i class="fa-solid fa-check me-1"></i>Package is valid.' + (p.version_id ? " Release created." : "") + "</div>" : "");
       document.getElementById("result-warnings").innerHTML = (p.validation_warnings || []).length ? '<div class="alert alert-warning py-2"><b>Warnings</b><ul class="mb-0 small">' + p.validation_warnings.map((w) => "<li>" + S.esc(w) + "</li>").join("") + "</ul></div>" : "";
       document.getElementById("result-manifest").textContent = p.manifest ? JSON.stringify(p.manifest, null, 2) : "(no manifest)";
@@ -111,7 +111,7 @@
       if (p.status === "VALID" && !p.version_id && S.can("package.upload")) actions.innerHTML += '<button class="btn btn-outline-success" id="btn-release-now"><i class="fa-solid fa-tag me-1"></i>Create release</button>';
       actions.innerHTML += '<a class="btn btn-outline-secondary" href="/packages">All packages</a>';
       const rel = document.getElementById("btn-release-now");
-      if (rel) rel.addEventListener("click", async () => { try { const res = await S.api("POST", "/api/packages/" + p.id + "/release", {}); S.toast("Released " + res.data.version, "success"); p.version_id = res.data.id; p.application_id = res.data.application_id; showResult(p); } catch (e) { S.showError(e, "Release"); } });
+      if (rel) rel.addEventListener("click", async () => { try { const res = await S.api("POST", "/api/packages/" + p.id + "/release", {}); S.toast(S.t("Released") + " " + res.data.version, "success"); p.version_id = res.data.id; p.application_id = res.data.application_id; showResult(p); } catch (e) { S.showError(e, S.t("Release")); } });
     }
   };
 })();

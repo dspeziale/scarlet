@@ -27,13 +27,13 @@
       if (!instance.value) return;
       const [app, host] = instance.value.split(":");
       const params = { lines: Number(document.getElementById("lines").value), since: document.getElementById("since").value, search: document.getElementById("search").value.trim() };
-      out.textContent = "Fetching logs from the target host…";
+      out.textContent = S.t("Fetching logs from the target host…");
       try {
         const res = await S.api("POST", "/api/applications/" + app + "/logs", { host_id: Number(host), parameters: params });
         let op = res.data;
         if (!op.is_terminal) { const done = await S.poll("/api/operations/" + op.id, (r) => r.data.is_terminal, { interval: 1500 }); op = done.data; }
         lastOperationId = op.id; download.disabled = false;
-        if (op.status !== "SUCCESS") { out.innerHTML = '<span class="log-line-error">' + S.esc(op.error_code || "ERROR") + ": " + S.esc(op.error_message || "failed") + "</span>"; return; }
+        if (op.status !== "SUCCESS") { out.innerHTML = '<span class="log-line-error">' + S.esc(op.error_code || "ERROR") + ": " + S.esc(op.error_message || S.t("failed")) + "</span>"; return; }
         const lines = op.result.lines || [];
         const search = params.search.toLowerCase();
         out.innerHTML = lines.length ? lines.map((l) => { let cls = /error|fatal|exception/i.test(l) ? "log-line-error" : (/warn/i.test(l) ? "log-line-warn" : ""); let html = S.esc(l); if (search) { const idx = l.toLowerCase().indexOf(search); if (idx >= 0) html = S.esc(l.slice(0, idx)) + "<mark>" + S.esc(l.slice(idx, idx + search.length)) + "</mark>" + S.esc(l.slice(idx + search.length)); } return '<div class="' + cls + '">' + html + "</div>"; }).join("") : '<span class="text-muted">(no log lines)</span>';

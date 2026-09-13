@@ -47,9 +47,11 @@ def create_app(overrides: dict[str, Any] | None = None) -> Flask:
 
     from app.api.errors import register_error_handlers
     from app.cli import register_cli
+    from app.i18n import register_i18n
     from app.security.headers import register_security_headers
     from app.tasks.celery_app import init_celery
 
+    register_i18n(app)
     register_error_handlers(app)
     register_security_headers(app)
     register_cli(app)

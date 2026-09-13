@@ -70,7 +70,7 @@
     // step 2
     async function loadVersions() {
       const list = document.getElementById("version-list");
-      list.innerHTML = '<div class="text-muted"><div class="spinner-border spinner-border-sm me-2"></div>Loading…</div>';
+      list.innerHTML = '<div class="text-muted"><div class="spinner-border spinner-border-sm me-2"></div>' + S.t("Loading…") + "</div>";
       const res = await S.api("GET", "/api/applications/" + state.app.id + "/versions");
       const versions = res.data.filter((v) => v.is_active);
       list.innerHTML = versions.length ? versions.map((v) => '<div class="col-md-4"><div class="card host-pick h-100 mb-0 ' + (v.package_status && v.package_status !== "VALID" ? "incompatible" : "") + '" data-version-id="' + v.id + '" data-version="' + S.esc(v.version) + '"><div class="card-body py-2"><b>' + S.esc(v.version) + "</b> " + S.runtimeIcon(v.runtime_type) + '<div class="small text-muted">' + S.esc(v.image_name || "") + (v.image_tag ? ":" + S.esc(v.image_tag) : "") + "</div><div class=\"small\">" + (v.package_status ? S.badge(v.package_status) : '<span class="text-muted">no artifact</span>') + ' <span class="text-muted">' + S.fmtDate(v.created_at).slice(0, 10) + "</span></div></div></div></div>").join("") : '<div class="alert alert-warning">No active versions. Upload a package first.</div>';
@@ -79,7 +79,7 @@
     // step 3
     async function loadHosts() {
       const list = document.getElementById("host-list");
-      list.innerHTML = '<div class="text-muted"><div class="spinner-border spinner-border-sm me-2"></div>Loading…</div>';
+      list.innerHTML = '<div class="text-muted"><div class="spinner-border spinner-border-sm me-2"></div>' + S.t("Loading…") + "</div>";
       const res = await S.api("GET", "/api/applications/" + state.app.id + "/compatible-hosts?version_id=" + state.version.id);
       state.hostData = {};
       list.innerHTML = res.data.map((r) => { const h = r.host; state.hostData[h.id] = h; return '<div class="col-md-4"><div class="card host-pick h-100 mb-0 ' + (r.compatible ? "" : "incompatible") + (state.hosts.includes(h.id) ? " selected" : "") + '" data-host-id="' + h.id + '"><div class="card-body py-2"><b>' + S.esc(h.name) + "</b> " + S.envBadge(h.environment, h.is_production) + '<div class="small text-muted">' + S.runtimeIcon(h.runtime_type) + " " + S.esc(h.runtime_version || "") + " · " + S.badge(h.status) + "</div>" + (r.compatible ? "" : '<div class="small text-danger">' + r.problems.map(S.esc).join("<br>") + "</div>") + "</div></div></div>"; }).join("") || '<div class="alert alert-warning">No enabled hosts.</div>';
@@ -101,7 +101,7 @@
     // step 5
     async function runPreflight() {
       const box = document.getElementById("preflight-results");
-      box.innerHTML = '<div class="text-muted"><div class="spinner-border spinner-border-sm me-2"></div>Connecting to target host(s) and checking runtime, disk, memory, ports…</div>';
+      box.innerHTML = '<div class="text-muted"><div class="spinner-border spinner-border-sm me-2"></div>' + S.t("Connecting to target host(s) and checking runtime, disk, memory, ports…") + "</div>";
       state.preflight = null; validate();
       try {
         const res = await S.api("POST", "/api/deployments/preflight", { application_id: state.app.id, version_id: state.version.id, host_ids: state.hosts, remote: true });
@@ -114,7 +114,7 @@
     // step 6
     function loadConfirm() {
       const reqs = anyReq(), prod = isProd();
-      document.getElementById("confirm-summary").innerHTML = '<div class="alert ' + (prod ? "alert-danger" : "alert-info") + '"><p class="mb-1">You are deploying <b>' + S.esc(state.app.code) + " " + S.esc(state.version.version) + "</b> to:</p><ul class=\"mb-1\">" + state.hosts.map((id) => "<li><b>" + S.esc(state.hostData[id].name) + "</b> " + S.envBadge(state.hostData[id].environment, state.hostData[id].is_production) + "</li>").join("") + "</ul>" + (prod ? "<p class=\"mb-0\"><b>This operation will modify a production system.</b></p>" : "") + "</div><p class=\"small text-muted\">Strategy: " + document.getElementById("strategy").value + " · auto rollback: " + (document.getElementById("auto_rollback").value || "system default") + "</p>";
+      document.getElementById("confirm-summary").innerHTML = '<div class="alert ' + (prod ? "alert-danger" : "alert-info") + '"><p class="mb-1">You are deploying <b>' + S.esc(state.app.code) + " " + S.esc(state.version.version) + "</b> to:</p><ul class=\"mb-1\">" + state.hosts.map((id) => "<li><b>" + S.esc(state.hostData[id].name) + "</b> " + S.envBadge(state.hostData[id].environment, state.hostData[id].is_production) + "</li>").join("") + "</ul>" + (prod ? "<p class=\"mb-0\"><b>This operation will modify a production system.</b></p>" : "") + "</div><p class=\"small text-muted\">Strategy: " + document.getElementById("strategy").value + " · auto rollback: " + (document.getElementById("auto_rollback").value || S.t("system default")) + "</p>";
       document.getElementById("reason-required").classList.toggle("d-none", !reqs.require_reason);
       document.getElementById("phrase-group").classList.toggle("d-none", !reqs.require_confirmation);
       document.getElementById("phrase-expected").textContent = reqs.confirmation_phrase;
@@ -124,15 +124,15 @@
     // step 7-9
     async function execute() {
       const view = document.getElementById("execution-view");
-      view.innerHTML = '<div class="text-muted"><div class="spinner-border spinner-border-sm me-2"></div>Queuing deployment…</div>';
+      view.innerHTML = '<div class="text-muted"><div class="spinner-border spinner-border-sm me-2"></div>' + S.t("Queuing deployment…") + "</div>";
       const reqs = anyReq();
       try {
         const res = await S.api("POST", "/api/deployments", { application_id: state.app.id, version_id: state.version.id, host_ids: state.hosts, strategy: document.getElementById("strategy").value, reason: document.getElementById("reason").value.trim(), confirmation: reqs.require_confirmation ? document.getElementById("phrase").value.trim() : null, auto_rollback: document.getElementById("auto_rollback").value === "" ? null : document.getElementById("auto_rollback").value === "true", stop_on_failure: document.getElementById("stop_on_failure").checked });
         state.batch = res.data;
         state.deployments = res.data.deployments;
         if (state.deployments.some((d) => d.status === "PENDING_APPROVAL")) {
-          view.innerHTML = '<div class="alert alert-warning"><i class="fa-solid fa-user-check me-2"></i>Deployment(s) created and waiting for approval by another authorized user. ' + state.deployments.map((d) => '<a href="/deployments/' + d.id + '"><code>' + S.esc(d.reference) + "</code></a>").join(", ") + "</div>";
-          show(9); document.getElementById("result-view").innerHTML = '<div class="alert alert-warning">Pending approval.</div>'; btnNext.disabled = false; return;
+          view.innerHTML = '<div class="alert alert-warning"><i class="fa-solid fa-user-check me-2"></i>' + S.t("Deployment(s) created and waiting for approval by another authorized user.") + " " + state.deployments.map((d) => '<a href="/deployments/' + d.id + '"><code>' + S.esc(d.reference) + "</code></a>").join(", ") + "</div>";
+          show(9); document.getElementById("result-view").innerHTML = '<div class="alert alert-warning">' + S.t("Pending approval.") + "</div>"; btnNext.disabled = false; return;
         }
         await followBatch();
       } catch (e) { view.innerHTML = '<div class="alert alert-danger">' + S.esc(e.message) + (e.errors ? "<br>" + S.esc(JSON.stringify(e.errors)) : "") + "</div>"; btnBack.disabled = false; }
@@ -145,7 +145,7 @@
       const ids = state.deployments.map((d) => d.id);
       const finals = [];
       for (const id of ids) {
-        const data = await S.poll("/api/deployments/" + id, (r) => r.data.is_terminal, { interval: 2000, onTick: (r) => { const d = r.data; const others = finals.map(renderSteps).join(""); view.innerHTML = others + renderSteps(d); if (["HEALTH_CHECKING", "STARTED"].includes(d.status) && state.step === 7) show(8); document.getElementById("health-view").innerHTML = d.steps ? (d.steps.filter((s) => s.name === "health").map((s) => "<p>" + S.badge(s.status) + " " + S.esc((s.details && s.details.message) || s.error_message || "") + (s.details && s.details.attempts ? " after " + s.details.attempts + " attempt(s)" : "") + "</p>").join("") || '<p class="text-muted">Health check not started yet.</p>') : ""; } });
+        const data = await S.poll("/api/deployments/" + id, (r) => r.data.is_terminal, { interval: 2000, onTick: (r) => { const d = r.data; const others = finals.map(renderSteps).join(""); view.innerHTML = others + renderSteps(d); if (["HEALTH_CHECKING", S.t("STARTED")].includes(d.status) && state.step === 7) show(8); document.getElementById("health-view").innerHTML = d.steps ? (d.steps.filter((s) => s.name === "health").map((s) => "<p>" + S.badge(s.status) + " " + S.esc((s.details && s.details.message) || s.error_message || "") + (s.details && s.details.attempts ? " after " + s.details.attempts + " attempt(s)" : "") + "</p>").join("") || '<p class="text-muted">Health check not started yet.</p>') : ""; } });
         finals.push(data.data);
       }
       view.innerHTML = finals.map(renderSteps).join("");
@@ -168,7 +168,7 @@
       } catch (e) { S.showError(e); }
     });
     btnBack.addEventListener("click", () => { if (state.step > 1 && state.step < 7) show(state.step - 1); });
-    hint.textContent = "Select an application to begin.";
+    hint.textContent = S.t("Select an application to begin.");
     show(1);
   };
 
@@ -177,11 +177,11 @@
     const id = root.dataset.deploymentId;
     const production = root.dataset.production === "1";
     const cancel = document.getElementById("btn-cancel");
-    if (cancel) cancel.addEventListener("click", async () => { const a = await S.confirm({ title: "Cancel deployment", danger: true, requirePhrase: false, showReason: true, requireReason: false }); if (!a) return; try { await S.api("POST", "/api/deployments/" + id + "/cancel", { reason: a.reason }); location.reload(); } catch (e) { S.showError(e); } });
+    if (cancel) cancel.addEventListener("click", async () => { const a = await S.confirm({ title: S.t("Cancel deployment"), danger: true, requirePhrase: false, showReason: true, requireReason: false }); if (!a) return; try { await S.api("POST", "/api/deployments/" + id + "/cancel", { reason: a.reason }); location.reload(); } catch (e) { S.showError(e); } });
     const approve = document.getElementById("btn-approve");
-    if (approve) approve.addEventListener("click", async () => { const a = await S.confirm({ title: "Approve production deployment", production, operation: "APPROVE", requirePhrase: true, phrase: "APPROVE", showReason: true, requireReason: true, okLabel: "Approve", body: "<p>You confirm that this change is authorized. Execution starts immediately after approval.</p>" }); if (!a) return; try { await S.api("POST", "/api/deployments/" + id + "/approve", { comment: a.reason }); location.reload(); } catch (e) { S.showError(e); } });
+    if (approve) approve.addEventListener("click", async () => { const a = await S.confirm({ title: S.t("Approve production deployment"), production, operation: "APPROVE", requirePhrase: true, phrase: "APPROVE", showReason: true, requireReason: true, okLabel: S.t("Approve"), body: S.t("<p>You confirm that this change is authorized. Execution starts immediately after approval.</p>") }); if (!a) return; try { await S.api("POST", "/api/deployments/" + id + "/approve", { comment: a.reason }); location.reload(); } catch (e) { S.showError(e); } });
     const reject = document.getElementById("btn-reject");
-    if (reject) reject.addEventListener("click", async () => { const a = await S.confirm({ title: "Reject deployment", danger: true, requirePhrase: false, showReason: true, requireReason: true, okLabel: "Reject" }); if (!a) return; try { await S.api("POST", "/api/deployments/" + id + "/reject", { comment: a.reason }); location.reload(); } catch (e) { S.showError(e); } });
+    if (reject) reject.addEventListener("click", async () => { const a = await S.confirm({ title: S.t("Reject deployment"), danger: true, requirePhrase: false, showReason: true, requireReason: true, okLabel: S.t("Reject") }); if (!a) return; try { await S.api("POST", "/api/deployments/" + id + "/reject", { comment: a.reason }); location.reload(); } catch (e) { S.showError(e); } });
     if (root.dataset.terminal === "1") return;
     S.poll("/api/deployments/" + id + "/steps", (r) => r.data.is_terminal, { interval: 2000, onTick: (r) => {
       const d = r.data;
@@ -189,6 +189,6 @@
       const list = document.getElementById("step-list");
       if (d.steps.length) list.innerHTML = d.steps.map((s) => '<li class="step-' + s.status + '"><span class="step-icon">' + ({ SUCCESS: '<i class="fa-solid fa-circle-check"></i>', FAILED: '<i class="fa-solid fa-circle-xmark"></i>', RUNNING: '<i class="fa-solid fa-spinner fa-spin"></i>', SKIPPED: '<i class="fa-solid fa-forward"></i>' }[s.status] || '<i class="fa-regular fa-circle"></i>') + '</span><div class="flex-grow-1"><div><b>' + S.esc(s.label) + '</b> <span class="small text-muted">' + s.status + "</span>" + (s.error_message ? '<div class="text-danger small">' + S.esc(s.error_message) + "</div>" : "") + "</div>" + (s.stdout || s.stderr ? '<details class="small"><summary class="text-muted">output</summary><pre class="scarlet-log mt-1">' + S.esc(s.stdout || "") + (s.stderr ? "\n--- stderr ---\n" + S.esc(s.stderr) : "") + "</pre></details>" : "") + '</div><span class="step-duration">' + (s.duration_seconds != null ? S.fmtDuration(s.duration_seconds) : "") + "</span></li>").join("");
       if (d.error_message) { document.getElementById("dep-error").classList.remove("d-none"); document.getElementById("dep-error-msg").textContent = d.error_message; }
-    } }).then(() => { document.getElementById("poll-indicator").textContent = "finished"; setTimeout(() => location.reload(), 1500); }).catch((e) => S.showError(e, "Live update"));
+    } }).then(() => { document.getElementById("poll-indicator").textContent = S.t("finished"); setTimeout(() => location.reload(), 1500); }).catch((e) => S.showError(e, S.t("Live update")));
   };
 })();

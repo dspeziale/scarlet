@@ -6,6 +6,21 @@
   "use strict";
 
   const csrfToken = () => (document.querySelector('meta[name="csrf-token"]') || {}).content || "";
+
+  // --- i18n ------------------------------------------------------------------------------------
+  // The server injects the active catalogue (English source -> localised text) as JSON.
+  let catalogue = {};
+  try {
+    const node = document.getElementById("scarlet-i18n");
+    if (node) catalogue = JSON.parse(node.textContent || "{}");
+  } catch (e) { catalogue = {}; }
+  /** Translate a source string; unknown strings fall back to the English text. */
+  function t(text, vars) {
+    let out = catalogue[text] != null ? catalogue[text] : text;
+    if (vars) Object.keys(vars).forEach((k) => { out = out.split("{" + k + "}").join(vars[k]); });
+    return out;
+  }
+  const lang = () => (document.querySelector('meta[name="scarlet-lang"]') || {}).content || "en";
   const permissions = new Set(((document.querySelector('meta[name="scarlet-permissions"]') || {}).content || "").split(",").filter(Boolean));
   const prodPhrase = (document.querySelector('meta[name="scarlet-prod-phrase"]') || {}).content || "DEPLOY TO PROD";
 
@@ -49,7 +64,7 @@
   function badge(status, extra) {
     const s = String(status || "UNKNOWN");
     const cls = STATUS_CLASS[s.toUpperCase()] || (s.toUpperCase().endsWith("ING") ? "info" : (s.toUpperCase().includes("FAIL") ? "danger" : "secondary"));
-    return '<span class="badge text-bg-' + cls + ' ' + (extra || "") + '" data-status="' + esc(s) + '">' + esc(s.replace(/_/g, " ")) + "</span>";
+    return '<span class="badge text-bg-' + cls + ' ' + (extra || "") + '" data-status="' + esc(s) + '">' + esc(t(s.replace(/_/g, " "))) + "</span>";
   }
   function envBadge(code, isProd) {
     const prod = isProd != null ? isProd : String(code).toUpperCase() === "PROD";
@@ -75,7 +90,7 @@
     const el = document.createElement("div");
     el.className = "toast align-items-center border-0 " + (colors[level] || colors.info);
     el.setAttribute("role", "alert");
-    el.innerHTML = '<div class="d-flex"><div class="toast-body">' + esc(message) + '</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>';
+    el.innerHTML = '<div class="d-flex"><div class="toast-body">' + esc(t(message)) + '</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>';
     container.appendChild(el);
     const t = new bootstrap.Toast(el, { delay: delay || (level === "danger" || level === "error" ? 9000 : 4500) });
     t.show();
@@ -105,7 +120,7 @@
     return data;
   }
   function showError(err, prefix) {
-    let msg = (prefix ? prefix + ": " : "") + (err && err.message ? err.message : String(err));
+    let msg = (prefix ? t(prefix) + ": " : "") + (err && err.message ? err.message : String(err));
     if (err && err.errors && Object.keys(err.errors).length) {
       msg += " " + Object.entries(err.errors).map(([k, v]) => k + ": " + (Array.isArray(v) ? v.join(" ") : v)).join(" | ");
     }
@@ -143,13 +158,13 @@
       const requireReason = opts.requireReason != null ? opts.requireReason : production;
       const showReason = opts.showReason != null ? opts.showReason : (production || opts.reasonOptional);
 
-      title.textContent = opts.title || "Confirm operation";
+      title.textContent = t(opts.title || "Confirm operation");
       bodyEl.innerHTML = opts.body || "";
-      details.innerHTML = Object.entries(opts.details || {}).map(([k, v]) => '<dt class="col-4 text-muted">' + esc(k) + '</dt><dd class="col-8">' + v + "</dd>").join("");
+      details.innerHTML = Object.entries(opts.details || {}).map(([k, v]) => '<dt class="col-4 text-muted">' + esc(t(k)) + '</dt><dd class="col-8">' + v + "</dd>").join("");
       prodBanner.classList.toggle("d-none", !production);
       header.className = "modal-header " + (production || opts.danger ? "text-bg-danger" : "");
       okBtn.className = "btn " + (production || opts.danger ? "btn-danger" : "btn-primary");
-      okBtn.textContent = opts.okLabel || "Confirm";
+      okBtn.textContent = t(opts.okLabel || "Confirm");
       reasonGroup.classList.toggle("d-none", !showReason);
       reasonRequired.classList.toggle("d-none", !requireReason);
       reasonInput.value = "";
@@ -227,7 +242,7 @@
       document.getElementById("operation-modal-title").textContent = (o.operation_type || "Operation") + " " + (o.reference || "");
       document.getElementById("operation-modal-status").innerHTML = badge(o.status);
       document.getElementById("operation-modal-spinner").classList.toggle("d-none", !!o.is_terminal);
-      document.getElementById("operation-modal-meta").innerHTML = [["Application", o.application_code], ["Target", o.target_name], ["Environment", o.environment ? envBadge(o.environment) : "-"], ["Requested by", o.requested_by], ["Started", fmtDate(o.started_at)], ["Duration", fmtDuration(o.duration_seconds)]].map(([k, v]) => '<dt class="col-4 text-muted">' + k + '</dt><dd class="col-8">' + (v == null ? "-" : v) + "</dd>").join("");
+      document.getElementById("operation-modal-meta").innerHTML = [["Application", o.application_code], ["Target", o.target_name], ["Environment", o.environment ? envBadge(o.environment) : "-"], ["Requested by", o.requested_by], ["Started", fmtDate(o.started_at)], ["Duration", fmtDuration(o.duration_seconds)]].map(([k, v]) => '<dt class="col-4 text-muted">' + t(k) + '</dt><dd class="col-8">' + (v == null ? "-" : v) + "</dd>").join("");
       let res = "";
       if (o.status === "FAILED" || o.status === "TIMEOUT") res += '<div class="alert alert-danger py-2"><b>' + esc(o.error_code || "ERROR") + "</b> " + esc(o.error_message || "") + "</div>";
       if (o.is_terminal) res += renderOperationResult(o);
@@ -309,7 +324,7 @@
         const items = res.data || [];
         const pg = (res.meta && res.meta.pagination) || { page: 1, pages: 1, total: items.length };
         this.body.innerHTML = items.length ? items.map((row) => this.renderRow(row)).join("") : '<tr><td colspan="' + cols + '" class="text-center text-muted py-4">' + esc(this.root.querySelector('[data-role="empty"]').textContent) + "</td></tr>";
-        this.root.querySelector('[data-role="summary"]').textContent = pg.total + " record" + (pg.total === 1 ? "" : "s");
+        this.root.querySelector('[data-role="summary"]').textContent = pg.total + " " + t(pg.total === 1 ? "record" : "records");
         this.renderPagination(pg);
         if (this.options.afterLoad) this.options.afterLoad(items, this);
       } catch (e) {
@@ -340,7 +355,7 @@
         const el = document.getElementById("notif-count");
         if (el) el.textContent = count ? String(count) : "";
         const items = document.getElementById("notif-items");
-        if (items) items.innerHTML = res.data.items.length ? res.data.items.slice(0, 8).map((n) => '<a href="' + esc(n.link || "/notifications") + '" class="dropdown-item small"><i class="fa-solid ' + ({ ERROR: "fa-circle-xmark text-danger", WARNING: "fa-triangle-exclamation text-warning", SUCCESS: "fa-circle-check text-success" }[n.level] || "fa-circle-info text-info") + ' me-2"></i>' + esc(n.title) + '<span class="float-end text-muted fs-7">' + fmtDate(n.created_at).substring(11, 16) + "</span></a>").join("") : '<span class="dropdown-item text-muted small">No unread notifications</span>';
+        if (items) items.innerHTML = res.data.items.length ? res.data.items.slice(0, 8).map((n) => '<a href="' + esc(n.link || "/notifications") + '" class="dropdown-item small"><i class="fa-solid ' + ({ ERROR: "fa-circle-xmark text-danger", WARNING: "fa-triangle-exclamation text-warning", SUCCESS: "fa-circle-check text-success" }[n.level] || "fa-circle-info text-info") + ' me-2"></i>' + esc(n.title) + '<span class="float-end text-muted fs-7">' + fmtDate(n.created_at).substring(11, 16) + "</span></a>").join("") : '<span class="dropdown-item text-muted small">' + t("No unread notifications") + '</span>';
       }
       if (permissions.has("deployment.view")) {
         const res = await api("GET", "/api/operations/active");
@@ -371,7 +386,7 @@
       await runOperation({ url: "/api/hosts/" + d.host + "/" + d.op, confirm: false, title: d.op, onDone: () => { if (d.reload === "1") setTimeout(() => window.location.reload(), 800); } });
     } else if (d.action === "rollback") {
       ev.preventDefault();
-      const answer = await confirm({ title: "Rollback " + d.appCode, operation: "ROLLBACK", production, danger: true, showReason: true, requireReason: production, details: { Application: "<b>" + esc(d.appCode) + "</b>", Target: esc(d.hostName), Environment: envBadge(d.env, production), "Current version": esc(d.version || "-"), "Rollback to": esc(d.previousVersion || "previous successful release") }, body: "<p>The previous release will be re-activated and started; the current release directory is preserved.</p>" });
+      const answer = await confirm({ title: t("Rollback") + " " + d.appCode, operation: "ROLLBACK", production, danger: true, showReason: true, requireReason: production, details: { [t("Application")]: "<b>" + esc(d.appCode) + "</b>", [t("Target")]: esc(d.hostName), [t("Environment")]: envBadge(d.env, production), [t("Current version")]: esc(d.version || "-"), [t("Rollback to")]: esc(d.previousVersion || t("previous successful release")) }, body: "<p>The previous release will be re-activated and started; the current release directory is preserved.</p>" });
       if (!answer) return;
       try {
         const res = await api("POST", "/api/applications/" + d.app + "/rollback", { host_id: Number(d.host), reason: answer.reason, confirmation: answer.confirmation, version_id: d.targetVersion ? Number(d.targetVersion) : undefined });
@@ -382,7 +397,7 @@
   });
 
   // --- boot -----------------------------------------------------------------------------------------------------------
-  const Scarlet = { api, ApiError, esc, fmtDate, fmtBytes, fmtDuration, badge, envBadge, runtimeIcon, toast, confirm, poll, runOperation, showOperationModal, showError, DataTable, can, permissions, prodPhrase, pages: {}, refreshNavbar };
+  const Scarlet = { t, lang, api, ApiError, esc, fmtDate, fmtBytes, fmtDuration, badge, envBadge, runtimeIcon, toast, confirm, poll, runOperation, showOperationModal, showError, DataTable, can, permissions, prodPhrase, pages: {}, refreshNavbar };
   window.Scarlet = Scarlet;
   document.addEventListener("DOMContentLoaded", () => {
     refreshNavbar();

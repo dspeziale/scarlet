@@ -18,7 +18,20 @@ if [ -n "${MOCKHOST_AUTHORIZED_KEY:-}" ]; then
     chown -R "${USER_NAME}:${USER_NAME}" "/home/${USER_NAME}/.ssh"
 fi
 mkdir -p /opt/scarlet && chown "${USER_NAME}:${USER_NAME}" /opt/scarlet
-mkdir -p "/home/${USER_NAME}/.local/share/containers" && chown -R "${USER_NAME}:${USER_NAME}" "/home/${USER_NAME}/.local"
+# rootless podman needs XDG dirs: config, storage and a runtime dir (no systemd-logind in a container)
+USER_UID="$(id -u "$USER_NAME")"
+mkdir -p "/home/${USER_NAME}/.config/containers" "/home/${USER_NAME}/.local/share/containers" "/run/user/${USER_UID}"
+chown -R "${USER_NAME}:${USER_NAME}" "/home/${USER_NAME}/.config" "/home/${USER_NAME}/.local" "/run/user/${USER_UID}"
+chmod 700 "/run/user/${USER_UID}"
+grep -q "^SetEnv XDG_RUNTIME_DIR" /etc/ssh/sshd_config || echo "SetEnv XDG_RUNTIME_DIR=/run/user/${USER_UID}" >> /etc/ssh/sshd_config
+# Rootless user namespaces are not available inside every container engine (e.g. Docker Desktop):
+# expose Podman to the SCARLET user through a sudo wrapper (rootful mode). DEV SIMULATOR ONLY.
+if [ "${MOCKHOST_PODMAN_MODE:-sudo}" = "sudo" ]; then
+    echo "${USER_NAME} ALL=(root) NOPASSWD: /usr/bin/podman" > /etc/sudoers.d/scarlet-podman
+    chmod 440 /etc/sudoers.d/scarlet-podman
+    printf '#!/bin/sh\nexec /usr/bin/sudo -n /usr/bin/podman "$@"\n' > /usr/local/bin/podman
+    chmod 755 /usr/local/bin/podman
+fi
 mkdir -p /run/sshd
 echo "[mockhost] ssh user=${USER_NAME} podman=$(podman --version 2>/dev/null || echo n/a)"
 exec /usr/sbin/sshd -D -e

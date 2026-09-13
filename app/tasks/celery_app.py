@@ -88,6 +88,15 @@ def init_celery(app) -> Celery:
     FlaskTask.flask_app = app
     celery.Task = FlaskTask
     app.extensions["celery"] = celery
+    register_task_modules()
     # register task modules
 
     return celery
+
+
+def register_task_modules() -> None:
+    """Import the task modules so their ``@celery.task`` decorators run (side-effect import)."""
+    import importlib
+
+    for name in ("deployment_tasks", "host_tasks", "lifecycle_tasks", "maintenance_tasks"):
+        importlib.import_module(f"app.tasks.{name}")

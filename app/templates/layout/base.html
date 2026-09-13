@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-bs-theme="light">
+<html lang="{{ current_locale }}" data-bs-theme="light">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,6 +7,7 @@
   <meta name="scarlet-user" content="{{ current_user_obj.username if current_user_obj else '' }}">
   <meta name="scarlet-permissions" content="{{ current_user_obj.permission_codes|sort|join(',') if current_user_obj else '' }}">
   <meta name="scarlet-prod-phrase" content="{{ prod_phrase }}">
+  <meta name="scarlet-lang" content="{{ current_locale }}">
   <title>{% block title %}SCARLET{% endblock %} · SCARLET</title>
   <link rel="stylesheet" href="{{ asset('fontawesome_css') }}">
   <link rel="stylesheet" href="{{ asset('bootstrap_icons_css') }}">
@@ -28,7 +29,7 @@
           </div>
           <div class="col-sm-5">
             <ol class="breadcrumb float-sm-end">
-              <li class="breadcrumb-item"><a href="{{ url_for('web.dashboard') }}">Dashboard</a></li>
+              <li class="breadcrumb-item"><a href="{{ url_for('web.dashboard') }}">{{ _('Dashboard') }}</a></li>
               {% block breadcrumb %}{% endblock %}
             </ol>
           </div>
@@ -46,6 +47,7 @@
 </div>
 {% include "partials/modals.html" %}
 <div class="toast-container position-fixed top-0 end-0 p-3" id="toast-container"></div>
+<script type="application/json" id="scarlet-i18n">{{ js_translations|tojson }}</script>
 <script src="{{ asset('bootstrap_js') }}"></script>
 <script src="{{ asset('adminlte_js') }}"></script>
 <script src="{{ url_for('static', filename='js/scarlet.js') }}"></script>

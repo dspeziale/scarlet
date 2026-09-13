@@ -9,6 +9,7 @@ from flask import Flask, current_app, g, request
 from flask_wtf.csrf import generate_csrf
 from markupsafe import Markup, escape
 
+from app.i18n import gettext as _
 from app.security.rbac import get_current_user, user_has_permission
 
 CDN = {
@@ -100,7 +101,7 @@ def status_badge(value: Any, *, extra_class: str = "") -> Markup:
         ),
     )
     return Markup(
-        f'<span class="badge text-bg-{escape(cls)} {escape(extra_class)}" data-status="{escape(text)}">{escape(text.replace("_", " "))}</span>'
+        f'<span class="badge text-bg-{escape(cls)} {escape(extra_class)}" data-status="{escape(text)}">{escape(_(text.replace("_", " ")))}</span>'
     )
 
 

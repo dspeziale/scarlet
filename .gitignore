@@ -24,3 +24,8 @@ node_modules/
 *.pem
 *.key
 known_hosts
+
+# working copies of sibling projects packaged for SCARLET (large binaries)
+work/**/application/*.tar.gz
+work/**/application/*.tar
+dist/

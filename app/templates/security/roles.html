@@ -1,14 +1,14 @@
 {% extends "layout/base.html" %}
-{% block title %}Roles{% endblock %}
-{% block breadcrumb %}<li class="breadcrumb-item active">Roles</li>{% endblock %}
+{% block title %}{{ _('Roles') }}{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active">{{ _('Roles') }}</li>{% endblock %}
 {% block content %}
 <div data-page="roles">
 <div class="row">
   <div class="col-lg-7">
     {% for r in roles %}
     <div class="card" data-role-id="{{ r.id }}" data-role='{{ {"id": r.id, "name": r.name, "description": r.description, "is_system": r.is_system, "permissions": r.permission_codes()|list}|tojson|forceescape }}'>
-      <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-user-shield me-2"></i>{{ r.name }} {% if r.is_system %}<span class="badge text-bg-secondary">system</span>{% endif %} <span class="small text-muted">{{ r.users|length }} user(s)</span></h3>
-        <div class="card-tools">{% if r.name != 'ADMIN' %}<button class="btn btn-tool" data-edit-role title="Edit"><i class="fa-solid fa-pen"></i></button>{% endif %}{% if not r.is_system %}<button class="btn btn-tool text-danger" data-delete-role title="Delete"><i class="fa-solid fa-trash"></i></button>{% endif %}</div></div>
+      <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-user-shield me-2"></i>{{ r.name }} {% if r.is_system %}<span class="badge text-bg-secondary">{{ _('system') }}</span>{% endif %} <span class="small text-muted">{{ r.users|length }} {{ _('user(s)') }}</span></h3>
+        <div class="card-tools">{% if r.name != 'ADMIN' %}<button class="btn btn-tool" data-edit-role title="{{ _('Edit') }}"><i class="fa-solid fa-pen"></i></button>{% endif %}{% if not r.is_system %}<button class="btn btn-tool text-danger" data-delete-role title="{{ _('Delete') }}"><i class="fa-solid fa-trash"></i></button>{% endif %}</div></div>
       <div class="card-body py-2">
         <p class="small text-muted mb-1">{{ r.description }}</p>
         {% for code in r.permission_codes()|sort %}<span class="badge text-bg-{{ 'danger' if code.startswith('prod.') else 'light text-dark border' }} me-1 mb-1">{{ code }}</span>{% endfor %}
@@ -18,13 +18,13 @@
   </div>
   <div class="col-lg-5">
     <div class="card card-primary card-outline">
-      <div class="card-header"><h3 class="card-title" id="role-form-title">New role</h3></div>
+      <div class="card-header"><h3 class="card-title" id="role-form-title">{{ _('New role') }}</h3></div>
       <form id="role-form">
         <input type="hidden" name="id">
         <div class="card-body">
-          <div class="mb-2"><label class="form-label">Name *</label><input class="form-control" name="name" required pattern="[A-Z][A-Z0-9_]{2,63}" placeholder="RELEASE_MANAGER"></div>
-          <div class="mb-2"><label class="form-label">Description</label><input class="form-control" name="description" maxlength="255"></div>
-          <label class="form-label">Permissions</label>
+          <div class="mb-2"><label class="form-label">{{ _('Name *') }}</label><input class="form-control" name="name" required pattern="[A-Z][A-Z0-9_]{2,63}" placeholder="RELEASE_MANAGER"></div>
+          <div class="mb-2"><label class="form-label">{{ _('Description') }}</label><input class="form-control" name="description" maxlength="255"></div>
+          <label class="form-label">{{ _('Permissions') }}</label>
           <div class="row" style="max-height: 55vh; overflow:auto">
             {% for group, perms in permissions.items() %}
             <div class="col-12 mb-2"><b class="small text-uppercase {{ 'text-danger' if group == 'prod' }}">{{ group }}</b>
@@ -33,10 +33,10 @@
             {% endfor %}
           </div>
         </div>
-        <div class="card-footer d-flex gap-2"><button type="submit" class="btn btn-primary">Save</button><button type="button" class="btn btn-outline-secondary" id="role-form-reset">Reset</button></div>
+        <div class="card-footer d-flex gap-2"><button type="submit" class="btn btn-primary">{{ _('Save') }}</button><button type="button" class="btn btn-outline-secondary" id="role-form-reset">{{ _('Reset') }}</button></div>
       </form>
     </div>
-    <div class="alert alert-info small"><b>Production model:</b> operations on PROD hosts require both the base permission (e.g. <code>deployment.execute</code>) and its <code>prod.*</code> variant. OPERATOR has DEV rights only; PROD_OPERATOR and ADMIN can act on PROD.</div>
+    <div class="alert alert-info small"><b>{{ _('Production model:') }}</b> {{ _('operations on PROD hosts require both the base permission (e.g. <code>deployment.execute</code>) and its <code>prod.*</code> variant. OPERATOR has DEV rights only; PROD_OPERATOR and ADMIN can act on PROD.') }}</div>
   </div>
 </div>
 </div>

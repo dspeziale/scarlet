@@ -12,6 +12,7 @@ from werkzeug.exceptions import HTTPException, RequestEntityTooLarge
 
 from app.config.logging import get_logger
 from app.errors import AuthenticationError, RateLimitError, ScarletError
+from app.i18n import gettext as _
 
 log = get_logger("scarlet.errors")
 
@@ -81,7 +82,7 @@ def register_error_handlers(app: Flask) -> None:
                 "errors/error.html",
                 status=status,
                 title=_title_for(status),
-                message=exc.message,
+                message=_(exc.message),
                 code=exc.code,
                 request_id=_request_id(),
             ),
@@ -188,7 +189,7 @@ def register_error_handlers(app: Flask) -> None:
                 "errors/error.html",
                 status=status,
                 title=_title_for(status),
-                message=exc.description if status < 500 else "An internal error occurred.",
+                message=_(exc.description) if status < 500 else _("An internal error occurred."),
                 code=(exc.name or "").upper().replace(" ", "_"),
                 request_id=_request_id(),
             ),
@@ -237,15 +238,17 @@ def register_error_handlers(app: Flask) -> None:
 
 
 def _title_for(status: int) -> str:
-    return {
-        400: "Bad request",
-        401: "Authentication required",
-        403: "Access denied",
-        404: "Not found",
-        409: "Conflict",
-        413: "Too large",
-        429: "Too many requests",
-        500: "Internal error",
-        502: "Remote error",
-        504: "Timeout",
-    }.get(status, "Error")
+    return _(
+        {
+            400: "Bad request",
+            401: "Authentication required",
+            403: "Access denied",
+            404: "Not found",
+            409: "Conflict",
+            413: "Too large",
+            429: "Too many requests",
+            500: "Internal error",
+            502: "Remote error",
+            504: "Timeout",
+        }.get(status, "Error")
+    )

@@ -7,7 +7,7 @@
     new S.DataTable(root, (h) => {
       const keyBadge = h.ssh_host_key_status === "APPROVED" ? '<span class="text-success" title="' + S.esc(h.ssh_fingerprint) + '"><i class="fa-solid fa-fingerprint"></i> approved</span>' : S.badge(h.ssh_host_key_status);
       return "<tr>" +
-        '<td><a href="/hosts/' + h.id + '"><b>' + S.esc(h.name) + "</b></a>" + (!h.has_credential ? ' <i class="fa-solid fa-key text-danger" title="No SSH credential"></i>' : "") + "</td>" +
+        '<td><a href="/hosts/' + h.id + '"><b>' + S.esc(h.name) + "</b></a>" + (!h.has_credential ? ' <i class="fa-solid fa-key text-danger" title=S.t("No SSH credential")></i>' : "") + "</td>" +
         '<td class="small">' + S.esc(h.hostname) + (h.ip_address ? '<br><span class="text-muted">' + S.esc(h.ip_address) + "</span>" : "") + ":" + h.ssh_port + "</td>" +
         "<td>" + S.envBadge(h.environment, h.is_production) + "</td>" +
         "<td>" + S.runtimeIcon(h.runtime_type) + (h.runtime_version ? ' <span class="text-muted small">' + S.esc(h.runtime_version) + "</span>" : "") + "</td>" +
@@ -28,19 +28,19 @@
     const approve = document.getElementById("btn-approve-key");
     if (approve) approve.addEventListener("click", async () => {
       const fp = document.getElementById("pending-fingerprint").textContent.trim();
-      const answer = await S.confirm({ title: "Approve SSH host key", danger: true, requirePhrase: true, phrase: fp, requireReason: false, showReason: true, body: "<p>Confirm that you verified this fingerprint through an independent channel (server console, provisioning record). Approving a wrong key would allow a man-in-the-middle to receive SCARLET credentials and commands.</p>", details: { Host: S.esc(name), Fingerprint: "<code>" + S.esc(fp) + "</code>" }, okLabel: "Approve" });
+      const answer = await S.confirm({ title: S.t("Approve SSH host key"), danger: true, requirePhrase: true, phrase: fp, requireReason: false, showReason: true, body: S.t("<p>Confirm that you verified this fingerprint through an independent channel (server console, provisioning record). Approving a wrong key would allow a man-in-the-middle to receive SCARLET credentials and commands.</p>"), details: { Host: S.esc(name), Fingerprint: "<code>" + S.esc(fp) + "</code>" }, okLabel: S.t("Approve") });
       if (!answer) return;
-      try { await S.api("POST", "/api/hosts/" + hostId + "/host-key/approve", { fingerprint: fp }); S.toast("Host key approved", "success"); setTimeout(() => location.reload(), 600); } catch (e) { S.showError(e, "Approve host key"); }
+      try { await S.api("POST", "/api/hosts/" + hostId + "/host-key/approve", { fingerprint: fp }); S.toast(S.t("Host key approved"), "success"); setTimeout(() => location.reload(), 600); } catch (e) { S.showError(e, S.t("Approve host key")); }
     });
     const scan = document.getElementById("btn-scan-key");
     if (scan) scan.addEventListener("click", async () => {
       scan.disabled = true;
-      try { const res = await S.api("POST", "/api/hosts/" + hostId + "/host-key/scan"); S.toast("Fingerprint " + res.data.fingerprint + " (" + res.data.status + ")", res.data.status === "MATCHES_APPROVED" ? "success" : "warning", 8000); setTimeout(() => location.reload(), 1200); } catch (e) { S.showError(e, "Scan host key"); } finally { scan.disabled = false; }
+      try { const res = await S.api("POST", "/api/hosts/" + hostId + "/host-key/scan"); S.toast(S.t("Fingerprint") + " " + res.data.fingerprint + " (" + res.data.status + ")", res.data.status === "MATCHES_APPROVED" ? "success" : "warning", 8000); setTimeout(() => location.reload(), 1200); } catch (e) { S.showError(e, S.t("Scan host key")); } finally { scan.disabled = false; }
     });
     const reconcile = document.getElementById("btn-reconcile");
-    if (reconcile) reconcile.addEventListener("click", async () => { try { await S.api("POST", "/api/hosts/" + hostId + "/reconcile"); S.toast("Reconciliation queued", "success"); } catch (e) { S.showError(e, "Reconcile"); } });
+    if (reconcile) reconcile.addEventListener("click", async () => { try { await S.api("POST", "/api/hosts/" + hostId + "/reconcile"); S.toast(S.t("Reconciliation queued"), "success"); } catch (e) { S.showError(e, S.t("Reconcile")); } });
     const toggle = async (enable) => {
-      const answer = await S.confirm({ title: (enable ? "Enable" : "Disable") + " host " + name, production: production && !enable, operation: "DISABLE", requirePhrase: false, showReason: true, requireReason: production && !enable, danger: !enable, body: enable ? "<p>The host will be included again in deployments and reconciliation.</p>" : "<p>Disabled hosts are excluded from deployments, lifecycle operations and reconciliation. Running applications are not touched.</p>" });
+      const answer = await S.confirm({ title: (enable ? S.t("Enable") : S.t("Disable")) + " " + S.t("host") + " " + name, production: production && !enable, operation: "DISABLE", requirePhrase: false, showReason: true, requireReason: production && !enable, danger: !enable, body: enable ? S.t("<p>The host will be included again in deployments and reconciliation.</p>") : S.t("<p>Disabled hosts are excluded from deployments, lifecycle operations and reconciliation. Running applications are not touched.</p>") });
       if (!answer) return;
       try { await S.api("POST", "/api/hosts/" + hostId + (enable ? "/enable" : "/disable")); location.reload(); } catch (e) { S.showError(e); }
     };
@@ -48,9 +48,9 @@
     const enable = document.getElementById("btn-enable"); if (enable) enable.addEventListener("click", () => toggle(true));
     const del = document.getElementById("btn-delete");
     if (del) del.addEventListener("click", async () => {
-      const answer = await S.confirm({ title: "Delete host " + name, production, operation: "DELETE", danger: true, showReason: true, requireReason: production, requirePhrase: production, body: "<p>The host record and its credentials will be removed from SCARLET. Nothing is changed on the remote server. Hosts with deployment history cannot be deleted (disable them instead).</p>", details: { Host: S.esc(name), Environment: S.envBadge(env, production) } });
+      const answer = await S.confirm({ title: S.t("Delete host") + " " + name, production, operation: "DELETE", danger: true, showReason: true, requireReason: production, requirePhrase: production, body: S.t("<p>The host record and its credentials will be removed from SCARLET. Nothing is changed on the remote server. Hosts with deployment history cannot be deleted (disable them instead).</p>"), details: { Host: S.esc(name), Environment: S.envBadge(env, production) } });
       if (!answer) return;
-      try { await S.api("DELETE", "/api/hosts/" + hostId, { reason: answer.reason, confirmation: answer.confirmation }); S.toast("Host deleted", "success"); window.location.href = "/hosts"; } catch (e) { S.showError(e, "Delete host"); }
+      try { await S.api("DELETE", "/api/hosts/" + hostId, { reason: answer.reason, confirmation: answer.confirmation }); S.toast(S.t("Host deleted"), "success"); window.location.href = "/hosts"; } catch (e) { S.showError(e, S.t("Delete host")); }
     });
   };
 
@@ -72,15 +72,15 @@
       const btn = form.querySelector('button[type="submit"]'); btn.disabled = true;
       try {
         const res = hostId ? await S.api("PUT", "/api/hosts/" + hostId, payload) : await S.api("POST", "/api/hosts", payload);
-        S.toast(hostId ? "Host updated" : "Host created. Now add an SSH credential and approve the host key.", "success");
+        S.toast(hostId ? S.t("Host updated") : S.t("Host created. Now add an SSH credential and approve the host key."), "success");
         window.location.href = "/hosts/" + res.data.id;
-      } catch (e) { S.showError(e, "Save host"); btn.disabled = false; }
+      } catch (e) { S.showError(e, S.t("Save host")); btn.disabled = false; }
     });
   };
 
   S.pages["host-groups"] = function () {
     const form = document.getElementById("group-form");
-    const reset = () => { if (!form) return; form.reset(); form.querySelector('[name="id"]').value = ""; form.querySelector('[name="name"]').disabled = false; document.getElementById("group-form-title").textContent = "New host group"; };
+    const reset = () => { if (!form) return; form.reset(); form.querySelector('[name="id"]').value = ""; form.querySelector('[name="name"]').disabled = false; document.getElementById("group-form-title").textContent = S.t("New host group"); };
     document.querySelectorAll("[data-edit-group]").forEach((btn) => btn.addEventListener("click", () => {
       const g = JSON.parse(btn.closest("tr").dataset.group);
       form.querySelector('[name="id"]').value = g.id; form.querySelector('[name="name"]').value = g.name; form.querySelector('[name="name"]').disabled = true;
@@ -88,11 +88,11 @@
       const envSel = form.querySelector('[name="environment_id"]'); envSel.value = "";
       Array.from(envSel.options).forEach((o) => { if (o.textContent === g.environment) envSel.value = o.value; });
       Array.from(form.querySelector('[name="host_ids"]').options).forEach((o) => { o.selected = g.host_ids.includes(Number(o.value)); });
-      document.getElementById("group-form-title").textContent = "Edit " + g.name;
+      document.getElementById("group-form-title").textContent = S.t("Edit") + " " + g.name;
     }));
     document.querySelectorAll("[data-delete-group]").forEach((btn) => btn.addEventListener("click", async () => {
       const g = JSON.parse(btn.closest("tr").dataset.group);
-      const answer = await S.confirm({ title: "Delete host group " + g.name, danger: true, requirePhrase: false, requireReason: false, body: "<p>Hosts are not deleted; only the grouping is removed.</p>" });
+      const answer = await S.confirm({ title: S.t("Delete host group") + " " + g.name, danger: true, requirePhrase: false, requireReason: false, body: S.t("<p>Hosts are not deleted; only the grouping is removed.</p>") });
       if (!answer) return;
       try { await S.api("DELETE", "/api/host-groups/" + g.id); location.reload(); } catch (e) { S.showError(e); }
     }));
@@ -106,7 +106,7 @@
           const id = fd.get("id");
           if (id) await S.api("PUT", "/api/host-groups/" + id, payload); else await S.api("POST", "/api/host-groups", payload);
           location.reload();
-        } catch (e) { S.showError(e, "Save group"); }
+        } catch (e) { S.showError(e, S.t("Save group")); }
       });
     }
   };
@@ -115,7 +115,7 @@
     document.querySelectorAll(".env-form").forEach((form) => form.addEventListener("submit", async (ev) => {
       ev.preventDefault();
       const payload = { name: form.querySelector('[name="name"]').value, max_parallel_deployments: Number(form.querySelector('[name="max_parallel_deployments"]').value), require_confirmation: form.querySelector('[name="require_confirmation"]').checked, require_approval: form.querySelector('[name="require_approval"]').checked, allow_rollback: form.querySelector('[name="allow_rollback"]').checked };
-      try { await S.api("PUT", "/api/environments/" + form.dataset.envId, payload); S.toast("Environment updated", "success"); } catch (e) { S.showError(e, "Save environment"); }
+      try { await S.api("PUT", "/api/environments/" + form.dataset.envId, payload); S.toast(S.t("Environment updated"), "success"); } catch (e) { S.showError(e, S.t("Save environment")); }
     }));
   };
 })();

@@ -2,6 +2,8 @@
 # Services: postgres, redis, scarlet-web, scarlet-worker, scarlet-beat, nginx, mockhost (simulated Oracle Linux + Podman).
 # Copy .env.example to .env first. UI: http://localhost:8080  (admin / SCARLET_INITIAL_ADMIN_PASSWORD)
 
+name: scarlet-ctl
+
 x-scarlet-common: &scarlet-common
   image: scarlet:latest
   build:
@@ -73,6 +75,12 @@ services:
   scarlet-worker:
     <<: *scarlet-common
     command: ["worker"]
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A celery_worker.celery inspect ping -d celery@$$HOSTNAME --timeout 10 > /dev/null 2>&1 || exit 1"]
+      interval: 60s
+      timeout: 20s
+      retries: 3
+      start_period: 60s
     environment:
       SCARLET_ENV: ${SCARLET_ENV:-development}
       DATABASE_URL: postgresql://scarlet:${POSTGRES_PASSWORD:-scarlet}@postgres:5432/scarlet
@@ -86,6 +94,8 @@ services:
   scarlet-beat:
     <<: *scarlet-common
     command: ["beat"]
+    healthcheck:
+      disable: true
     depends_on:
       scarlet-web:
         condition: service_healthy
@@ -112,11 +122,31 @@ services:
     environment:
       MOCKHOST_USER: scarlet
       MOCKHOST_PASSWORD: ${MOCKHOST_PASSWORD:-scarlet-dev}
+      MOCKHOST_PODMAN_MODE: ${MOCKHOST_PODMAN_MODE:-sudo}
     ports:
       - "${MOCKHOST_SSH_PORT:-2222}:22"
     volumes:
       - mockhost-data:/opt/scarlet
       - mockhost-containers:/home/scarlet/.local/share/containers
+    restart: unless-stopped
+    profiles: ["dev"]
+
+  # Second simulated host registered as PROD to exercise confirmation/approval flows.
+  #   hostname: mockhost-prod   port: 22   user: scarlet   runtime: PODMAN   credential: password "scarlet-dev"
+  mockhost-prod:
+    build:
+      context: docker/mockhost
+    hostname: mockhost-prod
+    privileged: true
+    environment:
+      MOCKHOST_USER: scarlet
+      MOCKHOST_PASSWORD: ${MOCKHOST_PASSWORD:-scarlet-dev}
+      MOCKHOST_PODMAN_MODE: ${MOCKHOST_PODMAN_MODE:-sudo}
+    ports:
+      - "${MOCKHOST_PROD_SSH_PORT:-2223}:22"
+    volumes:
+      - mockhost-prod-data:/opt/scarlet
+      - mockhost-prod-containers:/home/scarlet/.local/share/containers
     restart: unless-stopped
     profiles: ["dev"]
 
@@ -127,3 +157,5 @@ volumes:
   nginx-logs:
   mockhost-data:
   mockhost-containers:
+  mockhost-prod-data:
+  mockhost-prod-containers:

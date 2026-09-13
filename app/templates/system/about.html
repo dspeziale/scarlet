@@ -1,35 +1,35 @@
 {% extends "layout/base.html" %}
-{% block title %}About{% endblock %}
-{% block breadcrumb %}<li class="breadcrumb-item active">About</li>{% endblock %}
+{% block title %}{{ _('About') }}{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active">{{ _('About') }}</li>{% endblock %}
 {% block content %}
 <div class="row">
   <div class="col-lg-6">
     <div class="card">
       <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-cubes me-2"></i>SCARLET</h3></div>
       <div class="card-body">
-        <p><b>System Container Application Release, Lifecycle &amp; Environment Tool</b> — version {{ scarlet_version }} ({{ scarlet_env }}).</p>
-        <p class="small text-muted">SCARLET is a control plane: operators declare the <i>desired state</i> of an application on a target (version, running/stopped); the deployment engine drives the <i>actual state</i> toward it through a runtime adapter (Docker, Podman, Kubernetes) over SSH, and the reconciler reports drift.</p>
+        <p><b>{{ _('System Container Application Release, Lifecycle &amp; Environment Tool') }}</b> — {{ _('version') }} {{ scarlet_version }} ({{ scarlet_env }}).</p>
+        <p class="small text-muted">{{ _('SCARLET is a control plane: operators declare the <i>desired state</i> of an application on a target (version, running/stopped); the deployment engine drives the <i>actual state</i> toward it through a runtime adapter (Docker, Podman, Kubernetes) over SSH, and the reconciler reports drift.') }}</p>
         <dl class="row mb-0 small">
-          <dt class="col-4">Runtime adapters</dt><dd class="col-8">{{ runtimes|join(', ') }}</dd>
-          <dt class="col-4">Remote base path</dt><dd class="col-8"><code>{{ config.SCARLET_REMOTE_BASE_PATH }}</code></dd>
-          <dt class="col-4">Host key policy</dt><dd class="col-8"><code>{{ config.SCARLET_SSH_HOST_KEY_POLICY }}</code></dd>
-          <dt class="col-4">PROD confirmation</dt><dd class="col-8">{{ 'enabled' if config.SCARLET_PROD_REQUIRE_CONFIRMATION else 'disabled' }} (phrase <code>{{ prod_phrase }}</code>)</dd>
-          <dt class="col-4">Max upload</dt><dd class="col-8">{{ config.SCARLET_MAX_UPLOAD_MB }} MB</dd>
+          <dt class="col-4">{{ _('Runtime adapters') }}</dt><dd class="col-8">{{ runtimes|join(', ') }}</dd>
+          <dt class="col-4">{{ _('Remote base path') }}</dt><dd class="col-8"><code>{{ config.SCARLET_REMOTE_BASE_PATH }}</code></dd>
+          <dt class="col-4">{{ _('Host key policy') }}</dt><dd class="col-8"><code>{{ config.SCARLET_SSH_HOST_KEY_POLICY }}</code></dd>
+          <dt class="col-4">{{ _('PROD confirmation') }}</dt><dd class="col-8">{{ _('enabled') if config.SCARLET_PROD_REQUIRE_CONFIRMATION else _('disabled') }} ({{ _('phrase') }} <code>{{ prod_phrase }}</code>)</dd>
+          <dt class="col-4">{{ _('Max upload') }}</dt><dd class="col-8">{{ config.SCARLET_MAX_UPLOAD_MB }} MB</dd>
         </dl>
       </div>
     </div>
   </div>
   <div class="col-lg-6">
     <div class="card">
-      <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-book me-2"></i>Documentation</h3></div>
+      <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-book me-2"></i>{{ _('Documentation') }}</h3></div>
       <div class="card-body small">
         <ul class="mb-0">
-          <li><b>docs/RUNBOOK.md</b> — step-by-step operational procedures</li>
-          <li><b>docs/APPLICATION_RELEASE_CONTRACT.md</b> — package &amp; manifest contract for application teams</li>
+          <li><b>docs/RUNBOOK.md</b> — {{ _('step-by-step operational procedures') }}</li>
+          <li><b>docs/APPLICATION_RELEASE_CONTRACT.md</b> — {{ _('package &amp; manifest contract for application teams') }}</li>
           <li><b>docs/architecture.md</b>, <b>docs/security.md</b>, <b>docs/installation.md</b>, <b>docs/operations.md</b></li>
           <li><b>docs/runtime-docker.md</b>, <b>docs/runtime-podman.md</b>, <b>docs/runtime-kubernetes.md</b></li>
           <li><b>docs/troubleshooting.md</b>, <b>docs/backup.md</b>, <b>docs/disaster-recovery.md</b></li>
-          {% if api_docs_enabled %}<li><a href="{{ url_for('api.swagger_ui') }}">Interactive API documentation</a></li>{% endif %}
+          {% if api_docs_enabled %}<li><a href="{{ url_for('api.swagger_ui') }}">{{ _('Interactive API documentation') }}</a></li>{% endif %}
         </ul>
       </div>
     </div>
