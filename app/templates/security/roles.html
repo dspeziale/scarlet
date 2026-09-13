@@ -10,7 +10,7 @@
       <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-user-shield me-2"></i>{{ r.name }} {% if r.is_system %}<span class="badge text-bg-secondary">{{ _('system') }}</span>{% endif %} <span class="small text-muted">{{ r.users|length }} {{ _('user(s)') }}</span></h3>
         <div class="card-tools">{% if r.name != 'ADMIN' %}<button class="btn btn-tool" data-edit-role title="{{ _('Edit') }}"><i class="fa-solid fa-pen"></i></button>{% endif %}{% if not r.is_system %}<button class="btn btn-tool text-danger" data-delete-role title="{{ _('Delete') }}"><i class="fa-solid fa-trash"></i></button>{% endif %}</div></div>
       <div class="card-body py-2">
-        <p class="small text-muted mb-1">{{ r.description }}</p>
+        <p class="small text-muted mb-1">{{ _(r.description) }}</p>
         {% for code in r.permission_codes()|sort %}<span class="badge text-bg-{{ 'danger' if code.startswith('prod.') else 'light text-dark border' }} me-1 mb-1">{{ code }}</span>{% endfor %}
       </div>
     </div>
@@ -28,7 +28,7 @@
           <div class="row" style="max-height: 55vh; overflow:auto">
             {% for group, perms in permissions.items() %}
             <div class="col-12 mb-2"><b class="small text-uppercase {{ 'text-danger' if group == 'prod' }}">{{ group }}</b>
-              {% for code, desc in perms %}<div class="form-check"><input class="form-check-input" type="checkbox" name="permissions" value="{{ code }}" id="p-{{ code|replace('.', '-') }}"><label class="form-check-label small" for="p-{{ code|replace('.', '-') }}"><code>{{ code }}</code> {{ desc }}</label></div>{% endfor %}
+              {% for code, desc in perms %}<div class="form-check"><input class="form-check-input" type="checkbox" name="permissions" value="{{ code }}" id="p-{{ code|replace('.', '-') }}"><label class="form-check-label small" for="p-{{ code|replace('.', '-') }}"><code>{{ code }}</code> {{ _(desc) }}</label></div>{% endfor %}
             </div>
             {% endfor %}
           </div>

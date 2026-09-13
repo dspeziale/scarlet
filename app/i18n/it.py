@@ -781,4 +781,8 @@ IT: dict[str, str] = {
     "See": "Vedi",
     "Then paste the matching <b>private</b> key here (it is encrypted immediately).": "Poi incolla qui la corrispondente chiave <b>privata</b> (viene cifrata immediatamente).",
     "Validation checks: extension, gzip/tar integrity, path traversal, links and special files, member count and size, manifest schema, required files, application registration, runtime compatibility, version immutability and duplicate detection.": "Controlli di validazione: estensione, integrità gzip/tar, path traversal, link e file speciali, numero e dimensione dei membri, schema del manifest, file obbligatori, registrazione dell'applicazione, compatibilità del runtime, immutabilità della versione e rilevamento dei duplicati.",
+    'HELP': 'AIUTO',
+    'User guide': 'Guida utente',
+    'User guide (new window)': 'Guida utente (nuova finestra)',
+    'Opens the user guide in a new window': 'Apre la guida utente in una nuova finestra',
 }

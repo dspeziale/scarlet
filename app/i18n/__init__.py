@@ -8,6 +8,9 @@ catalogues never break the UI. Translations are trusted static strings and may c
 
 from __future__ import annotations
 
+import re
+from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 from flask import Flask, has_request_context, request, session
@@ -44,6 +47,17 @@ def get_locale() -> str:
     return lang
 
 
+def _return_to() -> str:
+    """Where the language switcher sends the user back to.
+
+    ``request.full_path`` appends a bare ``?`` when there is no query string, which would
+    show up in the link and in the address bar after the redirect.
+    """
+    if not has_request_context():
+        return "/"
+    return request.full_path.rstrip("?") if request.query_string else request.path
+
+
 def gettext(text: str, **kwargs: Any) -> Markup:
     catalogue = CATALOGUES.get(get_locale(), {})
     translated = catalogue.get(text, text)
@@ -55,8 +69,29 @@ def gettext(text: str, **kwargs: Any) -> Markup:
     return Markup(translated)
 
 
+#: ``Scarlet.t("…")`` / ``t("…")`` in the bundled scripts, either quoting style.
+_JS_CALL = re.compile(r"""(?<![\w.$])(?:S\.)?t\(\s*(?:'([^']*)'|"([^"]*)")""")
+
+
+@lru_cache(maxsize=1)
+def _js_keys() -> frozenset[str]:
+    """Strings the browser can ask for, so a page embeds a few KB instead of the whole catalogue.
+
+    Two sources: literal ``t('…')`` calls found in the bundled scripts, and every SHOUTY key
+    (``RUNNING``, ``ROLLED BACK``, …), because badge labels are built at runtime from API
+    values rather than from a literal. Anything missed still renders, in English, since
+    ``Scarlet.t`` falls back to the key itself.
+    """
+    keys = {key for key in CATALOGUES["it"] if key == key.upper()}
+    for path in (Path(__file__).resolve().parents[1] / "static" / "js").rglob("*.js"):
+        for match in _JS_CALL.finditer(path.read_text(encoding="utf-8")):
+            keys.add(match.group(1) if match.group(1) is not None else match.group(2))
+    return frozenset(keys)
+
+
 def js_catalogue() -> dict[str, str]:
-    return CATALOGUES.get(get_locale(), {})
+    catalogue = CATALOGUES.get(get_locale(), {})
+    return {key: value for key, value in catalogue.items() if key in _js_keys()}
 
 
 def register_i18n(app: Flask) -> None:
@@ -70,6 +105,7 @@ def register_i18n(app: Flask) -> None:
             "current_locale": get_locale(),
             "supported_locales": SUPPORTED_LOCALES,
             "js_translations": js_catalogue(),
+            "nav_return_to": _return_to(),
         }
 
     @app.after_request

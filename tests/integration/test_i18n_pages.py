@@ -3,6 +3,8 @@ catalogue must actually be applied (no raw English left in the chrome)."""
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from app.i18n import CATALOGUES, SUPPORTED_LOCALES
@@ -49,19 +51,27 @@ def test_language_selector_is_available_before_login(client):
         assert f"/lang/{code}" in html
 
 
+def _sidebar_labels(html: str) -> list[str]:
+    """Menu entries as rendered, so the assertion cannot be satisfied by the embedded catalogue."""
+    import re
+
+    aside = html[html.index("<aside") : html.index("</aside>")]
+    return [re.sub(r"<[^>]+>", "", label).strip() for label in re.findall(r"<p>(.*?)</p>", aside, re.S)]
+
+
 def test_navigation_is_translated_in_italian(admin_client):
     admin_client.get("/lang/it")
-    html = admin_client.get("/dashboard").get_data(as_text=True)
-    assert "Applicazioni" in html
-    assert "Distribuzioni" in html or "Deployment" in html
-    assert ">Hosts<" not in html or "Host" in html
+    labels = _sidebar_labels(admin_client.get("/dashboard").get_data(as_text=True))
+    assert "Applicazioni" in labels
+    assert "Cruscotto" in labels
+    assert "Applications" not in labels
 
 
 def test_english_stays_untranslated(admin_client):
     admin_client.get("/lang/en")
-    html = admin_client.get("/dashboard").get_data(as_text=True)
-    assert "Applications" in html
-    assert "Applicazioni" not in html
+    labels = _sidebar_labels(admin_client.get("/dashboard").get_data(as_text=True))
+    assert "Applications" in labels
+    assert "Applicazioni" not in labels
 
 
 @pytest.mark.parametrize("key", ["Hosts", "Applications", "Deployments", "Settings", "Sign in"])
@@ -98,3 +108,26 @@ def test_italian_catalogue_covers_every_ui_string():
 def test_catalogue_has_no_empty_translations():
     empty = sorted(key for key, value in CATALOGUES["it"].items() if not value.strip())
     assert not empty, empty
+
+
+def test_injected_catalogue_covers_every_javascript_call(app):
+    """The page only embeds the browser's subset, so that subset must be complete."""
+    from app.i18n import _JS_CALL, CATALOGUES, js_catalogue
+
+    with app.test_request_context("/", headers={"Cookie": "scarlet_lang=it"}):
+        injected = js_catalogue()
+    assert injected, "no catalogue injected for Italian"
+
+    root = Path(__file__).resolve().parents[2] / "app" / "static" / "js"
+    for path in root.rglob("*.js"):
+        for match in _JS_CALL.finditer(path.read_text(encoding="utf-8")):
+            key = match.group(1) if match.group(1) is not None else match.group(2)
+            if key in CATALOGUES["it"]:
+                assert key in injected, f"{path.name} asks for {key!r}, not injected"
+
+
+def test_injected_catalogue_is_smaller_than_the_full_one(app):
+    from app.i18n import CATALOGUES, js_catalogue
+
+    with app.test_request_context("/"):
+        assert len(js_catalogue()) < len(CATALOGUES["it"])

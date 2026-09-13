@@ -7,10 +7,10 @@
 {% for e in environments %}
 <div class="col-lg-6">
   <div class="card card-outline card-{{ 'danger' if e.is_production else 'success' }}">
-    <div class="card-header"><h3 class="card-title">{{ e.code|env_badge(e.is_production) }} {{ e.name }}</h3><div class="card-tools small text-muted">{{ host_counts.get(e.code, 0) }} {{ _('host(s)') }}</div></div>
+    <div class="card-header"><h3 class="card-title">{{ e.code|env_badge(e.is_production) }} {{ _(e.name) }}</h3><div class="card-tools small text-muted">{{ host_counts.get(e.code, 0) }} {{ _('host(s)') }}</div></div>
     <form class="env-form" data-env-id="{{ e.id }}">
       <div class="card-body">
-        <p class="text-muted small">{{ e.description }}</p>
+        <p class="text-muted small">{{ _(e.description) }}</p>
         <div class="row g-3">
           <div class="col-md-6"><label class="form-label">{{ _('Name') }}</label><input class="form-control form-control-sm" name="name" value="{{ e.name }}" {% if not can('system.manage') %}disabled{% endif %}></div>
           <div class="col-md-6"><label class="form-label">{{ _('Max parallel deployments') }}</label><input class="form-control form-control-sm" type="number" min="1" max="50" name="max_parallel_deployments" value="{{ e.max_parallel_deployments }}" {% if not can('system.manage') %}disabled{% endif %}></div>

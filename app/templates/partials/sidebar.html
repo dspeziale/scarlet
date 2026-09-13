@@ -3,7 +3,7 @@
 {% set href = url_for(endpoint) %}
 <li class="nav-item">
   <a href="{{ href }}" class="nav-link{% if active_path == href or (match and active_path.startswith(match)) %} active{% endif %}">
-    <i class="nav-icon {{ icon }}"></i><p>{{ label }}</p>
+    <i class="nav-icon {{ icon }}"></i><p>{{ _(label) }}</p>
   </a>
 </li>
 {% endif %}
@@ -46,11 +46,11 @@
         {% if api_docs_enabled %}
         <li class="nav-item"><a href="{{ url_for('api.swagger_ui') }}" class="nav-link"><i class="nav-icon fa-solid fa-book"></i><p>{{ _('API Docs') }}</p></a></li>
         {% endif %}
-        <li class="nav-header">{{ _('AIUTO') }}</li>
-        <li class="nav-item"><a href="{{ url_for('web.guida') }}" class="nav-link" target="_blank" rel="noopener" title="Apre la guida utente in una nuova finestra"><i class="nav-icon fa-solid fa-book-open"></i><p>{{ _('Guida utente') }} <i class="fa-solid fa-arrow-up-right-from-square ms-1 small"></i></p></a></li>
+        <li class="nav-header">{{ _('HELP') }}</li>
+        <li class="nav-item"><a href="{{ url_for('web.guida') }}" class="nav-link" target="_blank" rel="noopener" title="{{ _('Opens the user guide in a new window') }}"><i class="nav-icon fa-solid fa-book-open"></i><p>{{ _('User guide') }} <i class="fa-solid fa-arrow-up-right-from-square ms-1 small"></i></p></a></li>
         {{ item('web.about', 'About', 'fa-solid fa-circle-info') }}
         <li class="nav-header">{{ _('Language') }}</li>
-        <li class="nav-item"><div class="px-3 py-1 d-flex gap-1 flex-wrap lang-switch">{% for code, info in supported_locales.items() %}<a class="btn btn-xs btn-sm {% if code == current_locale %}btn-light{% else %}btn-outline-light{% endif %}" href="{{ url_for('web.set_language', code=code, next=request.full_path) }}" title="{{ info.name }}">{{ info.flag }} {{ code|upper }}</a>{% endfor %}</div></li>
+        <li class="nav-item"><div class="px-3 py-1 d-flex gap-1 flex-wrap lang-switch">{% for code, info in supported_locales.items() %}<a class="btn btn-xs btn-sm {% if code == current_locale %}btn-light{% else %}btn-outline-light{% endif %}" href="{{ url_for('web.set_language', code=code, next=nav_return_to) }}" title="{{ info.name }}">{{ info.flag }} {{ code|upper }}</a>{% endfor %}</div></li>
       </ul>
     </nav>
   </div>

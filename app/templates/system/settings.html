@@ -15,7 +15,7 @@
         <tbody>
         {% for s in items %}
         <tr data-key="{{ s.key }}" data-type="{{ s.value_type }}">
-          <td style="width:45%"><code class="small">{{ s.key }}</code><div class="small text-muted">{{ s.description }}</div></td>
+          <td style="width:45%"><code class="small">{{ s.key }}</code><div class="small text-muted">{{ _(s.description) }}</div></td>
           <td>
             {% if s.value_type == 'bool' %}<div class="form-check form-switch"><input class="form-check-input setting-input" type="checkbox" {% if s.value %}checked{% endif %}></div>
             {% elif s.value_type == 'int' %}<input class="form-control form-control-sm setting-input" type="number" value="{{ s.value }}">
