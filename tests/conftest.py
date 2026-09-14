@@ -225,6 +225,75 @@ def upload_package(client, path: Path, **form):
         return client.post("/api/packages/upload", data=data, content_type="multipart/form-data")
 
 
+FAKE_KUBECONFIG = """apiVersion: v1
+kind: Config
+clusters: []
+contexts: []
+users: []
+"""
+
+
+def make_cluster_host(name="k8s-prod-01", env="DEV", namespace="inventory", kubeconfig=None):
+    """A Kubernetes target reached through the API: a kubeconfig and no SSH credential."""
+    from app.extensions import db
+    from app.repositories import EnvironmentRepository
+    from app.services.host_service import HostService
+
+    environment = EnvironmentRepository().by_code(env)
+    service = HostService()
+    host = service.create(
+        {
+            "name": name,
+            "hostname": f"{name}.example.internal",
+            "environment_id": environment.id,
+            "runtime_type": "KUBERNETES",
+            "kubernetes_namespace": namespace,
+            "description": "test cluster",
+        }
+    )
+    service.set_credential(
+        host,
+        credential_type="KUBECONFIG",
+        secret=kubeconfig or FAKE_KUBECONFIG,
+    )
+    db.session.refresh(host)
+    return host
+
+
+@pytest.fixture()
+def cluster(app):
+    """Install the in-memory cluster as the Kubernetes client for this app."""
+    from tests.fixtures.fake_k8s import install_fake_cluster
+
+    return install_fake_cluster(app)
+
+
+@pytest.fixture()
+def cluster_host(app, cluster):
+    return make_cluster_host()
+
+
+@pytest.fixture()
+def inventory_web(app):
+    return make_application(
+        code="inventory-web",
+        runtime="KUBERNETES",
+        allow_hooks=False,
+        allowed_runtimes=["KUBERNETES"],
+    )
+
+
+@pytest.fixture()
+def k8s_version(app, admin_client, inventory_web, example_dir, tmp_path):
+    """Upload the kubernetes example and return the released ApplicationVersion."""
+    from app.repositories import VersionRepository
+
+    result = build_example_package(example_dir, "kubernetes-app", "1.0.0", tmp_path)
+    response = upload_package(admin_client, result.output_path)
+    assert response.status_code == 201, response.get_json()
+    return VersionRepository().by_app_and_version(inventory_web.id, "1.0.0")
+
+
 @pytest.fixture()
 def podman_host(app):
     return make_host()

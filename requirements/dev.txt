@@ -6,3 +6,7 @@ mypy>=1.13,<2
 types-PyYAML
 types-paramiko
 types-redis
+
+# manuali PDF: python scripts/build_pdf_docs.py
+reportlab>=4.2,<6
+pymupdf>=1.24,<2   # solo per scripts/pdf_preview.py (anteprima PNG delle pagine)

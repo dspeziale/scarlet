@@ -184,6 +184,24 @@ class TargetHost(PkMixin, TimestampMixin, Base):
         return None
 
     @property
+    def is_cluster_managed(self) -> bool:
+        """True when SCARLET reaches this target through the Kubernetes API only.
+
+        A cluster target has no shell: there is no SSH credential to use, no release
+        directory to write and no host key to approve. Everything happens through the
+        cluster API with the stored kubeconfig.
+        """
+        return (
+            self.runtime_type == RuntimeType.KUBERNETES.value
+            and self.kubernetes_credential is not None
+        )
+
+    @property
+    def access_mode(self) -> str:
+        """How SCARLET reaches the target: ``API`` for a cluster, ``SSH`` otherwise."""
+        return "API" if self.is_cluster_managed else "SSH"
+
+    @property
     def address(self) -> str:
         return self.ip_address or self.hostname
 
@@ -211,6 +229,7 @@ class TargetHost(PkMixin, TimestampMixin, Base):
             "runtime_rootless": self.runtime_rootless,
             "kubernetes_context": self.kubernetes_context,
             "kubernetes_namespace": self.kubernetes_namespace,
+            "access_mode": self.access_mode,
             "kubernetes_version": self.kubernetes_version,
             "status": self.effective_status,
             "ssh_fingerprint": self.ssh_fingerprint,

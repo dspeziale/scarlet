@@ -28,7 +28,6 @@ from app.models.enums import (
     NotificationLevel,
     OperationStatus,
     OperationType,
-    RuntimeType,
 )
 from app.models.lifecycle import HealthCheck, LifecycleOperation
 from app.repositories import (
@@ -37,16 +36,15 @@ from app.repositories import (
     InstanceRepository,
     OperationRepository,
 )
-from app.runtimes.base import HostInfo, RuntimeContext
+from app.runtimes.access import build_host_info, open_executor
+from app.runtimes.base import RuntimeContext
 from app.runtimes.factory import RuntimeFactory
-from app.security.crypto import get_cipher
 from app.security.prod_guard import ProductionGuard
 from app.security.validators import validate_int_range, validate_log_search
 from app.services.configuration_service import ConfigurationService
 from app.services.notification_service import notify_operators
 from app.services.operation_service import OperationService
 from app.services.settings_service import get_settings_service
-from app.ssh.factory import get_ssh_factory
 from app.utils.time import utcnow
 
 MUTATING = {OperationType.START, OperationType.STOP, OperationType.RESTART, OperationType.SCALE}
@@ -265,20 +263,8 @@ class LifecycleService:
         host = operation.target
         application = operation.application
         base = host.remote_base_path or current_app.config["SCARLET_REMOTE_BASE_PATH"]
-        info = HostInfo(
-            name=host.name,
-            runtime_type=host.runtime_type,
-            base_path=base,
-            rootless=host.runtime_rootless,
-            kubernetes_namespace=host.kubernetes_namespace,
-            kubernetes_context=host.kubernetes_context,
-        )
-        if (
-            host.runtime_type == RuntimeType.KUBERNETES.value
-            and host.kubernetes_credential is not None
-        ):
-            info.kubeconfig = get_cipher().decrypt(host.kubernetes_credential.encrypted_secret)
-        client = get_ssh_factory().connect(host)
+        info = build_host_info(host)
+        client = open_executor(host)
         ctx = RuntimeContext(
             executor=client,
             host=info,

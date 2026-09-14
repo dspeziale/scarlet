@@ -175,6 +175,9 @@ class CleanupService:
             ):
                 if v is not None:
                     keep_versions.add(v.version)
+        if host.is_cluster_managed:
+            # A cluster target keeps no release directory: nothing to prune on a filesystem.
+            return {"removed": [], "kept": sorted(keep_versions), "skipped": "cluster target"}
         base = host.remote_base_path or current_app.config["SCARLET_REMOTE_BASE_PATH"]
         layout = RemoteLayout(base, application.code)
         fs = FileCommands(base)

@@ -9,6 +9,7 @@ from flask import Flask, current_app, g, request
 from flask_wtf.csrf import generate_csrf
 from markupsafe import Markup, escape
 
+from app import __copyright__
 from app.i18n import gettext as _
 from app.security.rbac import get_current_user, user_has_permission
 
@@ -205,6 +206,7 @@ def register_template_helpers(app: Flask) -> None:
             "csrf_token_value": generate_csrf(),
             "scarlet_env": current_app.config.get("SCARLET_ENV"),
             "scarlet_version": current_app.config.get("APP_VERSION"),
+            "scarlet_copyright": __copyright__,
             "request_id": getattr(g, "request_id", None),
             "unread_notifications": unread,
             "active_path": request.path,

@@ -21,3 +21,4 @@
 @media print { .guida-header, .guida-toc { display: none; } .guida-layout { display: block; padding: 0; } .guida-content { box-shadow: none; padding: 0; max-width: none; } .guida-content section { page-break-inside: avoid; } }
 .guida-toc li.toc-highlight a { color: #b3172c; }
 .guida-toc li.toc-highlight a::before { content: "★ "; }
+.guida-footer { margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid #dee2e6; text-align: center; }

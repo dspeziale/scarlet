@@ -19,7 +19,11 @@ TRANSITIONS: dict[S, frozenset[S]] = {
     S.QUEUED: frozenset({S.VALIDATING, S.CANCELLED, S.FAILED}),
     S.VALIDATING: frozenset({S.VALIDATED, S.VALIDATION_FAILED, S.FAILED, S.CANCELLED}),
     S.VALIDATED: frozenset({S.PREFLIGHT, S.TRANSFERRING, S.FAILED, S.CANCELLED}),
-    S.PREFLIGHT: frozenset({S.TRANSFERRING, S.PREFLIGHT_FAILED, S.FAILED, S.CANCELLED}),
+    # INSTALLING is reachable directly: a cluster target has nothing to transfer,
+    # so its plan goes from the checks straight to applying the objects.
+    S.PREFLIGHT: frozenset(
+        {S.TRANSFERRING, S.INSTALLING, S.PREFLIGHT_FAILED, S.FAILED, S.CANCELLED}
+    ),
     S.TRANSFERRING: frozenset({S.TRANSFERRED, S.TRANSFER_FAILED, S.FAILED}),
     S.TRANSFERRED: frozenset({S.INSTALLING, S.FAILED}),
     S.INSTALLING: frozenset({S.INSTALLED, S.INSTALL_FAILED, S.FAILED}),

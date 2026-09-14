@@ -13,6 +13,7 @@
   <div class="text-center mb-4"><span class="scarlet-logo-lg"><i class="fa-solid fa-cubes"></i></span><div><b>SCARLET</b></div></div>
   {% block content %}{% endblock %}
   <p class="text-center mt-4"><a href="{{ url_for('web_auth.login') }}">{{ _('Sign in') }}</a></p>
+  <p class="text-center small text-muted">{{ scarlet_copyright }}</p>
 </div>
 </body>
 </html>

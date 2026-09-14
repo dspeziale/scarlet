@@ -75,24 +75,33 @@ class DeploymentPlanner:
         hooks = manifest.get("hooks") or {}
         is_rollback = kind == "ROLLBACK"
         is_k8s = host.runtime_type == RuntimeType.KUBERNETES.value
+        # A cluster target has no shell and no release directory: the steps that prepare,
+        # transfer, extract and activate files on a host do not exist there. The package is
+        # read locally and the objects go straight to the cluster API.
+        cluster_only = bool(getattr(host, "is_cluster_managed", False))
         steps: list[PlanStep] = [
             PlanStep(
                 "validate", "Validate package", "validate", {"checksum": version.checksum_sha256}
             ),
             PlanStep("preflight", "Check target", "preflight", {"remote": True}),
-            PlanStep("prepare", "Prepare remote layout", "prepare"),
-            PlanStep("transfer", "Transfer package", "transfer", {"reuse_existing": is_rollback}),
-            PlanStep(
-                "verify",
-                "Verify checksum",
-                "verify_checksum",
-                {"checksum": version.checksum_sha256, "reuse_existing": is_rollback},
-            ),
-            PlanStep("extract", "Extract release", "extract", {"reuse_existing": is_rollback}),
-            PlanStep("configure", "Render configuration", "configure"),
         ]
+        if not cluster_only:
+            steps += [
+                PlanStep("prepare", "Prepare remote layout", "prepare"),
+                PlanStep(
+                    "transfer", "Transfer package", "transfer", {"reuse_existing": is_rollback}
+                ),
+                PlanStep(
+                    "verify",
+                    "Verify checksum",
+                    "verify_checksum",
+                    {"checksum": version.checksum_sha256, "reuse_existing": is_rollback},
+                ),
+                PlanStep("extract", "Extract release", "extract", {"reuse_existing": is_rollback}),
+            ]
+        steps.append(PlanStep("configure", "Render configuration", "configure"))
         hook_key = "pre_rollback" if is_rollback else "pre_deploy"
-        if application.allow_hooks and hooks.get(hook_key):
+        if application.allow_hooks and hooks.get(hook_key) and not cluster_only:
             steps.append(
                 PlanStep(
                     f"hook_{hook_key}",
@@ -105,7 +114,12 @@ class DeploymentPlanner:
                     },
                 )
             )
-        if application.allow_hooks and hooks.get("migrate") and not is_rollback:
+        if (
+            application.allow_hooks
+            and hooks.get("migrate")
+            and not is_rollback
+            and not cluster_only
+        ):
             steps.append(
                 PlanStep(
                     "hook_migrate",
@@ -126,11 +140,15 @@ class DeploymentPlanner:
                 {"image": desired.image},
             )
         )
-        steps.append(
-            PlanStep(
-                "activate", "Activate release (switch current)", "activate", rollback_trigger=True
+        if not cluster_only:
+            steps.append(
+                PlanStep(
+                    "activate",
+                    "Activate release (switch current)",
+                    "activate",
+                    rollback_trigger=True,
+                )
             )
-        )
         steps.append(
             PlanStep(
                 "start",
@@ -146,7 +164,7 @@ class DeploymentPlanner:
             )
         )
         post_key = "post_rollback" if is_rollback else "post_deploy"
-        if application.allow_hooks and hooks.get(post_key):
+        if application.allow_hooks and hooks.get(post_key) and not cluster_only:
             steps.append(
                 PlanStep(
                     f"hook_{post_key}",
@@ -161,7 +179,8 @@ class DeploymentPlanner:
                 )
             )
         steps.append(PlanStep("finalize", "Finalize", "finalize"))
-        steps.append(PlanStep("cleanup", "Clean staging", "cleanup", critical=False))
+        if not cluster_only:
+            steps.append(PlanStep("cleanup", "Clean staging", "cleanup", critical=False))
         return DeploymentPlan(
             reference=reference,
             application_code=application.code,

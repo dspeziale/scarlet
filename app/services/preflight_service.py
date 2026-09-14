@@ -16,8 +16,10 @@ from app.models.application import Application, ApplicationVersion
 from app.models.enums import HostKeyStatus, RuntimeType
 from app.models.host import TargetHost
 from app.repositories import DeploymentRepository, InstanceRepository
+from app.runtimes.access import build_host_info
 from app.runtimes.base import HostInfo, RuntimeContext
 from app.runtimes.factory import RuntimeFactory
+from app.runtimes.k8s_api import get_kubernetes_api
 from app.security.crypto import get_cipher
 from app.services.application_service import ApplicationService
 from app.services.configuration_service import ConfigurationService
@@ -121,7 +123,18 @@ class PreflightService:
             )
         )
 
-        if (
+        cluster = host.is_cluster_managed
+        if cluster:
+            checks.append(
+                Check(
+                    "access",
+                    "Access mode",
+                    "PASS",
+                    "Kubernetes API with the stored kubeconfig (no SSH involved)",
+                    {"access_mode": "API"},
+                )
+            )
+        elif (
             host.ssh_host_key_status != HostKeyStatus.APPROVED.value
             and current_app.config.get("SCARLET_SSH_HOST_KEY_POLICY") == "strict"
         ):
@@ -142,18 +155,28 @@ class PreflightService:
                     host.ssh_fingerprint or "trust-on-first-use",
                 )
             )
-        checks.append(
-            Check(
-                "credential",
-                "SSH credential configured",
-                "PASS" if host.active_credential else "FAIL",
-                (
-                    host.active_credential.credential_type
-                    if host.active_credential
-                    else "No active SSH credential"
-                ),
+        if cluster:
+            checks.append(
+                Check(
+                    "credential",
+                    "Cluster credential configured",
+                    "PASS",
+                    host.kubernetes_credential.credential_type,
+                )
             )
-        )
+        else:
+            checks.append(
+                Check(
+                    "credential",
+                    "SSH credential configured",
+                    "PASS" if host.active_credential else "FAIL",
+                    (
+                        host.active_credential.credential_type
+                        if host.active_credential
+                        else "No active SSH credential"
+                    ),
+                )
+            )
 
         # package integrity
         try:
@@ -281,8 +304,114 @@ class PreflightService:
             return PreflightResult(checks)
 
         # --- remote checks -----------------------------------------------------------------------
-        checks.extend(self._remote_checks(application, version, host, manifest))
+        if cluster:
+            checks.extend(self._cluster_checks(application, version, host, manifest))
+        else:
+            checks.extend(self._remote_checks(application, version, host, manifest))
         return PreflightResult(checks)
+
+    def _cluster_checks(
+        self,
+        application: Application,
+        version: ApplicationVersion,
+        host: TargetHost,
+        manifest: dict[str, Any],
+    ) -> list[Check]:
+        """Checks for a target reached through the Kubernetes API.
+
+        Disk, memory and ports belong to a machine; a cluster answers different questions:
+        can we reach it, does the namespace exist, may this credential create the objects,
+        and does the package actually contain them.
+        """
+        checks: list[Check] = []
+        namespace = (
+            (manifest.get("kubernetes") or {}).get("namespace")
+            or host.kubernetes_namespace
+            or "default"
+        )
+        try:
+            info = build_host_info(host)
+            api = get_kubernetes_api(info.kubeconfig or "", info.kubernetes_context)
+            version_info = api.server_version()
+            checks.append(
+                Check(
+                    "cluster",
+                    "Cluster reachable",
+                    "PASS",
+                    f"Kubernetes {version_info.get('git_version') or 'unknown version'}",
+                    {"version": version_info},
+                )
+            )
+        except ScarletError as exc:
+            checks.append(Check("cluster", "Cluster reachable", "FAIL", exc.message))
+            return checks
+        except Exception as exc:  # noqa: BLE001 - the client raises several unrelated types
+            checks.append(Check("cluster", "Cluster reachable", "FAIL", str(exc)[:300]))
+            return checks
+        finally:
+            info.kubeconfig = None
+
+        try:
+            exists = api.namespace_exists(namespace)
+        except ScarletError as exc:
+            exists = False
+            checks.append(Check("namespace", "Namespace", "WARN", exc.message))
+        else:
+            checks.append(
+                Check(
+                    "namespace",
+                    "Namespace",
+                    "PASS" if exists else "WARN",
+                    (
+                        f"'{namespace}' exists"
+                        if exists
+                        else f"'{namespace}' does not exist yet and will be created"
+                    ),
+                    {"namespace": namespace},
+                )
+            )
+
+        verdicts: dict[str, bool | None] = {}
+        for verb, resource in (
+            ("create", "deployments"),
+            ("patch", "deployments"),
+            ("create", "secrets"),
+        ):
+            verdicts[f"{verb}:{resource}"] = api.can_i(verb, resource, namespace)
+        denied = [key for key, allowed in verdicts.items() if allowed is False]
+        unknown = all(value is None for value in verdicts.values())
+        checks.append(
+            Check(
+                "permissions",
+                "Cluster permissions",
+                "WARN" if unknown else ("FAIL" if denied else "PASS"),
+                (
+                    "The cluster did not answer the access review"
+                    if unknown
+                    else (
+                        f"Not allowed: {', '.join(denied)}"
+                        if denied
+                        else f"create and patch allowed in '{namespace}'"
+                    )
+                ),
+                {"reviews": verdicts},
+            )
+        )
+
+        manifests_dir = (manifest.get("kubernetes") or {}).get("manifests")
+        checks.append(
+            Check(
+                "objects",
+                "Objects in the package",
+                "PASS" if manifests_dir else "FAIL",
+                (
+                    f"kubernetes.manifests = {manifests_dir}"
+                    if manifests_dir
+                    else "The manifest does not declare kubernetes.manifests"
+                ),
+            )
+        )
+        return checks
 
     def _remote_checks(
         self,

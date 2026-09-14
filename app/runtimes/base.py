@@ -45,6 +45,9 @@ class RuntimeContext:
     log: Callable[..., None] = lambda *a, **k: None  # log(level, message, result=None)
     timeout: int = 600
     local_release_dir: str | None = None  # local extracted package (Kubernetes API mode)
+    #: Per-context slot for a runtime client an adapter wants to build only once
+    #: (the Kubernetes adapter keeps its cluster connection here).
+    runtime_client: Any | None = None
 
     def run(self, command, *, label: str | None = None) -> CommandResult:
         result = self.executor.run(command)

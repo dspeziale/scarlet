@@ -20,8 +20,10 @@ from app.repositories import (
     HostRepository,
     InstanceRepository,
 )
+from app.runtimes.access import build_host_info
 from app.runtimes.base import HostInfo, RuntimeContext
 from app.runtimes.factory import RuntimeFactory
+from app.runtimes.k8s_api import get_kubernetes_api
 from app.security.crypto import get_cipher
 from app.security.validators import (
     validate_hostname,
@@ -70,8 +72,15 @@ class HostService:
             except ValidationError as exc:
                 errors.update(exc.errors)
         if "ssh_username" in data or not partial:
+            username = str(data.get("ssh_username", "") or "").strip()
+            if (
+                not username
+                and str(data.get("runtime_type", "")).upper() == RuntimeType.KUBERNETES.value
+            ):
+                # A cluster target is reached through the API: there is no user to log in as.
+                username = "kubernetes"
             try:
-                out["ssh_username"] = validate_ssh_username(str(data.get("ssh_username", "")))
+                out["ssh_username"] = validate_ssh_username(username)
             except ValidationError as exc:
                 errors.update(exc.errors)
         if "environment" in data or "environment_id" in data or not partial:
@@ -342,6 +351,8 @@ class HostService:
     def test_connection(self, host: TargetHost, *, user=None) -> dict[str, Any]:
         if not host.enabled:
             raise ValidationError("Host is disabled.")
+        if host.is_cluster_managed:
+            return self._test_cluster(host, user=user)
         factory = get_ssh_factory()
         started = utcnow()
         try:
@@ -386,9 +397,15 @@ class HostService:
             raise
 
     def discover(self, host: TargetHost, *, user=None) -> dict[str, Any]:
-        """Read-only inspection of the host: OS, resources, runtimes."""
+        """Read-only inspection of the target: OS, resources, runtimes.
+
+        A cluster target has none of those: what it can report is the cluster version and
+        the namespace, so it takes its own path.
+        """
         if not host.enabled:
             raise ValidationError("Host is disabled.")
+        if host.is_cluster_managed:
+            return self._discover_cluster(host, user=user)
         factory = get_ssh_factory()
         data: dict[str, Any] = {"runtimes": {}}
         try:
@@ -464,6 +481,110 @@ class HostService:
                 "os": data.get("os"),
                 "runtimes": {k: v.get("available") for k, v in data["runtimes"].items()},
             },
+        )
+        return data
+
+    # --- cluster targets ---------------------------------------------------------------------
+    def _cluster_api(self, host: TargetHost):
+        info = build_host_info(host)
+        try:
+            return get_kubernetes_api(info.kubeconfig or "", info.kubernetes_context)
+        finally:
+            info.kubeconfig = None
+
+    def _test_cluster(self, host: TargetHost, *, user=None) -> dict[str, Any]:
+        """The equivalent of a connection test when the target is a cluster."""
+        started = utcnow()
+        try:
+            version = self._cluster_api(host).server_version()
+        except ScarletError as exc:
+            host.status = HostStatus.OFFLINE.value
+            host.last_error = exc.message
+            db.session.commit()
+            audit.record(
+                "HOST_TEST_CONNECTION",
+                user=user,
+                target=host,
+                entity_type="TargetHost",
+                entity_id=host.id,
+                result=AuditResult.FAILURE,
+                details={"error": exc.message, "code": exc.code, "access_mode": "API"},
+            )
+            raise
+        host.status = HostStatus.ONLINE.value
+        host.last_seen_at = utcnow()
+        host.last_error = None
+        host.kubernetes_version = version.get("git_version")
+        db.session.commit()
+        result = {
+            "ok": True,
+            "access_mode": "API",
+            "cluster_version": version.get("git_version"),
+            "platform": version.get("platform"),
+            "namespace": host.kubernetes_namespace,
+            "latency_ms": int((utcnow() - started).total_seconds() * 1000),
+        }
+        audit.record(
+            "HOST_TEST_CONNECTION",
+            user=user,
+            target=host,
+            entity_type="TargetHost",
+            entity_id=host.id,
+            details=result,
+        )
+        return result
+
+    def _discover_cluster(self, host: TargetHost, *, user=None) -> dict[str, Any]:
+        namespace = host.kubernetes_namespace or "default"
+        data: dict[str, Any] = {"runtimes": {}, "access_mode": "API"}
+        try:
+            api = self._cluster_api(host)
+            version = api.server_version()
+            data["kubernetes"] = {
+                "version": version.get("git_version"),
+                "platform": version.get("platform"),
+                "namespace": namespace,
+                "namespace_exists": api.namespace_exists(namespace),
+                "can_create_deployments": api.can_i("create", "deployments", namespace),
+                "can_create_secrets": api.can_i("create", "secrets", namespace),
+            }
+            data["runtimes"][RuntimeType.KUBERNETES.value] = {
+                "runtime_type": RuntimeType.KUBERNETES.value,
+                "available": True,
+                "version": version.get("git_version"),
+                "rootless": None,
+                "binary_path": None,
+                "details": {"mode": "api", "namespace": namespace},
+            }
+        except ScarletError as exc:
+            host.status = HostStatus.OFFLINE.value
+            host.last_error = exc.message
+            db.session.commit()
+            audit.record(
+                "HOST_DISCOVERED",
+                user=user,
+                target=host,
+                entity_type="TargetHost",
+                entity_id=host.id,
+                result=AuditResult.FAILURE,
+                details={"error": exc.message, "access_mode": "API"},
+            )
+            raise
+        host.status = HostStatus.ONLINE.value
+        host.last_seen_at = utcnow()
+        host.last_error = None
+        host.runtime_type = RuntimeType.KUBERNETES.value
+        host.runtime_version = data["kubernetes"]["version"]
+        host.kubernetes_version = data["kubernetes"]["version"]
+        host.last_discovery_at = utcnow()
+        db.session.commit()
+        audit.record(
+            "HOST_DISCOVERED",
+            user=user,
+            target=host,
+            entity_type="TargetHost",
+            entity_id=host.id,
+            details={"kubernetes": data["kubernetes"]},
         )
         return data
 

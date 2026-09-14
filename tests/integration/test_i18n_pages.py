@@ -56,7 +56,9 @@ def _sidebar_labels(html: str) -> list[str]:
     import re
 
     aside = html[html.index("<aside") : html.index("</aside>")]
-    return [re.sub(r"<[^>]+>", "", label).strip() for label in re.findall(r"<p>(.*?)</p>", aside, re.S)]
+    return [
+        re.sub(r"<[^>]+>", "", label).strip() for label in re.findall(r"<p>(.*?)</p>", aside, re.S)
+    ]
 
 
 def test_navigation_is_translated_in_italian(admin_client):
@@ -131,3 +133,61 @@ def test_injected_catalogue_is_smaller_than_the_full_one(app):
 
     with app.test_request_context("/"):
         assert len(js_catalogue()) < len(CATALOGUES["it"])
+
+
+def test_catalogue_defines_each_key_once():
+    """A repeated key silently shadows the earlier translation, so ban duplicates."""
+    import re
+    from collections import Counter
+
+    source = (Path(__file__).resolve().parents[2] / "app" / "i18n" / "it.py").read_text(
+        encoding="utf-8"
+    )
+    entry = re.compile(r"^\s{4}((['\"])(?:(?!\2).)*?\2):", re.M)
+    counts = Counter(match.group(1) for match in entry.finditer(source))
+    assert not [key for key, n in counts.items() if n > 1]
+
+
+def test_switching_language_returns_to_the_current_page(admin_client):
+    response = admin_client.get("/lang/en?next=%2Fhosts%3Fenvironment%3DDEV")
+    assert response.status_code in (301, 302)
+    assert response.headers["Location"] == "/hosts?environment=DEV"
+
+
+def test_switching_language_refuses_an_external_return_url(admin_client):
+    response = admin_client.get("/lang/en?next=https%3A%2F%2Fevil.example%2Fx")
+    assert response.headers["Location"] == "/"
+    assert admin_client.get("/lang/en?next=%2F%2Fevil.example").headers["Location"] == "/"
+
+
+def test_language_link_has_no_trailing_question_mark(admin_client):
+    html = admin_client.get("/dashboard").get_data(as_text=True)
+    assert "/lang/en?next=/dashboard?" not in html, "bare '?' leaks from request.full_path"
+    assert "/lang/en?next=/dashboard" in html
+
+
+def test_copyright_is_shown_on_every_page(admin_client, client):
+    """The notice must reach the console, the login page and the standalone guide."""
+    from app import __copyright__
+
+    assert __copyright__ == "© 2024-26 DS Consulting"
+    assert __copyright__ in client.get("/login").get_data(as_text=True)
+    for path in ("/dashboard", "/system/about", "/guida"):
+        assert __copyright__ in admin_client.get(path).get_data(as_text=True), path
+
+
+def test_pdf_manuals_carry_the_same_copyright():
+    """The manuals are built by a separate script: keep the two constants from drifting."""
+    import sys
+
+    from app import __copyright__
+
+    scripts = Path(__file__).resolve().parents[2] / "scripts"
+    sys.path.insert(0, str(scripts))
+    try:
+        import pdflib
+    except ImportError:  # reportlab è una dipendenza di sviluppo
+        pytest.skip("reportlab non installato")
+    finally:
+        sys.path.remove(str(scripts))
+    assert __copyright__ == pdflib.COPYRIGHT

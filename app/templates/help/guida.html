@@ -35,12 +35,14 @@
     <li class="toc-highlight"><a href="#esempio-zero">Esempio completo 1: da zero a una macchina online</a></li>
     <li class="toc-highlight"><a href="#esempio-texa">Esempio completo 2: TEXA ARES in DEV e PROD</a></li>
     <li><a href="#accesso">Accesso, ruoli e permessi</a></li>
+    <li><a href="#lingua">Lingua dell'interfaccia</a></li>
     <li><a href="#dashboard">Dashboard</a></li>
     <li><a href="#host">Host (server di destinazione)</a></li>
     <li><a href="#credenziali">Credenziali SSH</a></li>
     <li><a href="#fingerprint">Approvazione fingerprint SSH</a></li>
     <li><a href="#discover">Test connessione e Discover</a></li>
     <li><a href="#gruppi">Gruppi di host e ambienti</a></li>
+    <li><a href="#kubernetes">Target Kubernetes</a></li>
     <li><a href="#applicazioni">Applicazioni</a></li>
     <li><a href="#pacchetti">Pacchetti di rilascio</a></li>
     <li><a href="#upload">Caricamento di un pacchetto</a></li>
@@ -354,6 +356,20 @@ Install release 11.5 s (podman load) · Start application 0.6 s · Health check 
   <p>Dal menu utente (in alto a destra) si cambia la password, si gestiscono i <a href="#api">token API</a> personali e si esce dalla sessione. La sessione dura 8 ore.</p>
 </section>
 
+<section id="lingua">
+  <h1>6-bis. Lingua dell'interfaccia</h1>
+  <p>L'interfaccia è disponibile in <b>italiano</b> (predefinito) e in <b>inglese</b>. La lingua si cambia in qualsiasi momento, senza ricaricare la sessione o perdere il lavoro in corso: si resta sulla pagina in cui ci si trova.</p>
+  <p>Il selettore è presente in tre punti:</p>
+  <ul>
+    <li><b>Barra in alto</b>: icona <i class="fa-solid fa-language"></i> a destra, accanto all'icona della guida. Apre un menu con Italiano e English.</li>
+    <li><b>Menu laterale</b>: in fondo, sotto la voce <b>Lingua</b>, due pulsanti IT e EN.</li>
+    <li><b>Pagina di accesso</b>: in fondo al riquadro di login, sotto la versione. Serve per leggere la pagina di accesso nella propria lingua <i>prima</i> di autenticarsi.</li>
+  </ul>
+  <p>La scelta viene ricordata per un anno in un cookie (<code>scarlet_lang</code>) e nella sessione, quindi vale anche ai prossimi accessi dallo stesso browser. Se non è mai stata fatta una scelta, SCARLET segue la lingua preferita del browser e, se non corrisponde a nessuna lingua supportata, usa l'italiano.</p>
+  <p>La traduzione riguarda l'interfaccia: menu, etichette, messaggi, finestre di conferma e stati (ad esempio <b>IN ESECUZIONE</b>, <b>NON RAGGIUNGIBILE</b>). Restano invece in forma tecnica, uguali in entrambe le lingue, i valori che provengono dai server e dai pacchetti: nomi di host e applicazioni, versioni, codici dei permessi (<code>deployment.execute</code>), nomi dei runtime (<code>PODMAN</code>, <code>DOCKER</code>, <code>KUBERNETES</code>), l'output dei comandi remoti e le voci del registro di audit. Questo è voluto: sono dati da confrontare con quanto si vede sul server, e tradurli renderebbe più difficile la diagnosi.</p>
+  <div class="callout callout-info"><i class="fa-solid fa-circle-info me-2"></i>Questa guida è disponibile solo in italiano. Il link <b>Guida utente</b> apre sempre questo documento, in qualunque lingua sia impostata l'interfaccia.</div>
+</section>
+
 <section id="dashboard">
   <h1>7. Dashboard</h1>
   <p>La pagina iniziale riassume lo stato della piattaforma:</p>
@@ -419,6 +435,51 @@ Install release 11.5 s (podman load) · Start application 0.6 s · Health check 
   <h1>12. Gruppi di host e ambienti</h1>
   <p><b>Host Groups</b> (es. <code>PROD-API</code>) raggruppano host dello stesso ambiente per selezionarli in blocco nel wizard di deployment e per limitare a quali gruppi un'applicazione può essere distribuita.</p>
   <p><b>Environments</b> mostra DEV e PROD con le regole: richiesta di conferma digitata, approvazione a due persone, rollback consentito, numero massimo di deployment in parallelo. Per PROD vale sempre la regola più restrittiva tra quella dell'ambiente e le impostazioni globali.</p>
+</section>
+
+<section id="kubernetes">
+  <h1>12-bis. Target Kubernetes</h1>
+  <p>Un cluster Kubernetes si registra come un target qualsiasi, ma può essere raggiunto in due modi diversi. La scelta dipende da una sola cosa: se al target è associata una credenziale <b>kubeconfig</b>.</p>
+  <table class="table table-sm table-bordered">
+    <thead><tr><th style="width:18%"></th><th>Modalità API (consigliata)</th><th>kubectl via SSH</th></tr></thead>
+    <tbody>
+      <tr><td><b>Quando si attiva</b></td><td>al target è associata una credenziale kubeconfig</td><td>nessun kubeconfig sul target</td></tr>
+      <tr><td><b>Come raggiunge il cluster</b></td><td>direttamente dal worker di SCARLET, con il client ufficiale</td><td>eseguendo <code>kubectl</code> via SSH su una macchina</td></tr>
+      <tr><td><b>Serve SSH?</b></td><td><b>No.</b> Nessuna sessione, nessuna credenziale SSH, nessuna chiave host da approvare</td><td>Sì, come per qualunque altro host</td></tr>
+      <tr><td><b>Serve una directory di rilascio?</b></td><td>No</td><td>Sì, il consueto <code>/opt/scarlet/applications/…</code></td></tr>
+      <tr><td><b>Porte</b></td><td>6443/tcp verso l'API server</td><td>22/tcp verso la macchina</td></tr>
+      <tr><td><b>Quando conviene</b></td><td>cluster senza macchina di gestione, o quando non si vogliono shell</td><td>esiste già un bastion con <code>kubectl</code> configurato</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Registrare un cluster in modalità API</h2>
+  <ol>
+    <li><b>Host → Nuovo host</b>: scegliere runtime <code>KUBERNETES</code>, indicare il namespace e, se il kubeconfig ha più contesti, il contesto. I campi SSH smettono di essere obbligatori: il nome host serve solo come etichetta dell'endpoint.</li>
+    <li><b>Sicurezza → Credenziali</b>: aggiungere una credenziale di tipo <b>kubeconfig</b> per quel target. Viene cifrata come qualsiasi altro segreto.</li>
+    <li><b>Test connessione</b>: SCARLET interroga la versione del cluster e la registra.</li>
+    <li><b>Discover</b>: riporta versione del cluster, esistenza del namespace e se la credenziale può creare Deployment e Secret.</li>
+  </ol>
+  <div class="callout callout-info"><i class="fa-solid fa-circle-info me-2"></i>Su un target in modalità API non c'è alcun fingerprint da approvare e non va installato niente su nessuna macchina. Le schede "Informazioni di sistema" e "Sicurezza SSH" nella pagina dell'host lasciano il posto ai dati del cluster.</div>
+
+  <h2>Che cosa cambia in un deployment</h2>
+  <p>Il piano non contiene i passi che manipolano un filesystem. La sequenza diventa: <code>validate</code>, <code>preflight</code>, <code>configure</code>, <code>install</code>, <code>start</code>, <code>health</code>, <code>finalize</code>. Non ci sono trasferimento, estrazione, symlink <code>current</code> né pulizia, e neppure i ganci del pacchetto: non esiste una macchina su cui eseguire uno script.</p>
+  <p>I controlli preliminari cambiano di conseguenza: al posto di disco, memoria e porte, SCARLET verifica che l'API risponda, che il namespace esista (altrimenti lo crea), che la credenziale possa creare e modificare Deployment e Secret, e che il pacchetto dichiari <code>kubernetes.manifests</code>.</p>
+
+  <h2>Che cosa scrive SCARLET negli oggetti</h2>
+  <p>Qualunque cosa contenga il pacchetto, tre cose sono decise da SCARLET prima dell'applicazione.</p>
+  <ul>
+    <li><b>Etichette</b>: ogni oggetto riceve <code>scarlet.io/application</code> e <code>app.kubernetes.io/managed-by=scarlet</code>; i workload e il loro pod template ricevono anche <code>scarlet.io/version</code>. Stato, divergenza e rimozione lavorano su queste etichette.</li>
+    <li><b>Immagine</b>: se il manifest del rilascio dichiara <code>image</code>, il container indicato in <code>kubernetes.container_name</code> usa quella immagine. La versione rilasciata è quella che gira, qualunque cosa dica lo YAML.</li>
+    <li><b>Configurazione</b>: le variabili e i segreti configurati in SCARLET diventano un Secret <code>&lt;applicazione&gt;-scarlet-env</code> nel namespace, collegato al container con <code>envFrom</code>. I valori non finiscono mai nei log: solo i nomi delle chiavi.</li>
+  </ul>
+
+  <h2>Oggetti ammessi nel pacchetto</h2>
+  <p><code>Namespace</code> e, dentro il namespace: ConfigMap, CronJob, DaemonSet, Deployment, HorizontalPodAutoscaler, Ingress, Job, NetworkPolicy, PersistentVolumeClaim, PodDisruptionBudget, Role, RoleBinding, Secret, Service, ServiceAccount, StatefulSet.</p>
+  <div class="callout callout-info"><i class="fa-solid fa-circle-info me-2"></i>Gli oggetti RBAC di cluster (<code>ClusterRole</code>, <code>ClusterRoleBinding</code>) e le definizioni di risorse personalizzate sono volutamente esclusi: assegnarli è competenza del team di piattaforma, non di un rilascio applicativo. Un pacchetto che li contiene viene respinto con un messaggio che nomina il tipo.</p></div>
+
+  <h2>Operazioni e diagnosi</h2>
+  <p>Avvio e arresto sono lo scale del Deployment (alle repliche richieste, oppure a zero), il riavvio è l'annotazione <code>restartedAt</code>, i log arrivano dai pod etichettati. Quando un rollout fallisce, l'errore riporta gli <b>eventi del cluster</b> e l'elenco dei pod: nella pratica è ciò che dice se il problema è il download dell'immagine, un segreto mancante o una sonda di readiness che non passa.</p>
+  <p>La riconciliazione funziona come per i container: se qualcuno porta a zero le repliche dal cluster, compare una divergenza di tipo STATE sulla pagina dell'applicazione. Il rimedio automatico resta limitato agli ambienti non di produzione.</p>
 </section>
 
 <section id="applicazioni">
@@ -643,6 +704,10 @@ Install release 11.5 s (podman load) · Start application 0.6 s · Health check 
   </ul>
   <p class="text-muted small mt-4">Documentazione completa nel repository: <code>docs/RUNBOOK.md</code>, <code>docs/APPLICATION_RELEASE_CONTRACT.md</code>, <code>docs/operations.md</code>, <code>docs/troubleshooting.md</code>.</p>
 </section>
+
+<footer class="guida-footer text-muted small">
+  SCARLET v{{ scarlet_version }} &middot; {{ scarlet_copyright }}
+</footer>
 
 </main>
 </div>

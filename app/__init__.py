@@ -13,6 +13,8 @@ from app.config.logging import bind_context, configure_logging, reset_context
 from app.utils.ids import new_request_id
 
 __version__ = "1.0.0"
+#: Mostrato nell'interfaccia, nei PDF e nei metadati: definito una volta sola.
+__copyright__ = "© 2024-26 DS Consulting"
 
 
 def create_app(overrides: dict[str, Any] | None = None) -> Flask:

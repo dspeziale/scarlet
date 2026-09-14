@@ -7,6 +7,7 @@ from typing import Any
 
 from flask import Response, current_app, jsonify, render_template, url_for
 
+from app import __copyright__
 from app.api import api
 from app.errors import NotFoundError
 from app.security.rbac import login_required_any
@@ -309,6 +310,8 @@ def build_openapi() -> dict[str, Any]:
             "title": "SCARLET API",
             "version": current_app.config.get("APP_VERSION", "1.0.0"),
             "description": "System Container Application Release, Lifecycle & Environment Tool. All operational endpoints require authentication and the listed permission. Production targets additionally require `prod.*` permissions and typed confirmation.",
+            "contact": {"name": "DS Consulting"},
+            "x-copyright": __copyright__,
         },
         "servers": [{"url": "/"}],
         "components": {

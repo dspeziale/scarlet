@@ -6,7 +6,7 @@
 {% block content %}
 <div data-page="host-detail" data-host-id="{{ host.id }}" data-host-name="{{ host.name }}" data-production="{{ 1 if host.is_production else 0 }}" data-env="{{ host.environment.code }}">
 {% if host.is_production %}<div class="alert alert-danger py-2"><i class="fa-solid fa-triangle-exclamation me-2"></i><b>{{ _('PRODUCTION HOST.') }}</b> {{ _('Destructive operations require typed confirmation and a reason.') }}</div>{% endif %}
-{% if host.ssh_host_key_status in ('PENDING_APPROVAL', 'MISMATCH') %}
+{% if host.ssh_host_key_status in ('PENDING_APPROVAL', 'MISMATCH') and not host.is_cluster_managed %}
 <div class="alert alert-{{ 'danger' if host.ssh_host_key_status == 'MISMATCH' else 'warning' }}">
   <h5 class="alert-heading"><i class="fa-solid fa-fingerprint me-2"></i>{{ _('SSH host key') }} {{ _('MISMATCH') if host.ssh_host_key_status == 'MISMATCH' else _('pending approval') }}</h5>
   {% if host.ssh_host_key_status == 'MISMATCH' %}<p>{{ _('The host presented a key different from the approved one') }} (<code>{{ host.ssh_fingerprint }}</code>). {{ _('Connections are blocked. Verify out-of-band (console, provisioning records) whether the server was reinstalled before approving the new key.') }}</p>{% else %}<p>{{ _('Verify this fingerprint out-of-band (e.g. <code>ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub</code> on the server console) before approving.') }}</p>{% endif %}
@@ -14,6 +14,7 @@
   {% if can('host.approve_key') %}<button type="button" class="btn btn-sm btn-{{ 'danger' if host.ssh_host_key_status == 'MISMATCH' else 'warning' }}" id="btn-approve-key"><i class="fa-solid fa-check me-1"></i>{{ _('Approve fingerprint') }}</button>{% endif %}
 </div>
 {% endif %}
+{% if host.is_cluster_managed %}<div class="alert alert-info py-2 small"><i class="fa-solid fa-dharmachakra me-1"></i>{{ _('This target is a Kubernetes cluster reached through its API with the stored kubeconfig. There is no SSH session, no release directory and no host key: objects are applied in the namespace and the configuration is published as a Secret.') }}</div>{% endif %}
 {% if host.last_error %}<div class="alert alert-warning py-2 small"><i class="fa-solid fa-circle-exclamation me-1"></i>{{ _('Last error') }}: {{ host.last_error }}</div>{% endif %}
 <div class="row">
   <div class="col-lg-4">
@@ -21,7 +22,8 @@
       <div class="card-header"><h3 class="card-title">{{ _('General') }}</h3><div class="card-tools">{% if can('host.update', host.is_production) %}<a href="{{ url_for('web.host_edit', host_id=host.id) }}" class="btn btn-tool" title="{{ _('Edit') }}"><i class="fa-solid fa-pen"></i></a>{% endif %}</div></div>
       <div class="card-body">
         <dl class="row mb-0">
-          {{ kv('Hostname', host.hostname) }}{{ kv('IP address', host.ip_address) }}{{ kv('SSH', host.ssh_username ~ '@' ~ host.address ~ ':' ~ host.ssh_port) }}
+          {{ kv('Hostname', host.hostname) }}{{ kv('IP address', host.ip_address) }}
+          {% if host.is_cluster_managed %}{{ kv('Access', _('Kubernetes API (kubeconfig)')) }}{{ kv('Namespace', host.kubernetes_namespace or 'default') }}{% else %}{{ kv('Access', _('SSH')) }}{{ kv('SSH', host.ssh_username ~ '@' ~ host.address ~ ':' ~ host.ssh_port) }}{% endif %}
           {{ kv('Environment', host.environment.code|env_badge(host.is_production)) }}{{ kv('Enabled', 'yes' if host.enabled else 'no') }}
           {{ kv('Groups', host.groups|map(attribute='name')|join(', ') or '-') }}{{ kv('Description', host.description) }}
           {{ kv('Base path', host.remote_base_path or config.SCARLET_REMOTE_BASE_PATH) }}
@@ -43,15 +45,20 @@
       </div>
     </div>
     <div class="card">
-      <div class="card-header"><h3 class="card-title">{{ _('SSH security') }}</h3></div>
+      <div class="card-header"><h3 class="card-title">{{ _('Cluster access') if host.is_cluster_managed else _('SSH security') }}</h3></div>
       <div class="card-body">
         <dl class="row mb-0">
+          {% if host.is_cluster_managed %}
+          {{ kv('Kubernetes version', host.kubernetes_version) }}{{ kv('Namespace', host.kubernetes_namespace or 'default') }}{{ kv('Context', host.kubernetes_context or _('default from kubeconfig')) }}
+          {{ kv('Credential', host.kubernetes_credential.credential_type) }}
+          {% else %}
           {{ kv('Host key status', host.ssh_host_key_status|status_badge) }}{{ kv('Fingerprint', '<code>' ~ (host.ssh_fingerprint or '-') ~ '</code>') }}{{ kv('Key type', host.ssh_host_key_type) }}
           {{ kv('Approved at', host.ssh_host_key_approved_at|dt) }}
           {{ kv('Credential', (host.active_credential.credential_type ~ (' · ' ~ host.active_credential.key_fingerprint if host.active_credential.key_fingerprint else '')) if host.active_credential else ('<span class="text-danger">' ~ _('none configured') ~ '</span>')) }}
+          {% endif %}
         </dl>
         <div class="mt-2 d-flex flex-wrap gap-1">
-          {% if can('host.approve_key') %}<button type="button" class="btn btn-sm btn-outline-secondary" id="btn-scan-key"><i class="fa-solid fa-fingerprint me-1"></i>{{ _('Scan host key') }}</button>{% endif %}
+          {% if can('host.approve_key') and not host.is_cluster_managed %}<button type="button" class="btn btn-sm btn-outline-secondary" id="btn-scan-key"><i class="fa-solid fa-fingerprint me-1"></i>{{ _('Scan host key') }}</button>{% endif %}
           {% if can('credential.manage') %}<a href="{{ url_for('web.credentials') }}#host-{{ host.id }}" class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-key me-1"></i>{{ _('Credentials') }}</a>{% endif %}
         </div>
       </div>
@@ -71,6 +78,7 @@
         {{ action_button('Delete', 'fa-solid fa-trash', 'btn-outline-danger', 'id="btn-delete"', 'host.delete', host.is_production) }}
       </div>
     </div>
+    {% if not host.is_cluster_managed %}
     <div class="card">
       <div class="card-header"><h3 class="card-title">{{ _('System information') }}</h3><div class="card-tools small text-muted">{{ _('last discovery') }} {{ host.last_discovery_at|dt }}</div></div>
       <div class="card-body">
@@ -88,6 +96,7 @@
         </div>
       </div>
     </div>
+    {% endif %}
     <div class="card">
       <div class="card-header"><h3 class="card-title">{{ _('Applications deployed') }}</h3></div>
       <div class="card-body p-0">

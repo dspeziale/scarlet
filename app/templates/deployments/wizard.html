@@ -4,7 +4,7 @@
 {% block content %}
 <div data-page="deployment-wizard" data-preselect-app="{{ preselect_app or '' }}" data-preselect-host="{{ preselect_host or '' }}">
 <div class="wizard-steps" id="wizard-steps">
-  {% for s in ['Application', 'Version', 'Targets', 'Environment', 'Pre-flight', 'Confirmation', 'Execution', 'Health check', 'Result'] %}<div class="wstep{% if loop.first %} active{% endif %}" data-step="{{ loop.index }}">{{ loop.index }}. {{ s }}</div>{% endfor %}
+  {% for s in ['Application', 'Version', 'Targets', 'Environment', 'Pre-flight', 'Confirmation', 'Execution', 'Health check', 'Result'] %}<div class="wstep{% if loop.first %} active{% endif %}" data-step="{{ loop.index }}">{{ loop.index }}. {{ _(s) }}</div>{% endfor %}
 </div>
 <div class="card">
   <div class="card-body">

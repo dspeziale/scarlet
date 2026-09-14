@@ -55,14 +55,13 @@ from app.models.enums import (
 )
 from app.models.lifecycle import HealthCheck
 from app.repositories import InstanceRepository, VersionRepository
-from app.runtimes.base import HostInfo, RuntimeAdapter, RuntimeContext
+from app.runtimes.access import base_path_for, build_host_info, open_executor
+from app.runtimes.base import RuntimeAdapter, RuntimeContext
 from app.runtimes.factory import RuntimeFactory
-from app.security.crypto import get_cipher
 from app.services.configuration_service import ConfigurationService
 from app.services.notification_service import notify_operators
 from app.services.preflight_service import PreflightService
 from app.ssh.command import FileCommands
-from app.ssh.factory import get_ssh_factory
 from app.utils.ids import new_token
 from app.utils.time import duration_seconds, utcnow
 
@@ -236,23 +235,11 @@ class DeploymentEngine:
         execution = DeploymentExecution(
             plan=plan, steps=[StepExecution(step=s) for s in plan.steps]
         )
-        base = host.remote_base_path or current_app.config["SCARLET_REMOTE_BASE_PATH"]
+        step_states = self._states_for(plan)
+        base = base_path_for(host)
         layout = RemoteLayout(base, application.code)
         adapter = RuntimeFactory.get(host.runtime_type)
-        info = HostInfo(
-            name=host.name,
-            runtime_type=host.runtime_type,
-            base_path=base,
-            rootless=host.runtime_rootless,
-            kubernetes_namespace=host.kubernetes_namespace,
-            kubernetes_context=host.kubernetes_context,
-            architecture=host.architecture,
-        )
-        if (
-            host.runtime_type == RuntimeType.KUBERNETES.value
-            and host.kubernetes_credential is not None
-        ):
-            info.kubeconfig = get_cipher().decrypt(host.kubernetes_credential.encrypted_secret)
+        info = build_host_info(host)
         step_logger = StepLogger()
         timeout = int(current_app.config.get("SCARLET_SSH_COMMAND_TIMEOUT", 600))
         state: dict[str, Any] = {
@@ -264,8 +251,7 @@ class DeploymentEngine:
         deadline = time.monotonic() + int(
             current_app.config.get("SCARLET_DEPLOYMENT_TIMEOUT", 1800)
         )
-        factory = get_ssh_factory()
-        client = factory.connect(host)
+        client = open_executor(host)
         ctx = RuntimeContext(
             executor=client,
             host=info,
@@ -284,7 +270,7 @@ class DeploymentEngine:
                     raise DeploymentError(
                         "Deployment timeout exceeded.", details={"step": step.name}
                     )
-                self._begin_step(sm, deployment, step, step_exec, row)
+                self._begin_step(sm, deployment, step, step_exec, row, step_states)
                 step_logger.reset()
                 try:
                     details = (
@@ -313,6 +299,7 @@ class DeploymentEngine:
                         StepStatus.SUCCESS,
                         step_logger,
                         details,
+                        step_states=step_states,
                     )
                 except ScarletError as exc:
                     self._end_step(
@@ -325,6 +312,7 @@ class DeploymentEngine:
                         step_logger,
                         {},
                         error=exc,
+                        step_states=step_states,
                     )
                     if step.critical:
                         failed_step = step_exec
@@ -376,10 +364,32 @@ class DeploymentEngine:
         return execution
 
     # --- step bookkeeping -----------------------------------------------------------------------------
+    @staticmethod
+    def _states_for(plan) -> dict[str, tuple[DeploymentStatus | None, DeploymentStatus | None]]:
+        """The state each step drives the deployment through, for this plan.
+
+        On a host, INSTALLING starts at ``extract`` and INSTALLED lands on ``activate``.
+        A cluster plan has neither, so ``install`` carries both: applying the objects is the
+        whole installation there.
+        """
+        states = dict(STEP_STATES)
+        kinds = {step.kind for step in plan.steps}
+        if not kinds & {"extract", "activate"}:
+            states["install"] = (DeploymentStatus.INSTALLING, DeploymentStatus.INSTALLED)
+        return states
+
     def _begin_step(
-        self, sm, deployment, step: PlanStep, step_exec: StepExecution, row: DeploymentStep
+        self,
+        sm,
+        deployment,
+        step: PlanStep,
+        step_exec: StepExecution,
+        row: DeploymentStep,
+        step_states: (
+            dict[str, tuple[DeploymentStatus | None, DeploymentStatus | None]] | None
+        ) = None,
     ) -> None:
-        enter, _ = STEP_STATES.get(step.kind, (None, None))
+        enter, _ = (step_states or STEP_STATES).get(step.kind, (None, None))
         if enter is not None and sm.state != enter and not sm.is_terminal:
             try:
                 sm.transition(enter)
@@ -402,6 +412,9 @@ class DeploymentEngine:
         logger: StepLogger,
         details: dict[str, Any],
         error: ScarletError | None = None,
+        step_states: (
+            dict[str, tuple[DeploymentStatus | None, DeploymentStatus | None]] | None
+        ) = None,
     ) -> None:
         step_exec.status = status
         step_exec.completed_at = utcnow()
@@ -426,7 +439,7 @@ class DeploymentEngine:
             if step.critical:
                 sm.fail(code=error.code, message=message)
         else:
-            _, leave = STEP_STATES.get(step.kind, (None, None))
+            _, leave = (step_states or STEP_STATES).get(step.kind, (None, None))
             if leave is not None and not sm.is_terminal:
                 try:
                     sm.transition(leave)
@@ -710,6 +723,10 @@ class DeploymentEngine:
                 "SCARLET_DEPLOYMENT": deployment.reference,
             }
         )
+        state["release_dir"] = release_dir
+        if getattr(adapter, "manages_configuration", False):
+            # Kubernetes: the configuration belongs in the cluster, not in a file on a host.
+            return {"keys": sorted(env.keys()), **adapter.configure(ctx, desired, env)}
         content = ConfigurationService.render_env_file(env)
         fd, tmp = tempfile.mkstemp(prefix="scarlet-env-")
         try:
@@ -720,9 +737,9 @@ class DeploymentEngine:
             os.unlink(tmp)
         ctx.log(
             "INFO",
-            f"Rendered {len(env)} environment variable(s) to {ctx.layout.env_file} (values not logged)",
+            f"Rendered {len(env)} environment variable(s) to {ctx.layout.env_file} "
+            "(values not logged)",
         )
-        state["release_dir"] = release_dir
         return {"keys": sorted(env.keys()), "env_file": ctx.layout.env_file}
 
     def _step_hook(

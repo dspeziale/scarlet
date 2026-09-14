@@ -58,7 +58,15 @@
     const form = document.getElementById("host-form");
     const hostId = root.dataset.hostId;
     const rt = document.getElementById("runtime_type");
-    const toggleK8s = () => document.querySelectorAll(".k8s-only").forEach((el) => el.classList.toggle("d-none", rt.value !== "KUBERNETES"));
+    const toggleK8s = () => {
+      const isK8s = rt.value === "KUBERNETES";
+      document.querySelectorAll(".k8s-only").forEach((el) => el.classList.toggle("d-none", !isK8s));
+      // A cluster reached through the API has no shell: the SSH fields stay visible for the
+      // kubectl-over-SSH mode but stop being mandatory.
+      document.querySelectorAll(".ssh-only [required], .ssh-only input").forEach((el) => {
+        if (el.name === "ssh_username" || el.name === "ssh_port") el.required = !isK8s;
+      });
+    };
     rt.addEventListener("change", toggleK8s); toggleK8s();
     form.addEventListener("submit", async (ev) => {
       ev.preventDefault();

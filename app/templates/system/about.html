@@ -7,7 +7,7 @@
     <div class="card">
       <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-cubes me-2"></i>SCARLET</h3></div>
       <div class="card-body">
-        <p><b>{{ _('System Container Application Release, Lifecycle &amp; Environment Tool') }}</b> — {{ _('version') }} {{ scarlet_version }} ({{ scarlet_env }}).</p>
+        <p><b>{{ _('System Container Application Release, Lifecycle &amp; Environment Tool') }}</b> — {{ _('version') }} {{ scarlet_version }} ({{ scarlet_env }}).<br><span class="small text-muted">{{ scarlet_copyright }}</span></p>
         <p class="small text-muted">{{ _('SCARLET is a control plane: operators declare the <i>desired state</i> of an application on a target (version, running/stopped); the deployment engine drives the <i>actual state</i> toward it through a runtime adapter (Docker, Podman, Kubernetes) over SSH, and the reconciler reports drift.') }}</p>
         <dl class="row mb-0 small">
           <dt class="col-4">{{ _('Runtime adapters') }}</dt><dd class="col-8">{{ runtimes|join(', ') }}</dd>
