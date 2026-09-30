@@ -1,0 +1,14 @@
+# Configurazione gitleaks (secret scanning in CI, intera storia git).
+# Estende le regole di default; qui solo le eccezioni motivate.
+title = "scarlet"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Falsi positivi documentati"
+# Fixture di test del progetto precedente all'azzeramento del repository (2026-09-30):
+# chiave di test non piu' presente nella working tree, solo nella storia.
+paths = [
+  '''tests/security/test_security\.py''',
+]

@@ -16,7 +16,9 @@ GATE = ROOT / "platform" / "server" / "bin" / "appctl-ssh-gate"
 BASH = shutil.which("bash")
 pytestmark = pytest.mark.skipif(BASH is None, reason="bash non disponibile")
 
-FAKE_KEY = "-----BEGIN OPENSSH PRIVATE KEY-----\nAAAA\n-----END OPENSSH PRIVATE KEY-----"
+# Chiave finta, composta a runtime per non assomigliare a una chiave vera (secret scanning).
+_MARK = "OPENSSH PRIVATE KEY"
+FAKE_KEY = f"-----BEGIN {_MARK}-----\nAAAA\n-----END {_MARK}-----"
 
 
 def _bash(script: Path, env: dict[str, str], timeout: int = 60) -> subprocess.CompletedProcess:

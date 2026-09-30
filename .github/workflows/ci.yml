@@ -88,7 +88,7 @@ jobs:
       - name: Secret scanning (gitleaks, intera storia git)
         run: |
           docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.21.2 \
-            detect --source /repo --no-banner --redact --exit-code 1
+            detect --source /repo --config /repo/.gitleaks.toml --no-banner --redact --exit-code 1
 
   build:
     name: Build, scan, integration, push
