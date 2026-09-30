@@ -75,7 +75,7 @@ errata, la sezione "Impatto" dice cosa cambia.
 | A2 | I server sono Linux con systemd: **Ubuntu Server 24.04 LTS** è la distribuzione di riferimento per le procedure; Oracle Linux / RHEL 9 sono supportati con le varianti indicate in `INSTALLATION.md` | Solo i comandi di installazione pacchetti cambiano |
 | A3 | Esistono (o esisteranno) **due server distinti**: uno DEVELOPMENT e uno PRODUCTION, entrambi con accesso in uscita verso `ghcr.io` (HTTPS) | Se unico server: i due ambienti convivono in due directory distinte (`/opt/apps/scarlet-dev`, `/opt/apps/scarlet`), supportato ma sconsigliato per la produzione |
 | A4 | Il registry è **GitHub Container Registry (GHCR)** con package **privato** | Se pubblico: non serve l'utente tecnico per il pull (vedi A5) |
-| A5 | Per il pull di immagini private dal server si usa un **utente GitHub tecnico** (machine user) con PAT `read:packages` conservato sul server in un file `0600`. GitHub non offre OIDC per il pull da un server esterno | Se GitHub App o package pubblico: cambia solo `platform/server/registry-login.sh` |
+| A5 | Per il pull di immagini private dal server la pipeline passa il proprio `GITHUB_TOKEN` ad `appctl` (login temporaneo, poi logout): nessuna credenziale permanente sul server. Un utente tecnico con PAT `read:packages` è **opzionale**, solo per pull manuali di tag nuovi | Se package pubblico: nessun login necessario |
 | A6 | I server **non sono raggiungibili da Internet in ingresso**; i runner GitHub-hosted devono poter aprire una connessione SSH verso i server (regola firewall sugli IP dei runner) **oppure** si installa un **self-hosted runner** in rete interna. La pipeline supporta entrambi tramite la variabile `DEPLOY_RUNNER` | Nessun impatto sul codice; solo configurazione |
 | A7 | Il database PostgreSQL è **containerizzato sullo stesso server** dell'applicazione, con dati su bind mount e backup giornaliero `pg_dump`. È la scelta più semplice per la prima applicazione; il passaggio a un DB esterno richiede solo di togliere un file compose e cambiare `DATABASE_URL` | Se DB esterno gestito: si usa la variante documentata in `DEPLOYMENT.md`; il backup del DB passa al DBA |
 | A8 | L'applicazione è raggiunta via HTTPS da rete interna tramite **Caddy** come reverse proxy condiviso per tutte le app del server; il certificato è fornito dalla CA interna aziendale (oppure ACME se il DNS è pubblico). Non conoscendo i nomi DNS, il file `Caddyfile` usa segnaposto | Va indicato il nome DNS e la modalità certificati (sezione 8) |
@@ -199,7 +199,7 @@ Docker Engine (socket unix locale, mai in rete)
 |----|--------------|------------------|
 | R1 | Nome DNS dell'applicazione per ambiente (es. `scarlet-dev.intranet.local`, `scarlet.intranet.local`) | segnaposto `scarlet.example.internal` nel `Caddyfile` |
 | R2 | Modalità certificati TLS: CA interna (fornire cert+key), ACME pubblico, o CA interna di Caddy | `tls internal` (certificato di Caddy) per DEV; produzione da definire |
-| R3 | Utente GitHub tecnico (machine user) con PAT `read:packages` per i server | ASSUMPTION A5 |
+| R3 | (opzionale) utente GitHub tecnico con PAT `read:packages`, solo per pull manuali di tag nuovi | non necessario per la pipeline (A5) |
 | R4 | Chi approva le promozioni in produzione (nomi GitHub per "required reviewers") | nessuno impostato: va configurato nell'Environment `production` |
 | R5 | Visibilità del package GHCR (privato/pubblico) | privato |
 | R6 | Dimensionamento server (default proposto: 2 vCPU, 4 GB RAM, 40 GB disco) | vedi `INSTALLATION.md` |

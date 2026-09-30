@@ -4,7 +4,9 @@
 # Variabili richieste: DEPLOY_HOST, DEPLOY_SSH_KEY (chiave privata PEM), DEPLOY_SSH_HOST_KEY
 #                      (riga known_hosts del server), ACTION (deploy|rollback), IMAGE_TAG
 # Opzionali: DEPLOY_USER (deploy), DEPLOY_PORT (22), APP_NAME (scarlet), ACTOR, EXPECTED_COMMIT,
-#            SSH_CONNECT_TIMEOUT (15), ENVIRONMENT (solo per i messaggi)
+#            SSH_CONNECT_TIMEOUT (15), ENVIRONMENT (solo per i messaggi),
+#            REGISTRY_USER + REGISTRY_TOKEN: credenziali temporanee (GITHUB_TOKEN) passate ad appctl
+#            via stdin per il pull dal registry privato: il server non ha bisogno di un token proprio.
 #
 # Exit code: quelli di appctl (0-9) per gli errori remoti; 20 = SSH non raggiungibile/rifiutato;
 #            21 = configurazione mancante; 22 = smoke test fallito (commit diverso dall'atteso).
@@ -46,13 +48,26 @@ SSH=(ssh -i "$WORK/key" -p "$DEPLOY_PORT"
      -o IdentitiesOnly=yes -o LogLevel=ERROR
      "${DEPLOY_USER}@${DEPLOY_HOST}")
 
+REGISTRY_USER="${REGISTRY_USER:-}"
+REGISTRY_TOKEN="${REGISTRY_TOKEN:-}"
+
 remote() {
   # Il server accetta solo sottocomandi appctl (platform/server/bin/appctl-ssh-gate).
-  "${SSH[@]}" "appctl --app ${APP_NAME} --actor ${ACTOR} $*"
+  "${SSH[@]}" "appctl --app ${APP_NAME} --actor ${ACTOR} $*" < /dev/null
+}
+
+remote_with_registry_login() {
+  # come remote(), ma passa "utente:token" su stdin per il login temporaneo al registry
+  if [ -n "$REGISTRY_USER" ] && [ -n "$REGISTRY_TOKEN" ]; then
+    printf '%s:%s\n' "$REGISTRY_USER" "$REGISTRY_TOKEN" | \
+      "${SSH[@]}" "appctl --app ${APP_NAME} --actor ${ACTOR} $* --registry-login-stdin"
+  else
+    remote "$@"
+  fi
 }
 
 echo "== Connessione a ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PORT} (${ENVIRONMENT})"
-if ! "${SSH[@]}" "appctl --app ${APP_NAME} --version" > "$WORK/probe.txt" 2>&1; then
+if ! "${SSH[@]}" "appctl --app ${APP_NAME} --version" > "$WORK/probe.txt" 2>&1 < /dev/null; then
   echo "::error::SSH verso ${DEPLOY_HOST} fallito o comando rifiutato dal server:"
   sed 's/^/  /' "$WORK/probe.txt"
   echo "Verificare: raggiungibilita' di rete dal runner, chiave DEPLOY_SSH_KEY in authorized_keys di ${DEPLOY_USER}, DEPLOY_SSH_HOST_KEY, servizio sshd (docs/TROUBLESHOOTING.md)"
@@ -63,9 +78,9 @@ echo "   server ok: $(cat "$WORK/probe.txt")"
 echo "== ${ACTION} ${IMAGE_TAG} su ${ENVIRONMENT}"
 set +e
 if [ "$ACTION" = "rollback" ] && [ "$IMAGE_TAG" = "previous" ]; then
-  remote rollback
+  remote_with_registry_login rollback
 else
-  remote "$ACTION" "$IMAGE_TAG"
+  remote_with_registry_login "$ACTION" "$IMAGE_TAG"
 fi
 RC=$?
 set -e

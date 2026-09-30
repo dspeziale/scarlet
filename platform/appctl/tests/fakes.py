@@ -90,6 +90,16 @@ class FakeDocker:
             "org.opencontainers.image.revision": meta.get("commit", "unknown"),
         }
 
+    def login(self, registry: str, user: str, token: str) -> Result:
+        self.calls.append(("login", registry, user))
+        if token == "good-token":
+            return Result(0, "Login Succeeded", "")
+        return Result(1, "", "unauthorized")
+
+    def logout(self, registry: str) -> Result:
+        self.calls.append(("logout", registry))
+        return Result(0, "", "")
+
     def pull(self, image: str) -> Result:
         self.calls.append(("pull", image))
         if not self.registry_available:

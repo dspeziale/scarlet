@@ -88,7 +88,7 @@ Ogni comando termina con un codice che descrive l'esito. La pipeline e gli scrip
 | 0 | operazione riuscita | - |
 | 1 | errore generico | leggere il messaggio; `appctl doctor` |
 | 2 | uso errato o configurazione non valida (app.conf, compose, secrets mancanti) | correggere la configurazione indicata |
-| 3 | registry non raggiungibile o immagine inesistente | verificare il tag (`appctl history`, GitHub), la rete verso il registry, il login (`appctl doctor`) |
+| 3 | registry non raggiungibile o immagine inesistente | verificare il tag (`appctl history`, GitHub), la rete verso il registry, il login (`appctl doctor`). Se l'immagine è già sul server (tag già deployato) il deploy prosegue con un avviso |
 | 4 | deploy fallito, **rollback automatico riuscito**: la versione precedente è attiva e sana | analizzare `appctl logs --deploy`; l'applicazione funziona |
 | 5 | un'altra operazione appctl è in corso (lock) | attendere; se il lock è orfano vedere TROUBLESHOOTING |
 | 6 | Docker non disponibile | `systemctl status docker` (root), RUNBOOK "Server riavviato" |

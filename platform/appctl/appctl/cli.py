@@ -9,7 +9,7 @@ import sys
 from appctl import __version__, ops
 from appctl.audit import AuditLog, current_actor
 from appctl.config import load_config, resolve_app_dir
-from appctl.errors import EXIT_DESCRIPTIONS, EXIT_FAILURE, EXIT_USAGE, AppctlError
+from appctl.errors import EXIT_DESCRIPTIONS, EXIT_FAILURE, EXIT_USAGE, AppctlError, UsageError
 from appctl.http import HttpProber
 from appctl.output import Printer
 from appctl.runner import CommandRunner, DockerClient
@@ -66,8 +66,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="in caso di fallimento non ripristinare la versione precedente",
     )
 
+    sp.add_argument(
+        "--registry-login-stdin",
+        action="store_true",
+        help="legge 'utente:token' da stdin per un login temporaneo al registry (usato dalla pipeline)",
+    )
+
     sp = sub.add_parser("rollback", help="torna alla versione precedente (o a un tag specifico)")
     sp.add_argument("tag", nargs="?")
+    sp.add_argument("--registry-login-stdin", action="store_true", help=argparse.SUPPRESS)
 
     sp = sub.add_parser("logs", help="log dell'applicazione")
     sp.add_argument("-f", "--follow", action="store_true")
@@ -116,8 +123,21 @@ def build_context(args: argparse.Namespace) -> ops.Context:
     )
 
 
+def _read_registry_login(ctx: ops.Context) -> None:
+    """'utente:token' su una riga di stdin -> login temporaneo al registry durante il pull."""
+    line = sys.stdin.readline().strip()
+    if ":" not in line:
+        raise UsageError("--registry-login-stdin: attesa una riga 'utente:token' su stdin")
+    user, token = line.split(":", 1)
+    if not user or not token:
+        raise UsageError("--registry-login-stdin: utente o token vuoti")
+    ctx.extra["registry_login"] = (user, token)
+
+
 def dispatch(args: argparse.Namespace, ctx: ops.Context) -> int:
     cmd = args.command
+    if getattr(args, "registry_login_stdin", False):
+        _read_registry_login(ctx)
     if cmd in (
         "status",
         "start",

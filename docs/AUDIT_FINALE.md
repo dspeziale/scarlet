@@ -87,7 +87,7 @@ Risultato dell'ultima esecuzione dei test di integrazione (Docker-in-Docker, imm
 | B2 | BLOCKER go-live | raggiungibilità dei server dai runner (firewall verso runner GitHub o self-hosted runner) | la pipeline si ferma con exit 20 al passo di deploy |
 | R1 | REQUIRED | nomi DNS per ambiente | `sites/<app>.caddy` con segnaposto |
 | R2 | REQUIRED | modalità certificati TLS | `tls internal` di default (dev) |
-| R3 | REQUIRED | utente tecnico GitHub con PAT `read:packages` | pull da GHCR privato |
+| R3 | RECOMMENDED (era REQUIRED) | utente tecnico GitHub con PAT `read:packages` | solo per pull manuali di tag nuovi: la pipeline usa `GITHUB_TOKEN` (login temporaneo su server) |
 | R4 | REQUIRED | approvatori dell'environment `production` | protection rules da configurare |
 | R5 | REQUIRED | visibilità del package GHCR | assunto privato |
 | C1 | RECOMMENDED | destinazione off-site dei backup | DR limitato a errori applicativi |

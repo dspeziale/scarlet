@@ -129,8 +129,13 @@ sudo -u deploy cat /opt/apps/scarlet/secrets/app.secrets.env
 
 ## 8. Accesso al registry (pull delle immagini)
 
-Le immagini su GHCR sono private (ASSUMPTION A4/A5): il server deve autenticarsi con l'utente
-tecnico GitHub (`REQUIRED R3`) dotato di token con solo scope `read:packages`.
+Le immagini su GHCR sono private, ma per i deploy dalla pipeline **non serve nulla**: il job passa
+il proprio `GITHUB_TOKEN` ad `appctl`, che fa login, pull e logout. Il rollback ai tag già
+deployati funziona anche senza registry.
+
+Solo se gli operatori devono scaricare a mano tag nuovi (deploy manuale di emergenza) serve un
+token permanente: un utente GitHub tecnico con PAT classic e solo scope `read:packages`
+(link precompilato: `https://github.com/settings/tokens/new?scopes=read:packages&description=scarlet-server-pull`).
 
 ```bash
 sudo -u deploy /tmp/scarlet/platform/server/registry-login.sh ghcr.io <utente-tecnico>

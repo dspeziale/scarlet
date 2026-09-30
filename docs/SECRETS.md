@@ -17,7 +17,8 @@
 | chiave pubblica corrispondente | `/home/deploy/.ssh/authorized_keys` sul server | sshd | |
 | `DEPLOY_SSH_HOST_KEY` | GitHub Environment | `deploy.yml` | verifica dell'identità del server (`StrictHostKeyChecking=yes`) |
 | `DEPLOY_HOST` | GitHub Environment (secret o variabile) | `deploy.yml` | indirizzo del server |
-| token registry (PAT `read:packages` dell'utente tecnico) | `/home/deploy/.docker/config.json` (0600) sul server | Docker (pull) | scaricare immagini private |
+| `GITHUB_TOKEN` passato ad `appctl --registry-login-stdin` | solo in memoria durante il job di deploy (login e logout automatici) | Docker (pull) sul server | scaricare l'immagine privata **senza** credenziali permanenti sul server |
+| token registry permanente (PAT `read:packages` di un utente tecnico) — **opzionale** | `/home/deploy/.docker/config.json` (0600) sul server | operatori che fanno `appctl deploy <tag nuovo>` a mano | pull manuale di tag non ancora presenti sul server |
 | `POSTGRES_PASSWORD`, `SCARLET_DATABASE_URL` | `/opt/apps/<app>/secrets/app.secrets.env` (0600, owner deploy) | container app e db | database |
 | `SCARLET_API_TOKEN` | idem | container app; client dell'API | `POST /api/deployments` |
 | certificato/chiave TLS | `/opt/platform/proxy/certs/` (0600) | Caddy | HTTPS |
@@ -49,9 +50,14 @@ Settings → Environments:
 
 Variabili (non segrete) per environment: `DEPLOY_USER`, `DEPLOY_PORT`, `DEPLOY_RUNNER`, `APP_URL`, `APP_NAME`.
 
-Nessun PAT personale nei workflow: la CI usa `GITHUB_TOKEN`. L'unico token "statico" è quello
-dell'utente tecnico sul server per il pull (ASSUMPTION A5), perché GitHub non offre OIDC per client
-esterni; alternativa: package pubblico o GitHub App.
+Nessun PAT personale nei workflow: la CI usa `GITHUB_TOKEN`, anche per il pull sul server: la
+pipeline lo passa ad `appctl` su stdin (`--registry-login-stdin`), `appctl` fa `docker login`,
+scarica l'immagine e fa `docker logout`. Sul server non resta nessuna credenziale del registry.
+
+Un token permanente sul server (utente tecnico con PAT `read:packages`, `registry-login.sh`) serve
+**solo** se gli operatori devono scaricare a mano tag non ancora presenti (deploy manuale di
+emergenza). Il rollback ai tag già deployati funziona anche senza registry (`KEEP_RELEASES`).
+Alternative: package pubblico (sconsigliato per software interno) o GitHub App.
 
 ## 5. Rotazione
 

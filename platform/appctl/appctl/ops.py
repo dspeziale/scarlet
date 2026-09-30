@@ -36,7 +36,7 @@ from appctl.errors import (
 )
 from appctl.http import HttpProber
 from appctl.output import Printer
-from appctl.runner import DockerClient
+from appctl.runner import DockerClient, Result
 from appctl.state import DeploymentRecord, StateStore, fmt_ts, now_iso
 
 
@@ -229,25 +229,49 @@ def _check_config_files(cfg: AppConfig) -> None:
 
 
 # ============================================================================ deploy
+def _pull_with_optional_login(ctx: Context, image: str) -> Result:
+    """docker pull, con login/logout temporaneo se la pipeline ha fornito credenziali."""
+    creds = ctx.extra.get("registry_login")
+    if not creds:
+        return ctx.docker.pull(image)
+    user, token = creds
+    registry = ctx.cfg.registry_host
+    ctx.out.step(f"login temporaneo a {registry} come {user}")
+    r = ctx.docker.login(registry, user, token)
+    if not r.ok:
+        raise RegistryError(
+            f"login al registry {registry} fallito: {(r.stderr or r.stdout).strip()[-200:]}",
+            hint="token scaduto o senza permesso packages:read",
+        )
+    try:
+        return ctx.docker.pull(image)
+    finally:
+        ctx.docker.logout(registry)
+
+
 def pull_and_extract(ctx: Context, tag: str) -> str:
     """Scarica l'immagine (secondo PULL_POLICY) ed estrae il bundle. Ritorna l'image ref."""
     cfg = ctx.cfg
     image = cfg.image_ref(tag)
     if cfg.pull_policy == "always" or not ctx.docker.image_exists_locally(image):
         ctx.out.step(f"scarico immagine {image}")
-        r = ctx.docker.pull(image)
+        r = _pull_with_optional_login(ctx, image)
         if not r.ok:
             err = (r.stderr or r.stdout).strip().splitlines()
             msg = err[-1] if err else "errore sconosciuto"
-            if "not found" in msg or "manifest unknown" in msg or "denied" in msg:
+            if ctx.docker.image_exists_locally(image):
+                # registry non disponibile ma immagine gia' presente: si procede (rollback offline)
+                ctx.out.warn(f"pull fallito ({msg[:120]}): uso l'immagine gia' presente sul server")
+            elif "not found" in msg or "manifest unknown" in msg or "denied" in msg:
                 raise RegistryError(
                     f"immagine non disponibile nel registry: {image}",
                     hint="verificare il tag (appctl history, GitHub Actions) e le credenziali del registry (appctl doctor)",
                 )
-            raise RegistryError(
-                f"impossibile scaricare {image}: {msg[:200]}",
-                hint="registry non raggiungibile? verificare con: appctl doctor",
-            )
+            else:
+                raise RegistryError(
+                    f"impossibile scaricare {image}: {msg[:200]}",
+                    hint="registry non raggiungibile? verificare con: appctl doctor",
+                )
     else:
         ctx.out.step(f"immagine {image} gia' presente")
     if not _release_ready(cfg, tag):

@@ -88,6 +88,12 @@ def fake_appctl(tmp_path: Path) -> Path:
         ("appctl --app scarlet health --wait 30", "--app scarlet health --wait 30"),
         ("appctl status", "status"),
         ("appctl --app scarlet --version", "--app scarlet --version"),
+        (
+            "appctl --app scarlet deploy git-aaaaaaaaaaaa --registry-login-stdin",
+            "--app scarlet deploy git-aaaaaaaaaaaa --registry-login-stdin",
+        ),
+        ("appctl rollback --registry-login-stdin", "rollback --registry-login-stdin"),
+        ("appctl rollback v1.2.3 --registry-login-stdin", "rollback v1.2.3 --registry-login-stdin"),
     ],
 )
 def test_gate_allows_whitelisted_commands(fake_appctl: Path, command: str, expected: str):
@@ -118,6 +124,8 @@ def test_gate_allows_whitelisted_commands(fake_appctl: Path, command: str, expec
         "appctl health --wait abc",
         "appctl status extra",
         "docker ps",
+        "appctl deploy git-a --registry-login-stdin extra",
+        "appctl status --registry-login-stdin",
     ],
 )
 def test_gate_denies_everything_else(fake_appctl: Path, command: str):

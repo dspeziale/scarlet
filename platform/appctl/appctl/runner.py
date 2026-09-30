@@ -157,6 +157,17 @@ class DockerClient:
     def pull(self, image: str) -> Result:
         return self.runner.run(["docker", "pull", "--quiet", image], timeout=900)
 
+    def login(self, registry: str, user: str, token: str) -> Result:
+        """Login temporaneo al registry; il token passa da stdin, mai sulla riga di comando."""
+        return self.runner.run(
+            ["docker", "login", registry, "-u", user, "--password-stdin"],
+            timeout=60,
+            input_text=token + "\n",
+        )
+
+    def logout(self, registry: str) -> Result:
+        return self.runner.run(["docker", "logout", registry], timeout=30)
+
     def extract_bundle(self, image: str, destination: Path, source: str = "/deploy") -> None:
         """Copia il bundle di deploy dall'immagine (senza avviarla) in destination."""
         name = f"{self.project}-extract-{os.getpid()}"

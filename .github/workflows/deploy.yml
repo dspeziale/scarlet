@@ -33,6 +33,7 @@ on:
 
 permissions:
   contents: read
+  packages: read
 
 jobs:
   deploy:
@@ -78,6 +79,9 @@ jobs:
           EXPECTED_COMMIT: ${{ inputs.expected_commit }}
           ACTOR: github-actions:${{ github.actor }}
           ENVIRONMENT: ${{ inputs.environment }}
+          # credenziali temporanee per il pull dal registry privato (valide solo durante il job)
+          REGISTRY_USER: ${{ github.actor }}
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: platform/ci/remote-deploy.sh
 
       - name: Riepilogo

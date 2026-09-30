@@ -23,8 +23,10 @@ flowchart LR
 
 ## 2. Autenticazione
 
-* **GHCR**: `GITHUB_TOKEN` del run con `packages: write` (build) o `packages: read` (verifiche).
-  Nessun PAT nei workflow;
+* **GHCR**: `GITHUB_TOKEN` del run con `packages: write` (build) o `packages: read` (verifiche e
+  pull sul server durante il deploy: `deploy.yml` lo passa a `remote-deploy.sh`, che lo invia ad
+  `appctl deploy --registry-login-stdin` via stdin; login e logout sono automatici). Nessun PAT
+  nei workflow e nessuna credenziale permanente del registry sul server;
 * **server**: chiave SSH dedicata per ambiente (secret dell'Environment), utente `deploy`, forced
   command `appctl-ssh-gate`, host key verificata (`StrictHostKeyChecking=yes`);
 * **API GitHub** (deployments, commits): `GITHUB_TOKEN` con `deployments: read`.
@@ -108,7 +110,7 @@ Notifiche: il riepilogo del run e lo stato dell'Environment; email/Teams tramite
 | naming | `ghcr.io/<owner>/<repo>:<tag>`; tag `git-<sha12>` (immutabile), `vX.Y.Z` (alias immutabile), mai `latest` |
 | visibilità | privato (R5) |
 | accesso in scrittura | solo `GITHUB_TOKEN` dei workflow del repository |
-| accesso in lettura dai server | utente tecnico con PAT `read:packages` (A5), login salvato su ogni server |
+| accesso in lettura dai server | `GITHUB_TOKEN` temporaneo durante il deploy (nessun token sul server); opzionale utente tecnico con PAT `read:packages` per i pull manuali |
 | scansione | Trivy in CI prima del push; Dependabot per le basi. GHCR non scansiona autonomamente |
 | retention | i tag non vengono cancellati automaticamente (base del rollback); `registry-cleanup.yml` rimuove solo le versioni untagged. Pulizia manuale dei tag più vecchi di 6 mesi: Packages → versions, oppure `gh api -X DELETE /user/packages/container/scarlet/versions/<id>` dopo aver verificato che non siano deployati (`appctl history` su ogni server) |
 | lifecycle | tag nuovo a ogni merge su `main`; alias semver a ogni release; immagine promossa senza rebuild |

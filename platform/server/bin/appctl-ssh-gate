@@ -47,12 +47,18 @@ if [ "$i" -lt "$n" ]; then
   case "$SUB" in
     deploy)
       [[ "${TOKENS[$i]:-}" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]] || deny
-      ARGS+=("deploy" "${TOKENS[$i]}"); i=$((i+1)) ;;
+      ARGS+=("deploy" "${TOKENS[$i]}"); i=$((i+1))
+      if [ "$i" -lt "$n" ] && [ "${TOKENS[$i]}" = "--registry-login-stdin" ]; then
+        ARGS+=("--registry-login-stdin"); i=$((i+1))
+      fi ;;
     rollback)
       ARGS+=("rollback")
-      if [ "$i" -lt "$n" ]; then
+      if [ "$i" -lt "$n" ] && [ "${TOKENS[$i]}" != "--registry-login-stdin" ]; then
         [[ "${TOKENS[$i]}" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]] || deny
         ARGS+=("${TOKENS[$i]}"); i=$((i+1))
+      fi
+      if [ "$i" -lt "$n" ] && [ "${TOKENS[$i]}" = "--registry-login-stdin" ]; then
+        ARGS+=("--registry-login-stdin"); i=$((i+1))
       fi ;;
     status|version|history)
       ARGS+=("$SUB") ;;
