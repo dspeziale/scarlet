@@ -32,6 +32,8 @@ ignore = ["S101", "S603", "S607", "E501"]
 known-first-party = ["scarlet", "appctl"]
 
 [tool.ruff.lint.per-file-ignores]
+# appctl gira sui server con Python 3.9: niente alias datetime.UTC (3.11+)
+"platform/appctl/appctl/**" = ["UP017"]
 "tests/**" = ["S"]
 "platform/appctl/tests/**" = ["S"]
 "platform/tests/**" = ["S"]

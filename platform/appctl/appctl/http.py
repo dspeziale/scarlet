@@ -8,7 +8,7 @@ import ssl
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 
 @dataclass
@@ -57,5 +57,5 @@ class HttpProber:
         not_after = cert.get("notAfter") if cert else None
         if not not_after:
             return None
-        expires = datetime.strptime(not_after, "%b %d %H:%M:%S %Y %Z").replace(tzinfo=UTC)
-        return (expires - datetime.now(UTC)).days
+        expires = datetime.strptime(not_after, "%b %d %H:%M:%S %Y %Z").replace(tzinfo=timezone.utc)
+        return (expires - datetime.now(timezone.utc)).days

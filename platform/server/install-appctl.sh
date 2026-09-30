@@ -8,8 +8,8 @@ DEST="${APPCTL_DEST:-/opt/appctl}"
 
 [ "$(id -u)" -eq 0 ] || { echo "eseguire come root (sudo)"; exit 1; }
 command -v python3 > /dev/null || { echo "python3 richiesto (apt install python3 / dnf install python3)"; exit 1; }
-PYV="$(python3 -c 'import sys; print(sys.version_info >= (3, 10))')"
-[ "$PYV" = "True" ] || { echo "python3 >= 3.10 richiesto"; exit 1; }
+PYV="$(python3 -c 'import sys; print(sys.version_info >= (3, 9))')"
+[ "$PYV" = "True" ] || { echo "python3 >= 3.9 richiesto"; exit 1; }
 
 install -d -m 0755 "$DEST"
 rm -rf "$DEST/appctl"

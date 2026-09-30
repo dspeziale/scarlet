@@ -70,6 +70,17 @@ jobs:
           SCARLET_TEST_DATABASE_URL: postgresql+psycopg://scarlet:scarlet@127.0.0.1:5432/scarlet_test
         run: pytest tests platform/appctl/tests platform/tests/unit -q
 
+  appctl-py39:
+    name: appctl su Python 3.9 (server)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+      - run: pip install pytest
+      - run: pytest platform/appctl/tests -q
+
   security:
     name: Security scan
     runs-on: ubuntu-latest
@@ -92,7 +103,7 @@ jobs:
 
   build:
     name: Build, scan, integration, push
-    needs: [lint, test, security]
+    needs: [lint, test, appctl-py39, security]
     runs-on: ubuntu-latest
     permissions:
       contents: read

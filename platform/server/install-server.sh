@@ -21,6 +21,11 @@ PLATFORM_DIR="$(cd "$HERE/.." && pwd)"
 DEPLOY_USER="${DEPLOY_USER:-deploy}"
 OPS_GROUP="${OPS_GROUP:-appops}"
 PROXY="${PROXY:-1}"
+# HARDEN_SSH=0 per NON disabilitare l'autenticazione con password (server condivisi con login di dominio)
+HARDEN_SSH="${HARDEN_SSH:-1}"
+# Disco dati separato (es. /data): Docker e applicazioni vengono messi li', con symlink da /opt/apps
+DOCKER_DATA_ROOT="${DOCKER_DATA_ROOT:-}"
+APPS_DATA_DIR="${APPS_DATA_DIR:-}"
 
 log() { printf '\n==> %s\n' "$*"; }
 [ "$(id -u)" -eq 0 ] || { echo "eseguire come root (sudo)"; exit 1; }
@@ -44,9 +49,14 @@ else
     apt-get update -q
     apt-get install -y -q docker-ce docker-ce-cli containerd.io docker-compose-plugin
   elif command -v dnf > /dev/null; then
-    dnf -y install dnf-plugins-core python3 openssh-server
+    dnf -y -q install dnf-plugins-core python3 openssh-server
+    # Oracle Linux / RHEL spesso hanno il comando "docker" fornito da Podman: si rimuove solo lo shim.
+    if rpm -q podman-docker > /dev/null 2>&1; then
+      echo "   rimuovo lo shim podman-docker (Podman resta installato)"
+      dnf -y -q remove podman-docker
+    fi
     dnf config-manager --add-repo https://download.docker.com/linux/rhel/docker-ce.repo
-    dnf -y install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+    dnf -y -q install docker-ce docker-ce-cli containerd.io docker-compose-plugin
   else
     echo "gestore pacchetti non supportato: installare Docker manualmente (https://docs.docker.com/engine/install/)"; exit 1
   fi
@@ -55,14 +65,22 @@ fi
 log "Configurazione daemon Docker (log rotation di default, live-restore)"
 install -d -m 0755 /etc/docker
 if [ ! -f /etc/docker/daemon.json ]; then
-  cat > /etc/docker/daemon.json <<'EOF'
+  DATA_ROOT_LINE=""
+  if [ -n "$DOCKER_DATA_ROOT" ]; then
+    install -d -m 0710 "$DOCKER_DATA_ROOT"
+    DATA_ROOT_LINE="  \"data-root\": \"${DOCKER_DATA_ROOT}\","
+    echo "   data-root Docker: ${DOCKER_DATA_ROOT}"
+  fi
+  cat > /etc/docker/daemon.json <<EOF
 {
+${DATA_ROOT_LINE}
   "log-driver": "json-file",
   "log-opts": { "max-size": "20m", "max-file": "5" },
   "live-restore": true,
   "no-new-privileges": true
 }
 EOF
+  python3 -c "import json; json.load(open('/etc/docker/daemon.json'))"
 else
   echo "   /etc/docker/daemon.json esistente: non modificato (verificare log-opts e live-restore)"
 fi
@@ -84,9 +102,17 @@ chmod 0600 "/home/${DEPLOY_USER}/.ssh/authorized_keys"
 
 # ---------------------------------------------------------------- 3. directory
 log "Directory di piattaforma"
-install -d -m 0755 /opt/apps /opt/platform
-install -d -m 0755 -o "$DEPLOY_USER" -g "$DEPLOY_USER" /opt/apps
-install -d -m 0755 /var/log/apps
+install -d -m 0755 /opt/platform /var/log/apps
+if [ -n "$APPS_DATA_DIR" ]; then
+  install -d -m 0755 -o "$DEPLOY_USER" -g "$DEPLOY_USER" "$APPS_DATA_DIR"
+  if [ -d /opt/apps ] && [ ! -L /opt/apps ]; then
+    rmdir /opt/apps 2>/dev/null || { echo "/opt/apps esiste e non e' vuota: spostarla in $APPS_DATA_DIR manualmente"; exit 1; }
+  fi
+  [ -L /opt/apps ] || ln -s "$APPS_DATA_DIR" /opt/apps
+  echo "   /opt/apps -> ${APPS_DATA_DIR}"
+else
+  install -d -m 0755 -o "$DEPLOY_USER" -g "$DEPLOY_USER" /opt/apps
+fi
 
 # ---------------------------------------------------------------- 4. appctl
 log "Installazione appctl"
@@ -118,6 +144,7 @@ cp "$HERE/systemd/app-backup@.timer" /etc/systemd/system/app-backup@.timer
 systemctl daemon-reload
 
 # ---------------------------------------------------------------- 8. hardening
+if [ "$HARDEN_SSH" = "1" ]; then
 log "Hardening SSH"
 install -d -m 0755 /etc/ssh/sshd_config.d
 cat > /etc/ssh/sshd_config.d/90-platform.conf <<'EOF'
@@ -133,6 +160,9 @@ ClientAliveCountMax 2
 EOF
 if sshd -t 2> /dev/null; then systemctl reload ssh 2> /dev/null || systemctl reload sshd 2> /dev/null || true; fi
 echo "   ATTENZIONE: l'autenticazione con password SSH e' disabilitata: assicurarsi di avere una chiave valida"
+else
+  log "Hardening SSH saltato (HARDEN_SSH=0): valutare con il sistemista di disabilitare le password (docs/SECURITY.md)"
+fi
 
 if command -v ufw > /dev/null 2>&1; then
   log "Firewall ufw: consentiti solo 22, 80, 443"

@@ -45,6 +45,27 @@ cd /tmp/scarlet/platform/server
 sudo ./install-server.sh
 ```
 
+Opzioni (variabili d'ambiente prima del comando):
+
+| Variabile | Default | Quando usarla |
+|-----------|---------|---------------|
+| `DOCKER_DATA_ROOT=/data/docker` | (`/var/lib/docker`) | se c'è un disco dati separato: immagini e container vanno lì (root piccola) |
+| `APPS_DATA_DIR=/data/apps` | (`/opt/apps`) | idem per le applicazioni: `/opt/apps` diventa un symlink |
+| `HARDEN_SSH=0` | `1` | server condivisi con login di dominio (AD/SSSD) in cui non si può disabilitare l'autenticazione con password senza accordo con il sistemista |
+| `PROXY=0` | `1` | se il reverse proxy è gestito altrove |
+
+Esempio per il server di development `mv3412` (Oracle Linux 9.7, disco dati su `/data`):
+
+```bash
+sudo env HARDEN_SSH=0 DOCKER_DATA_ROOT=/data/docker APPS_DATA_DIR=/data/apps ./install-server.sh
+```
+
+Nota Oracle Linux / RHEL: il comando `docker` preinstallato è spesso lo shim di **Podman**
+(`podman-docker`). Lo script lo rimuove (Podman resta) e installa Docker Engine dal repository
+ufficiale: la piattaforma è verificata su Docker, non su Podman. SELinux in modalità *enforcing*
+richiede l'etichettatura delle directory bind-mount (`chcon -Rt container_file_t /data/apps`):
+`install-app.sh` lo segnala; su `mv3412` SELinux è *permissive*.
+
 Lo script (idempotente, rieseguibile) esegue in ordine:
 
 | Passo | Cosa fa | Perché |
@@ -179,6 +200,7 @@ appctl doctor
 ## 13. Aggiornamenti
 
 * **appctl**: `sudo /tmp/scarlet/platform/server/install-appctl.sh` (dopo aver aggiornato i file);
+  richiede solo `python3` ≥ 3.9 (Oracle Linux 9 ha 3.9);
 * **Docker**: `sudo apt upgrade` in una finestra di manutenzione (`live-restore` mantiene i
   container attivi); poi `appctl doctor`;
 * **sistema**: aggiornamenti di sicurezza automatici consigliati (`unattended-upgrades`).
