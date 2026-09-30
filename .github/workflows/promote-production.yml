@@ -46,7 +46,7 @@ jobs:
             echo "::error::tag non valido: '$TAG' (attesi git-<sha12> oppure vX.Y.Z)"; exit 1
           fi
 
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
