@@ -7,7 +7,7 @@
 
 services:
   db:
-    image: postgres:16-bookworm
+    image: postgres:18-bookworm
     container_name: ${APP_NAME:-scarlet}-db
     env_file:
       # POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB stanno nel file secrets.
