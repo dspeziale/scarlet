@@ -1,0 +1,1556 @@
+# OBIETTIVO
+
+Stiamo introducendo in azienda applicazioni containerizzate con Docker e dobbiamo portare in esercizio la prima applicazione, Scarlet.
+
+Attualmente non abbiamo una conoscenza consolidata dell'ecosistema Docker e vogliamo quindi costruire una soluzione che renda il processo di sviluppo, deployment e gestione operativa il più possibile:
+
+* semplice;
+* robusto;
+* ripetibile;
+* sicuro;
+* auditabile;
+* comprensibile agli operatori;
+* automatizzato dove opportuno;
+* facilmente estendibile a più applicazioni.
+
+Gli sviluppatori utilizzano GitHub.
+
+Voglio che tu progetti e implementi una soluzione completa che permetta di gestire il ciclo:
+
+GitHub
+↓
+build/test
+↓
+Docker image
+↓
+registry
+↓
+ambiente DEVELOPMENT
+↓
+approvazione/promozione
+↓
+ambiente PRODUCTION
+↓
+monitoraggio e gestione operativa
+
+La soluzione deve essere realmente utilizzabile in produzione e non una semplice proof-of-concept.
+
+---
+
+# RUOLO
+
+Agisci contemporaneamente come:
+
+* Senior DevOps Engineer
+* Platform Engineer
+* Docker Engineer
+* GitHub Actions Engineer
+* Linux System Administrator
+* Security Engineer
+* Software Architect
+* SRE
+
+Devi prendere decisioni tecniche motivate.
+
+Non limitarti a descrivere cosa fare: quando possibile, crea direttamente i file, gli script, le configurazioni e il codice necessari.
+
+Non assumere che l'ambiente sia già correttamente configurato.
+
+Prima analizza ciò che esiste nel repository e nell'ambiente.
+
+---
+
+# PRINCIPIO FONDAMENTALE
+
+NON voglio un sistema inutilmente complesso.
+
+Parti da una architettura pragmatica basata indicativamente su:
+
+* Docker Engine
+* Docker Compose
+* GitHub
+* GitHub Actions
+* Container Registry
+* Linux
+* SSH/deployment agent
+* reverse proxy quando necessario
+* gestione dei secrets
+* logging
+* health check
+* backup dove necessario
+
+NON introdurre Kubernetes, OpenShift o altri orchestratori complessi salvo che dall'analisi emerga una necessità reale e documentata.
+
+La soluzione deve essere facilmente comprensibile da un team che sta iniziando ad adottare Docker.
+
+Preferisci:
+
+1. semplicità;
+2. affidabilità;
+3. sicurezza;
+4. automazione;
+5. osservabilità;
+6. estendibilità.
+
+---
+
+# FASE 0 — ANALISI DELL'AMBIENTE
+
+Prima di modificare qualsiasi cosa:
+
+1. analizza completamente il repository;
+2. individua linguaggi, framework e runtime;
+3. individua eventuali Dockerfile esistenti;
+4. individua docker-compose / compose.yaml esistenti;
+5. analizza GitHub Actions eventualmente presenti;
+6. analizza README e documentazione;
+7. individua configurazioni e file di ambiente;
+8. individua eventuali secrets hardcoded;
+9. individua dipendenze esterne;
+10. individua porte utilizzate;
+11. individua eventuali database;
+12. individua eventuali volumi persistenti;
+13. individua eventuali meccanismi di logging;
+14. individua eventuali health check;
+15. individua eventuali problemi di sicurezza.
+
+Non modificare subito il progetto.
+
+Produci prima un documento:
+
+docs/ARCHITECTURE_ANALYSIS.md
+
+contenente:
+
+* situazione attuale;
+* problemi individuati;
+* assunzioni;
+* rischi;
+* proposta architetturale;
+* alternative considerate;
+* motivazione delle decisioni;
+* informazioni che eventualmente devono essere fornite dall'amministratore.
+
+Se mancano informazioni importanti, non inventarle.
+
+Indicale esplicitamente come ASSUMPTION o TODO.
+
+---
+
+# ARCHITETTURA TARGET
+
+Progetta una architettura nella quale:
+
+## DEVELOPMENT
+
+Gli sviluppatori lavorano normalmente su GitHub.
+
+Un push/merge sul branch previsto deve attivare una pipeline.
+
+La pipeline deve:
+
+1. checkout del codice;
+2. installazione dipendenze;
+3. lint;
+4. unit test;
+5. eventuali integration test;
+6. security scan delle dipendenze;
+7. build Docker image;
+8. Docker image vulnerability scan;
+9. tagging immutabile dell'immagine;
+10. push al registry;
+11. deploy in DEVELOPMENT;
+12. smoke test;
+13. verifica health endpoint;
+14. reporting dell'esito.
+
+---
+
+# VERSIONING DELLE IMMAGINI
+
+Non utilizzare solamente tag come:
+
+latest
+
+Il sistema deve utilizzare tag immutabili.
+
+Preferenza:
+
+* Git SHA
+* eventualmente semantic version
+* eventualmente build number
+
+Esempio:
+
+myapp:git-a1b2c3d4
+
+oppure:
+
+myapp:v1.4.2
+
+L'ambiente deve poter sapere esattamente quale immagine sta eseguendo.
+
+Deve essere possibile rispondere facilmente alla domanda:
+
+"Quale versione dell'applicazione è attualmente in produzione?"
+
+---
+
+# REGISTRY
+
+Progetta l'utilizzo di un Docker/OCI registry.
+
+Se possibile, usa GitHub Container Registry (GHCR), salvo motivazioni tecniche per scegliere un registry diverso.
+
+Documenta:
+
+* autenticazione;
+* naming;
+* retention;
+* gestione immagini;
+* access control;
+* vulnerability scanning;
+* lifecycle.
+
+Non utilizzare credenziali statiche inserite nei repository.
+
+---
+
+# DEVELOPMENT DEPLOYMENT
+
+Prevedi un meccanismo robusto per fare deployment sul server di sviluppo.
+
+Preferenza iniziale:
+
+GitHub Actions
+↓
+SSH sicuro
+↓
+server DEVELOPMENT
+↓
+docker compose pull
+↓
+docker compose up -d
+↓
+health check
+↓
+smoke test
+
+Ma valuta anche alternative.
+
+La soluzione scelta deve essere motivata.
+
+Sul server non deve essere necessario compilare l'applicazione.
+
+Il server deve scaricare una immagine già costruita e verificata.
+
+---
+
+# PRODUCTION DEPLOYMENT
+
+La produzione deve essere separata dallo sviluppo.
+
+NON deve essere possibile che un semplice push provochi accidentalmente il deployment in produzione.
+
+Prevedi un processo esplicito di promozione.
+
+Ad esempio:
+
+GitHub
+↓
+build image
+↓
+development
+↓
+test
+↓
+approval
+↓
+production
+
+La produzione deve utilizzare la STESSA immagine già validata in development.
+
+NON deve essere effettuato un nuovo build per la produzione.
+
+Questo è importante.
+
+Voglio un principio:
+
+"build once, promote the same artifact"
+
+Prevedi quindi un workflow GitHub Actions appropriato con:
+
+* environments;
+* protection rules;
+* manual approval quando appropriato;
+* secrets separati;
+* deployment history;
+* possibilità di rollback.
+
+---
+
+# STRATEGIA DI DEPLOYMENT
+
+Progetta un deployment inizialmente semplice e affidabile.
+
+Valuta almeno:
+
+* recreate;
+* rolling;
+* blue/green;
+* canary.
+
+Per una prima implementazione scegli la soluzione più appropriata rispetto all'infrastruttura disponibile.
+
+Non complicare inutilmente il sistema.
+
+Se utilizzi Docker Compose, considera attentamente:
+
+* downtime;
+* health check;
+* dipendenze;
+* graceful shutdown;
+* restart policy;
+* gestione delle migrazioni DB;
+* rollback.
+
+Documenta i trade-off.
+
+---
+
+# GESTIONE OPERATIVA
+
+Questa parte è fondamentale.
+
+Voglio una interfaccia chiara per gli operatori.
+
+Deve essere possibile eseguire almeno:
+
+* status;
+* start;
+* stop;
+* restart;
+* deploy;
+* rollback;
+* logs;
+* health;
+* version;
+* update/pull;
+* diagnostica.
+
+Progetta una CLI semplice, ad esempio:
+
+appctl status
+appctl start
+appctl stop
+appctl restart
+appctl deploy
+appctl rollback
+appctl logs
+appctl health
+appctl version
+appctl doctor
+
+Valuta se sia meglio:
+
+* Bash;
+* Python;
+* Go.
+
+Scegli tu in base a robustezza e semplicità di distribuzione.
+
+L'interfaccia deve essere estremamente comprensibile.
+
+Esempio:
+
+$ appctl status
+
+Application: myapp
+Environment: production
+Version: 1.4.2
+Image: ghcr.io/company/myapp:git-a1b2c3d4
+Status: RUNNING
+Health: HEALTHY
+Started: 2026-09-30 08:42:11
+Container: myapp
+
+Non voglio output inutilmente tecnico per le operazioni normali.
+
+Per le operazioni diagnostiche deve invece essere possibile ottenere informazioni dettagliate.
+
+---
+
+# WEB UI
+
+Valuta se sia utile aggiungere una piccola Web UI per gli operatori.
+
+Se la proponi, deve essere:
+
+* semplice;
+* sicura;
+* responsive;
+* molto chiara;
+* orientata alle operazioni;
+* senza framework inutilmente pesanti.
+
+La UI dovrebbe mostrare:
+
+Dashboard
+
+* applicazione;
+* ambiente;
+* versione;
+* stato container;
+* health;
+* uptime;
+* ultima operazione;
+* ultimo deployment;
+* commit;
+* immagine Docker.
+
+Azioni:
+
+* Start
+* Stop
+* Restart
+* Deploy
+* Rollback
+* Logs
+
+Se implementi la UI:
+
+* autenticazione obbligatoria;
+* autorizzazione;
+* audit log;
+* CSRF protection se applicabile;
+* rate limiting dove opportuno;
+* nessuna esposizione pubblica non necessaria;
+* nessuna possibilità di eseguire comandi arbitrari.
+
+NON creare una "Docker management UI" generica che consenta agli utenti di eseguire qualsiasi container/comando.
+
+La UI deve esporre solamente le operazioni applicative consentite.
+
+Se ritieni che una Web UI sia prematura, implementa inizialmente CLI + documentazione, ma documenta come evolvere successivamente verso una UI.
+
+---
+
+# LOGGING
+
+La soluzione deve gestire correttamente i log.
+
+Distinguere:
+
+1. application logs;
+2. container logs;
+3. deployment logs;
+4. audit logs;
+5. system logs.
+
+Prevedi:
+
+appctl logs
+
+e possibilità di:
+
+appctl logs --follow
+
+appctl logs --since 1h
+
+appctl logs --tail 200
+
+I log devono essere accessibili agli operatori senza entrare manualmente nei container.
+
+Non utilizzare log file interni al container come meccanismo principale se Docker stdout/stderr è sufficiente.
+
+Documenta retention e rotazione.
+
+Evita che un container possa riempire il filesystem.
+
+---
+
+# HEALTH CHECK
+
+Ogni applicazione deve avere health check.
+
+Preferenza:
+
+/health
+
+e, se appropriato:
+
+/ready
+
+Distinguere:
+
+* l'applicazione è avviata;
+* l'applicazione è viva;
+* l'applicazione è pronta a ricevere traffico;
+* dipendenze critiche disponibili.
+
+Il deployment deve verificare la health dopo il deploy.
+
+Se la health check fallisce:
+
+* il deployment deve risultare FAILED;
+* deve essere disponibile una diagnostica;
+* deve essere possibile rollback.
+
+---
+
+# DATABASE
+
+Se l'applicazione utilizza un database:
+
+NON inserire automaticamente il database nel medesimo Compose file senza prima valutare le conseguenze.
+
+Analizza:
+
+* database esterno;
+* database containerizzato;
+* backup;
+* persistence;
+* migration;
+* rollback schema;
+* compatibilità versione.
+
+Le migrazioni devono essere gestite esplicitamente.
+
+Non assumere che:
+
+docker compose up -d
+
+sia sufficiente per una migrazione DB sicura.
+
+Documenta una strategia.
+
+---
+
+# SECRETS
+
+NON salvare secrets:
+
+* nel repository;
+* nel Dockerfile;
+* nelle immagini;
+* nei log;
+* nei file YAML versionati.
+
+Analizza opzioni:
+
+* GitHub Actions Secrets;
+* GitHub Environments;
+* secret manager;
+* Docker secrets;
+* file protetti sul server.
+
+Per la prima versione scegli la soluzione più semplice che garantisca un livello di sicurezza adeguato.
+
+I secrets di DEVELOPMENT e PRODUCTION devono essere distinti.
+
+Non usare mai credenziali production nei workflow development.
+
+---
+
+# SICUREZZA SERVER
+
+Definisci una baseline.
+
+Considera almeno:
+
+* Linux aggiornato;
+* Docker Engine aggiornato;
+* SSH key authentication;
+* no password authentication;
+* firewall;
+* porte minime necessarie;
+* Docker socket protection;
+* utenti non-root;
+* container non-root quando possibile;
+* read-only filesystem quando possibile;
+* capabilities minimizzate;
+* resource limits;
+* ulimits;
+* restart policies;
+* image vulnerability scanning;
+* dependency scanning;
+* secret scanning;
+* audit.
+
+Il container NON deve girare come root se non necessario.
+
+Il Docker socket non deve essere esposto alla rete.
+
+Se la UI deve interagire con Docker, non esporre direttamente il Docker socket alla UI pubblica.
+
+---
+
+# DOCKERFILE
+
+Verifica e, se necessario, migliora il Dockerfile.
+
+Deve seguire best practice:
+
+* multi-stage build;
+* immagine base minimale;
+* versioni fissate;
+* utente non-root;
+* .dockerignore;
+* nessun secret;
+* healthcheck quando appropriato;
+* layer efficienti;
+* cache efficace.
+
+Valuta immagini:
+
+* Alpine;
+* Debian slim;
+* distroless;
+
+ma scegli in base alle reali esigenze dell'applicazione.
+
+Non utilizzare Alpine automaticamente.
+
+---
+
+# DOCKER COMPOSE
+
+Prevedi una struttura chiara.
+
+Ad esempio:
+
+deploy/
+compose.yaml
+compose.dev.yaml
+compose.prod.yaml
+.env.example
+
+oppure una struttura migliore se la ritieni necessaria.
+
+Separare chiaramente:
+
+* configurazione comune;
+* development;
+* production.
+
+Non duplicare configurazioni inutilmente.
+
+---
+
+# SYSTEMD
+
+Valuta se Docker Compose debba essere gestito da systemd.
+
+La soluzione deve garantire che dopo reboot del server l'applicazione ritorni correttamente online.
+
+Valuta:
+
+* Docker restart policies;
+* systemd;
+* dipendenze;
+* startup ordering.
+
+Scegli e documenta.
+
+---
+
+# BACKUP
+
+Individua cosa deve essere salvato.
+
+Considera:
+
+* database;
+* volumi persistenti;
+* configurazioni;
+* secrets/configuration;
+* deployment metadata;
+* audit logs.
+
+Non implementare backup fittizi.
+
+Se l'infrastruttura di backup non è disponibile, prepara:
+
+* struttura;
+* script;
+* retention policy;
+* documentazione;
+* TODO espliciti.
+
+---
+
+# ROLLBACK
+
+Il rollback deve essere una funzione di primo livello.
+
+Deve essere possibile sapere:
+
+Versione attuale:
+v1.4.2
+
+Versione precedente:
+v1.4.1
+
+Eseguire:
+
+appctl rollback
+
+oppure:
+
+appctl rollback v1.4.1
+
+Il rollback deve utilizzare immagini già esistenti nel registry.
+
+Non ricompilare.
+
+Deve essere documentato cosa succede alle eventuali migrazioni database.
+
+---
+
+# AUDIT
+
+Ogni operazione significativa deve essere tracciabile.
+
+Almeno:
+
+* chi;
+* quando;
+* cosa;
+* ambiente;
+* versione;
+* risultato.
+
+Esempio:
+
+2026-09-30 10:32
+user: mario
+environment: production
+action: deploy
+version: v1.4.2
+result: success
+
+L'audit log non deve essere modificabile tramite le normali funzioni operative.
+
+---
+
+# OSSERVABILITÀ
+
+Per la prima versione non introdurre necessariamente Prometheus/Grafana/ELK se non sono realmente necessari.
+
+Ma prepara l'architettura affinché possano essere aggiunti.
+
+Come baseline prevedi:
+
+* health check;
+* container status;
+* CPU;
+* memoria;
+* restart count;
+* disk usage;
+* log access;
+* deployment status.
+
+Se opportuno implementa:
+
+appctl doctor
+
+che verifichi:
+
+* Docker;
+* spazio disco;
+* memoria;
+* container;
+* network;
+* registry connectivity;
+* image availability;
+* health;
+* log;
+* configurazione;
+* certificati.
+
+---
+
+# CI/CD GITHUB ACTIONS
+
+Crea workflow separati e comprensibili.
+
+Ad esempio:
+
+.github/workflows/ci.yml
+.github/workflows/deploy-development.yml
+.github/workflows/promote-production.yml
+
+Ma scegli la struttura migliore.
+
+Il workflow CI deve eseguire:
+
+* checkout;
+* test;
+* lint;
+* security checks;
+* build;
+* scan;
+* push registry.
+
+Il deployment deve essere separato dal build quando appropriato.
+
+Usa GitHub Environments:
+
+development
+production
+
+Production deve avere protection rules.
+
+Non utilizzare PAT personali se può essere evitato.
+
+Preferisci OIDC/GitHub-native authentication quando supportato.
+
+---
+
+# BRANCHING
+
+Non imporre automaticamente GitFlow.
+
+Valuta il repository esistente.
+
+Proponi una strategia semplice.
+
+Ad esempio:
+
+feature/*
+↓
+pull request
+↓
+main
+↓
+development deployment
+
+e successivamente:
+
+production promotion
+
+Ma adatta la soluzione al repository.
+
+---
+
+# DEPLOYMENT METADATA
+
+Ogni deployment deve registrare almeno:
+
+* application;
+* environment;
+* image;
+* tag;
+* commit SHA;
+* actor;
+* timestamp;
+* deployment result.
+
+Idealmente deve essere possibile visualizzare:
+
+CURRENT DEPLOYMENT
+
+Application:
+myapp
+
+Environment:
+production
+
+Version:
+1.4.2
+
+Commit:
+a1b2c3d4
+
+Image:
+ghcr.io/company/myapp:git-a1b2c3d4
+
+Deployed by:
+github-actions
+
+Deployed at:
+2026-09-30 10:32
+
+---
+
+# CONCORRENZA
+
+Gestisci correttamente deployment concorrenti.
+
+Non permettere che due deployment verso lo stesso ambiente si sovrascrivano in modo imprevedibile.
+
+Usa meccanismi GitHub Actions appropriati, ad esempio concurrency groups.
+
+---
+
+# FAILURE HANDLING
+
+Considera esplicitamente:
+
+* build failure;
+* test failure;
+* image scan failure;
+* registry failure;
+* SSH failure;
+* deployment failure;
+* health failure;
+* timeout;
+* server unavailable;
+* disk full;
+* insufficient memory;
+* broken image;
+* configuration error.
+
+Per ciascun caso prevedi:
+
+* comportamento;
+* exit code;
+* messaggio;
+* log;
+* eventuale rollback;
+* procedura operativa.
+
+---
+
+# IDEMPOTENZA
+
+Tutte le operazioni di deployment devono essere il più possibile idempotenti.
+
+Se eseguo due volte:
+
+deploy della stessa versione
+
+il sistema non deve entrare in uno stato inconsistente.
+
+---
+
+# SECURITY SCANNING
+
+Integra, ove compatibile:
+
+* dependency scanning;
+* secret scanning;
+* Docker image scanning;
+* SAST se appropriato.
+
+Puoi valutare strumenti come:
+
+* Trivy;
+* GitHub CodeQL;
+* GitHub Dependabot.
+
+Non aggiungere strumenti senza motivo.
+
+Documenta ogni scelta.
+
+---
+
+# TEST
+
+Non considerare terminata l'implementazione senza test.
+
+Prevedi almeno:
+
+## Unit tests
+
+Per il codice della soluzione.
+
+## Integration tests
+
+Per:
+
+* Docker;
+* Compose;
+* deployment scripts.
+
+## Smoke tests
+
+Dopo deployment.
+
+## Failure tests
+
+Simula almeno:
+
+* container unhealthy;
+* immagine inesistente;
+* porta occupata;
+* registry unavailable;
+* SSH unavailable;
+* deployment fallito.
+
+## Rollback test
+
+Verifica realmente il rollback.
+
+---
+
+# DOCUMENTAZIONE
+
+La documentazione è parte integrante del deliverable.
+
+Crea almeno:
+
+docs/
+ARCHITECTURE.md
+ARCHITECTURE_ANALYSIS.md
+INSTALLATION.md
+OPERATIONS.md
+DEPLOYMENT.md
+ROLLBACK.md
+TROUBLESHOOTING.md
+SECURITY.md
+BACKUP.md
+DISASTER_RECOVERY.md
+DEVELOPMENT.md
+GITHUB_ACTIONS.md
+SECRETS.md
+RUNBOOK.md
+
+Inoltre:
+
+README.md
+
+Il README deve essere comprensibile anche da una persona che non conosce Docker.
+
+---
+
+# RUNBOOK OPERATIVO
+
+Il RUNBOOK deve essere estremamente pratico.
+
+Esempi:
+
+## L'applicazione non risponde
+
+1. appctl status
+2. appctl health
+3. appctl logs --tail 200
+4. verificare risorse
+5. verificare dipendenze
+6. restart se appropriato
+7. rollback se necessario
+
+## Deployment fallito
+
+Descrivere esattamente:
+
+* cosa controllare;
+* dove guardare;
+* come recuperare;
+* quando fare rollback.
+
+## Server riavviato
+
+Descrivere:
+
+* cosa verificare;
+* come verificare Docker;
+* come verificare l'app;
+* come verificare health.
+
+## Disk full
+
+Procedure operative.
+
+## Container in crash loop
+
+Procedure operative.
+
+---
+
+# INSTALLAZIONE DA ZERO
+
+Voglio poter seguire una guida per predisporre un server Linux nuovo.
+
+La guida deve spiegare:
+
+1. requisiti hardware;
+2. sistema operativo supportato;
+3. utenti;
+4. SSH;
+5. firewall;
+6. Docker;
+7. directory;
+8. permessi;
+9. registry;
+10. secrets;
+11. deployment;
+12. health check;
+13. logging;
+14. backup;
+15. test;
+16. go-live.
+
+Non assumere conoscenze avanzate.
+
+Ogni comando deve essere spiegato.
+
+---
+
+# STRUTTURA DEL SERVER
+
+Definisci una struttura filesystem chiara.
+
+Ad esempio:
+
+/opt/apps/<application>/
+/opt/apps/<application>/compose/
+/opt/apps/<application>/config/
+/opt/apps/<application>/data/
+/opt/apps/<application>/logs/
+/opt/apps/<application>/releases/
+/var/log/<application>/
+
+Ma scegli tu la struttura migliore.
+
+Documenta ownership e permissions.
+
+---
+
+# MULTI-APPLICATION
+
+La soluzione deve essere progettata pensando che questa è la prima applicazione, ma successivamente potrebbero essercene:
+
+* 5
+* 10
+* 20+
+
+Non creare una soluzione fortemente accoppiata a una sola applicazione.
+
+Prevedi un modello standard.
+
+Ogni applicazione dovrebbe poter avere:
+
+* nome;
+* repository;
+* image;
+* environment;
+* porta;
+* health endpoint;
+* compose;
+* secrets;
+* deployment policy.
+
+---
+
+# STANDARDIZZAZIONE
+
+Definisci uno standard aziendale.
+
+Voglio arrivare a un modello del tipo:
+
+Nuova applicazione Docker
+
+1. crea repository GitHub;
+2. aggiungi Dockerfile;
+3. aggiungi health endpoint;
+4. aggiungi compose;
+5. aggiungi configurazione deployment;
+6. configura GitHub Environment;
+7. configura server;
+8. primo deployment;
+9. gestione ordinaria tramite appctl.
+
+Documenta questo processo.
+
+---
+
+# UX PER OPERATORI
+
+La persona che opera il sistema NON deve essere obbligata a conoscere:
+
+* Docker internals;
+* container ID;
+* network namespace;
+* Docker volumes;
+* image layers.
+
+Le operazioni quotidiane devono essere espresse in termini applicativi.
+
+Preferire:
+
+appctl status
+
+rispetto a:
+
+docker ps --filter ...
+
+Preferire:
+
+appctl logs
+
+rispetto a:
+
+docker logs ...
+
+Docker deve restare il livello infrastrutturale sottostante.
+
+---
+
+# PRINCIPIO DI SICUREZZA
+
+L'operatore deve avere solamente i privilegi necessari.
+
+Evita di dare accesso indiscriminato al Docker socket.
+
+Valuta un modello nel quale:
+
+operator
+↓
+appctl
+↓
+operazioni autorizzate
+↓
+Docker
+
+e non:
+
+operator
+↓
+root
+↓
+qualsiasi cosa
+
+Documenta chiaramente il modello dei privilegi.
+
+---
+
+# CONFIGURATION MANAGEMENT
+
+Separare:
+
+* codice;
+* configurazione;
+* secrets.
+
+La configurazione non sensibile può essere versionata.
+
+I secrets no.
+
+Deve essere chiaro come configurare:
+
+development
+
+e
+
+production
+
+senza modificare il codice.
+
+---
+
+# REVERSE PROXY
+
+Se l'applicazione espone HTTP/HTTPS, valuta:
+
+* Nginx;
+* Traefik;
+* Caddy.
+
+Scegli quello più semplice per lo scenario.
+
+Considera:
+
+* TLS;
+* certificati;
+* routing;
+* health;
+* headers;
+* access log.
+
+Non aggiungerlo se non serve.
+
+---
+
+# TLS
+
+Se l'applicazione è esposta in rete:
+
+* HTTPS obbligatorio;
+* certificati;
+* rinnovo;
+* redirect HTTP → HTTPS se applicabile;
+* security headers appropriati.
+
+Documenta il lifecycle dei certificati.
+
+---
+
+# RESOURCE LIMITS
+
+Prevedi limiti appropriati per:
+
+* CPU;
+* RAM;
+* PIDs;
+* log size.
+
+Evita che una singola applicazione possa compromettere l'intero server.
+
+---
+
+# DISASTER RECOVERY
+
+Definisci:
+
+* cosa viene perso se il server viene distrutto;
+* cosa può essere ricreato;
+* cosa deve essere ripristinato;
+* RPO;
+* RTO;
+* procedura di recovery.
+
+Non inventare valori se non sono stati definiti.
+
+Proponi valori iniziali come ASSUMPTION, se necessario.
+
+---
+
+# DELIVERABLE FINALE
+
+Alla fine voglio avere:
+
+1. architettura;
+2. codice;
+3. Dockerfile;
+4. Docker Compose;
+5. GitHub Actions;
+6. deployment scripts;
+7. CLI operativa;
+8. eventuale Web UI;
+9. health checks;
+10. logging;
+11. audit;
+12. security controls;
+13. rollback;
+14. backup strategy;
+15. test;
+16. documentazione completa;
+17. runbook;
+18. troubleshooting;
+19. procedura installazione server;
+20. procedura onboarding nuova applicazione.
+
+---
+
+# METODO DI LAVORO
+
+Procedi per fasi.
+
+## FASE 1
+
+Analizza repository e ambiente.
+
+Non implementare ancora.
+
+Produci:
+
+docs/ARCHITECTURE_ANALYSIS.md
+
+e mostrami un riepilogo delle decisioni architetturali.
+
+## FASE 2
+
+Definisci l'architettura target.
+
+Produci:
+
+docs/ARCHITECTURE.md
+
+con diagrammi Mermaid dove utili.
+
+## FASE 3
+
+Implementa la base Docker.
+
+## FASE 4
+
+Implementa CI GitHub Actions.
+
+## FASE 5
+
+Implementa registry.
+
+## FASE 6
+
+Implementa deployment development.
+
+## FASE 7
+
+Implementa promotion production.
+
+## FASE 8
+
+Implementa appctl.
+
+## FASE 9
+
+Implementa logging, health, audit e diagnostica.
+
+## FASE 10
+
+Implementa sicurezza.
+
+## FASE 11
+
+Implementa rollback.
+
+## FASE 12
+
+Implementa test.
+
+## FASE 13
+
+Completa documentazione.
+
+## FASE 14
+
+Esegui un audit finale dell'intera soluzione.
+
+---
+
+# REGOLA IMPORTANTE SULL'IMPLEMENTAZIONE
+
+Dopo ogni fase:
+
+1. esegui i test;
+2. verifica lint;
+3. verifica configurazioni;
+4. verifica sicurezza;
+5. verifica idempotenza;
+6. verifica che la documentazione sia aggiornata.
+
+Non procedere costruendo una grande quantità di codice non verificato.
+
+---
+
+# GIT
+
+Lavora con modifiche piccole e comprensibili.
+
+Non cancellare codice esistente senza motivo.
+
+Non fare refactoring massivi se non necessari.
+
+Prima di modificare file esistenti, comprendine il ruolo.
+
+Mantieni compatibilità con l'applicazione.
+
+---
+
+# GESTIONE DELLE INFORMAZIONI MANCANTI
+
+Quando trovi informazioni mancanti:
+
+NON inventarle.
+
+Classificale come:
+
+* BLOCKER
+* REQUIRED
+* RECOMMENDED
+* ASSUMPTION
+
+Se puoi procedere in sicurezza con un'ASSUMPTION, fallo e documentala.
+
+Se invece serve necessariamente una decisione umana, fermati prima della fase interessata e chiedimi l'informazione.
+
+---
+
+# CRITERI DI ACCETTAZIONE
+
+Considera il lavoro completato solamente quando è possibile dimostrare almeno questo scenario end-to-end:
+
+1. developer fa push su GitHub;
+2. GitHub Actions esegue test;
+3. viene costruita una Docker image;
+4. l'image viene scansionata;
+5. l'image viene pubblicata sul registry;
+6. viene effettuato deployment DEVELOPMENT;
+7. l'applicazione risulta HEALTHY;
+8. viene eseguito smoke test;
+9. un operatore approva/promuove la versione;
+10. la stessa identica image viene deployata in PRODUCTION;
+11. PRODUCTION risulta HEALTHY;
+12. `appctl status` mostra versione e commit corretti;
+13. `appctl logs` mostra i log;
+14. `appctl restart` funziona;
+15. viene simulato un deployment fallito;
+16. viene eseguito rollback;
+17. l'applicazione torna alla versione precedente;
+18. l'intera procedura è documentata.
+
+---
+
+# OUTPUT CHE VOGLIO DA TE
+
+Alla fine della prima analisi NON voglio una risposta generica.
+
+Voglio:
+
+## 1. Executive summary
+
+Massimo 20 righe.
+
+## 2. Architettura proposta
+
+Con diagramma Mermaid.
+
+## 3. Decisioni tecnologiche
+
+Tabella:
+
+| Area | Scelta | Alternative | Motivazione |
+| ---- | ------ | ----------- | ----------- |
+
+## 4. Rischi
+
+| Rischio | Probabilità | Impatto | Mitigazione |
+| ------- | ----------- | ------- | ----------- |
+
+## 5. Informazioni mancanti
+
+Divise in:
+
+* BLOCKER
+* REQUIRED
+* RECOMMENDED
+* ASSUMPTION
+
+## 6. Piano di implementazione
+
+Ordinato per fasi.
+
+## 7. Struttura repository proposta
+
+Mostra l'albero dei file.
+
+Solo dopo questa analisi procedi all'implementazione.
+
+---
+
+# REQUISITO FINALE
+
+Non voglio solamente "un sistema che funziona".
+
+Voglio una piccola piattaforma DevOps interna, inizialmente semplice, che possa diventare nel tempo lo standard aziendale per le applicazioni Docker.
+
+Deve essere:
+
+* comprensibile;
+* ripetibile;
+* sicura;
+* verificabile;
+* documentata;
+* manutenibile;
+* estendibile.
+
+Quando devi scegliere tra una soluzione molto sofisticata e una soluzione più semplice che soddisfa gli stessi requisiti, scegli quella semplice.
+
+Quando una scelta comporta un compromesso, esplicitalo.
+
+Quando una soluzione può creare un rischio operativo, evidenzialo.
+
+Quando puoi automatizzare un'attività ripetitiva senza aumentare significativamente la complessità, automatizzala.
+
+Il risultato finale deve essere qualcosa che un team IT possa realmente adottare e utilizzare in esercizio.
