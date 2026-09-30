@@ -66,7 +66,7 @@ Data: 2026-09-30. Verifica incrociata tra requisiti (`prompt.txt`), codice, test
 
 | # | Criterio | Verificato da |
 |---|----------|---------------|
-| 1-5 | push → test → build → scan → push registry | `ci.yml` (validato con actionlint; esecuzione reale richiede il repository su GitHub con GHCR: **da eseguire al primo push**) |
+| 1-5 | push → test → build → scan → push registry | **verificato su GitHub** il 2026-09-30: run `36706286641` verde (lint, unit test, security scan, build, Trivy, test di integrazione sul runner, push di `ghcr.io/dspeziale/scarlet:git-a29ce1d4c693`) |
 | 6-8 | deploy DEVELOPMENT, HEALTHY, smoke test | `deploy.yml` + `remote-deploy.sh` (unit test del failure path SSH); `appctl deploy` verificato con Docker reale (`test_full_lifecycle`) |
 | 9-11 | promozione approvata, stessa immagine, PRODUCTION HEALTHY | `promote-production.yml` (verifica tag/digest/label, deploy dev riuscito); flusso `appctl` identico a dev |
 | 12 | `appctl status` mostra versione e commit corretti | integrazione: `status --json` → version, commit, image, deployed_by |
@@ -101,14 +101,15 @@ Risultato dell'ultima esecuzione dei test di integrazione (Docker-in-Docker, imm
 * gruppo `docker` = root per l'utente `deploy` (mitigato: sudoers ristretto, forced command, nessuna password);
 * downtime di pochi secondi a ogni deploy (recreate);
 * backup solo locale fino a C1;
-* la CI non è ancora stata eseguita su GitHub (repository vuoto al momento dell'analisi): il primo
-  push su `main` è la prova reale dei passi 1-5 dello scenario; eventuali aggiustamenti (versioni
-  delle azioni, permessi del package) sono attesi e documentati in TROUBLESHOOTING.md.
+* la CI è stata eseguita su GitHub con esito positivo fino al push su GHCR; il job di deploy in
+  development fallisce, come previsto, con `secrets mancanti nell'environment 'development'`
+  finché non vengono forniti B1/B2 e configurato l'Environment (GITHUB_ACTIONS.md §3).
+  Correzioni emerse dalle prime esecuzioni: allowlist gitleaks per fixture storiche, tag
+  `v0.36.0` di trivy-action.
 
 ## 6. Prossimi passi consigliati
 
-1. push del repository e prima esecuzione della CI (senza environments il job di deploy fallisce
-   con messaggio esplicito sui secrets mancanti: è previsto);
+1. ~~push del repository e prima esecuzione della CI~~ fatto: immagine `git-a29ce1d4c693` su GHCR;
 2. fornire B1/B2 e installare il server di development (INSTALLATION.md);
 3. configurare l'environment `development` e ripetere la CI: deploy automatico;
 4. configurare `production` con approvatori e fare la prima promozione;
