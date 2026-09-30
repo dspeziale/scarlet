@@ -1,0 +1,49 @@
+# Tag semantico (vX.Y.Z) = alias dell'immagine git-<sha12> gia' costruita. Nessun rebuild.
+#
+# Uso: aggiornare VERSION, fare merge su main, attendere la CI, poi
+#   git tag v1.4.2 && git push origin v1.4.2
+name: Release tag
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  alias:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Aggiunge il tag semver all'immagine del commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          VERSION_TAG="${GITHUB_REF_NAME}"
+          FILE_VERSION="v$(cat VERSION)"
+          if [ "$VERSION_TAG" != "$FILE_VERSION" ]; then
+            echo "::error::il tag git ($VERSION_TAG) non coincide con il file VERSION ($FILE_VERSION)"; exit 1
+          fi
+          SHA12="${GITHUB_SHA:0:12}"
+          REPO="ghcr.io/${GITHUB_REPOSITORY,,}"
+          SRC="${REPO}:git-${SHA12}"
+          if ! docker buildx imagetools inspect "$SRC" > /dev/null 2>&1; then
+            echo "::error::immagine $SRC non trovata: la CI su main deve essere completata prima di creare il tag"; exit 1
+          fi
+          docker buildx imagetools create -t "${REPO}:${VERSION_TAG}" "$SRC"
+          echo "Creato alias ${REPO}:${VERSION_TAG} -> ${SRC}"
+          gh release create "$VERSION_TAG" --generate-notes \
+            --notes "Immagine: \`${REPO}:${VERSION_TAG}\` (alias di \`${SRC}\`)" || true
+          {
+            echo "## Release ${VERSION_TAG}"
+            echo "- \`${REPO}:${VERSION_TAG}\` -> \`${SRC}\`"
+            echo "- Promuovere in produzione con il workflow *Promote to production* usando il tag \`${VERSION_TAG}\` oppure \`git-${SHA12}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

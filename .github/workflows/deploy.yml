@@ -1,0 +1,94 @@
+# Workflow riutilizzabile: deploy (o rollback) di un tag gia' pubblicato su un ambiente.
+#
+# Non costruisce nulla: si collega via SSH al server dell'ambiente ed esegue "appctl deploy <tag>".
+# L'ambiente GitHub (development/production) fornisce secrets e variabili distinti e, per
+# production, le protection rules (approvazione manuale).
+#
+# Secrets dell'Environment:  DEPLOY_SSH_KEY, DEPLOY_HOST, DEPLOY_SSH_HOST_KEY
+# Variabili dell'Environment (opzionali): DEPLOY_USER (default deploy), DEPLOY_PORT (default 22),
+#                                         DEPLOY_RUNNER (label runner self-hosted), APP_URL, APP_NAME
+name: Deploy
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: development | production
+        required: true
+        type: string
+      image_tag:
+        description: tag immagine gia' presente nel registry (git-<sha12> o vX.Y.Z)
+        required: true
+        type: string
+      action:
+        description: deploy | rollback
+        required: false
+        type: string
+        default: deploy
+      expected_commit:
+        description: SHA del commit atteso in esecuzione dopo il deploy (verifica smoke)
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: ${{ inputs.action }} ${{ inputs.environment }} (${{ inputs.image_tag }})
+    runs-on: ${{ vars.DEPLOY_RUNNER || 'ubuntu-latest' }}
+    environment:
+      name: ${{ inputs.environment }}
+      url: ${{ vars.APP_URL }}
+    # Un solo deploy per ambiente alla volta; quelli in coda NON vengono cancellati.
+    concurrency:
+      group: deploy-${{ inputs.environment }}
+      cancel-in-progress: false
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verifica configurazione ambiente
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_SSH_HOST_KEY: ${{ secrets.DEPLOY_SSH_HOST_KEY }}
+        run: |
+          missing=""
+          for v in DEPLOY_HOST DEPLOY_SSH_KEY DEPLOY_SSH_HOST_KEY; do
+            [ -n "${!v}" ] || missing="$missing $v"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::secrets mancanti nell'environment '${{ inputs.environment }}':$missing (vedi docs/GITHUB_ACTIONS.md)"
+            exit 1
+          fi
+
+      - name: ${{ inputs.action }} via SSH
+        id: remote
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_SSH_HOST_KEY: ${{ secrets.DEPLOY_SSH_HOST_KEY }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER || 'deploy' }}
+          DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+          APP_NAME: ${{ vars.APP_NAME || 'scarlet' }}
+          ACTION: ${{ inputs.action }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          EXPECTED_COMMIT: ${{ inputs.expected_commit }}
+          ACTOR: github-actions:${{ github.actor }}
+          ENVIRONMENT: ${{ inputs.environment }}
+        run: platform/ci/remote-deploy.sh
+
+      - name: Riepilogo
+        if: always()
+        env:
+          OUTCOME: ${{ steps.remote.outcome }}
+        run: |
+          {
+            echo "## ${{ inputs.action }} ${{ inputs.environment }}: ${OUTCOME}"
+            echo "- Tag: \`${{ inputs.image_tag }}\`"
+            echo "- Attore: ${{ github.actor }}"
+            echo "- Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            if [ -f /tmp/appctl-status.txt ]; then echo; echo '```'; cat /tmp/appctl-status.txt; echo '```'; fi
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,6 @@
+# Revisori obbligatori (con branch protection "require review from code owners").
+# TODO: sostituire con il team GitHub reale (es. @ised/platform).
+*                       @dspeziale
+/platform/              @dspeziale
+/.github/workflows/     @dspeziale
+/deploy/                @dspeziale

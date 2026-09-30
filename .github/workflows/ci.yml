@@ -1,0 +1,197 @@
+# CI: lint, test, security, build UNA SOLA VOLTA, scan, test di integrazione, push, deploy DEV.
+#
+# Principio "build once, promote the same artifact": l'immagine costruita qui (tag git-<sha12>)
+# e' la stessa che verra' promossa in produzione da promote-production.yml, senza rebuild.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  PYTHON_VERSION: "3.12"
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - run: ruff check .
+      - run: ruff format --check .
+      - name: Validazione workflow (actionlint)
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:latest -color
+      - name: Validazione shell (shellcheck)
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo koalaman/shellcheck:stable \
+            platform/server/*.sh platform/server/bin/* platform/ci/*.sh
+
+  test:
+    name: Unit test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-bookworm
+        env:
+          POSTGRES_USER: scarlet
+          POSTGRES_PASSWORD: scarlet
+          POSTGRES_DB: scarlet_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U scarlet -d scarlet_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install -r requirements-dev.txt -e .
+      - name: Test applicazione (SQLite + PostgreSQL) e appctl
+        env:
+          SCARLET_TEST_DATABASE_URL: postgresql+psycopg://scarlet:scarlet@127.0.0.1:5432/scarlet_test
+        run: pytest tests platform/appctl/tests platform/tests/unit -q
+
+  security:
+    name: Security scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Dipendenze (pip-audit)
+        run: |
+          pip install pip-audit
+          pip-audit -r requirements.txt --strict --desc
+      - name: Secret scanning (gitleaks, intera storia git)
+        run: |
+          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.21.2 \
+            detect --source /repo --no-banner --redact --exit-code 1
+
+  build:
+    name: Build, scan, integration, push
+    needs: [lint, test, security]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_tag: ${{ steps.meta.outputs.image_tag }}
+      image: ${{ steps.meta.outputs.image }}
+      digest: ${{ steps.push.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Calcolo tag immutabile
+        id: meta
+        run: |
+          set -euo pipefail
+          SHA12="${GITHUB_SHA:0:12}"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            TAG="pr-${{ github.event.pull_request.number }}"
+          else
+            TAG="git-${SHA12}"
+          fi
+          IMAGE="${REGISTRY}/${IMAGE_NAME,,}:${TAG}"
+          {
+            echo "image_tag=${TAG}"
+            echo "image=${IMAGE}"
+            echo "version=$(cat VERSION)"
+            echo "commit=${SHA12}"
+            echo "build_time=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build immagine (locale, non ancora pubblicata)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          push: false
+          tags: ${{ steps.meta.outputs.image }}
+          build-args: |
+            APP_VERSION=${{ steps.meta.outputs.version }}
+            APP_COMMIT=${{ steps.meta.outputs.commit }}
+            APP_BUILD_TIME=${{ steps.meta.outputs.build_time }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: false
+
+      - name: Vulnerability scan immagine (Trivy)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ steps.meta.outputs.image }}
+          format: table
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+          vuln-type: os,library
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Test di integrazione piattaforma (appctl + Docker reale + registry locale)
+        env:
+          APPCTL_INTEGRATION: "1"
+          APPCTL_TEST_IMAGE: ${{ steps.meta.outputs.image }}
+        run: |
+          pip install pytest
+          pytest platform/tests/integration -m integration -v --tb=short
+
+      - name: Login GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push immagine verificata
+        id: push
+        if: github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          docker push "${{ steps.meta.outputs.image }}"
+          DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "${{ steps.meta.outputs.image }}")
+          echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
+          {
+            echo "## Immagine pubblicata"
+            echo "- Tag: \`${{ steps.meta.outputs.image_tag }}\`"
+            echo "- Immagine: \`${{ steps.meta.outputs.image }}\`"
+            echo "- Digest: \`${DIGEST}\`"
+            echo "- Versione: ${{ steps.meta.outputs.version }} (commit ${{ steps.meta.outputs.commit }})"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  deploy-development:
+    name: Deploy DEVELOPMENT
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: development
+      image_tag: ${{ needs.build.outputs.image_tag }}
+      expected_commit: ${{ github.sha }}
+    secrets: inherit

@@ -1,0 +1,103 @@
+# Promozione in PRODUZIONE: manuale, con verifiche e approvazione.
+#
+# 1. verifica che il tag esista nel registry (nessun rebuild: e' la stessa immagine di DEV);
+# 2. verifica che quel commit sia stato deployato con successo in development;
+# 3. il job "deploy" usa l'environment "production": le protection rules (required reviewers)
+#    bloccano l'esecuzione finche' un approvatore non conferma;
+# 4. deploy via SSH con appctl, health gate e rollback automatico sul server.
+name: Promote to production
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Tag da promuovere (es. git-a1b2c3d4e5f6 oppure v1.4.2). Deve essere gia' in development."
+        required: true
+        type: string
+      skip_development_check:
+        description: "Salta la verifica del deploy in development (solo emergenze, motivare nel run)"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: promote-production
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Verifica immagine e storico
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+      deployments: read
+    outputs:
+      commit: ${{ steps.image.outputs.commit }}
+    steps:
+      - name: Validazione tag
+        env:
+          TAG: ${{ inputs.image_tag }}
+        run: |
+          if ! [[ "$TAG" =~ ^(git-[0-9a-f]{12}|v[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.]+)?)$ ]]; then
+            echo "::error::tag non valido: '$TAG' (attesi git-<sha12> oppure vX.Y.Z)"; exit 1
+          fi
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Immagine presente nel registry
+        id: image
+        env:
+          TAG: ${{ inputs.image_tag }}
+        run: |
+          set -euo pipefail
+          IMAGE="ghcr.io/${GITHUB_REPOSITORY,,}:${TAG}"
+          if ! docker buildx imagetools inspect "$IMAGE" > /tmp/inspect.txt 2>&1; then
+            echo "::error::immagine $IMAGE non trovata nel registry: promuovere solo tag prodotti da CI"; cat /tmp/inspect.txt; exit 1
+          fi
+          COMMIT=$(docker buildx imagetools inspect "$IMAGE" --format '{{ index .Image.Config.Labels "org.opencontainers.image.revision" }}')
+          DIGEST=$(docker buildx imagetools inspect "$IMAGE" --format '{{ .Manifest.Digest }}')
+          echo "commit=${COMMIT}" >> "$GITHUB_OUTPUT"
+          {
+            echo "## Immagine da promuovere"
+            echo "- \`$IMAGE\`"
+            echo "- Digest: \`$DIGEST\`"
+            echo "- Commit: \`$COMMIT\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Deploy in development riuscito per questo commit
+        if: ${{ !inputs.skip_development_check }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMIT: ${{ steps.image.outputs.commit }}
+        run: |
+          set -euo pipefail
+          FULL_SHA=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${COMMIT}" --jq .sha)
+          IDS=$(gh api "repos/${GITHUB_REPOSITORY}/deployments?environment=development&sha=${FULL_SHA}&per_page=20" --jq '.[].id')
+          OK=0
+          for id in $IDS; do
+            STATE=$(gh api "repos/${GITHUB_REPOSITORY}/deployments/${id}/statuses" --jq '.[0].state')
+            if [ "$STATE" = "success" ]; then OK=1; break; fi
+          done
+          if [ "$OK" != "1" ]; then
+            echo "::error::nessun deploy in development riuscito per il commit ${FULL_SHA}. Eseguire prima il deploy in development."
+            exit 1
+          fi
+          echo "Deploy in development verificato per ${FULL_SHA}"
+
+  deploy:
+    name: Deploy PRODUCTION (richiede approvazione)
+    needs: verify
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: production
+      image_tag: ${{ inputs.image_tag }}
+      expected_commit: ${{ needs.verify.outputs.commit }}
+    secrets: inherit

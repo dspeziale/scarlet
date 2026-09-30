@@ -1,0 +1,24 @@
+# Pulizia del registry GHCR: rimuove solo le versioni SENZA tag (layer orfani di build vecchie).
+# I tag git-<sha12> e vX.Y.Z non vengono mai cancellati automaticamente: sono la base del rollback.
+# Pulizia dei tag vecchi: procedura manuale documentata in docs/GITHUB_ACTIONS.md (§ Registry).
+name: Registry cleanup
+
+on:
+  schedule:
+    - cron: "30 3 * * 1" # ogni lunedi' 03:30 UTC
+  workflow_dispatch:
+
+permissions:
+  packages: write
+  contents: read
+
+jobs:
+  untagged:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/delete-package-versions@v5
+        with:
+          package-name: ${{ github.event.repository.name }}
+          package-type: container
+          delete-only-untagged-versions: "true"
+          min-versions-to-keep: 0

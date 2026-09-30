@@ -1,0 +1,29 @@
+# Rollback manuale di un ambiente alla versione precedente (o a un tag specifico).
+# Usa le immagini gia' presenti nel registry/server: nessun rebuild.
+name: Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: ambiente
+        required: true
+        type: choice
+        options: [development, production]
+      image_tag:
+        description: "Tag a cui tornare (vuoto = versione precedente registrata sul server)"
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  rollback:
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: ${{ inputs.environment }}
+      image_tag: ${{ inputs.image_tag || 'previous' }}
+      action: rollback
+    secrets: inherit
