@@ -1,0 +1,32 @@
+# Caddyfile di piattaforma. Un file per applicazione in sites/<app>.caddy (vedi sites/*.example).
+{
+    # Email per ACME (solo se i nomi DNS sono pubblici e si usa Let's Encrypt). TODO: impostare.
+    # email ops@example.com
+    admin 127.0.0.1:2019
+    servers {
+        # X-Forwarded-For attendibile solo dalla rete docker
+        trusted_proxies static private_ranges
+    }
+}
+
+# Blocco riutilizzabile: security headers e access log per ogni sito.
+(platform_defaults) {
+    encode gzip
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        -Server
+    }
+    log {
+        output file /var/log/caddy/{args[0]}.access.log {
+            roll_size 20MiB
+            roll_keep 10
+            roll_keep_for 720h
+        }
+        format json
+    }
+}
+
+import /etc/caddy/sites/*.caddy

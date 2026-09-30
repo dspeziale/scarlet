@@ -1,0 +1,31 @@
+# Manifest applicazione (server PRODUCTION). Letto da appctl. Formato KEY=VALUE.
+# Generato da install-app.sh; modificabile a mano (poi: appctl doctor).
+
+# --- identita'
+APP_NAME=@APP_NAME@
+APP_ENVIRONMENT=production
+IMAGE_REPOSITORY=@IMAGE_REPOSITORY@
+
+# --- compose (file relativi al bundle /deploy dell'immagine, separati da ':')
+# Con DB esterno: togliere compose.db.yaml e impostare DB_SERVICE vuoto.
+COMPOSE_FILES=compose.yaml:compose.db.yaml:compose.prod.yaml
+APP_SERVICE=app
+DB_SERVICE=db
+
+# --- rete e health
+APP_PORT=@APP_PORT@
+HEALTH_TIMEOUT=180
+HEALTH_INTERVAL=3
+# URL pubblico (controllo scadenza certificato in appctl doctor), es. https://scarlet.intranet.local
+PUBLIC_URL=
+
+# --- deploy
+MIGRATE_COMMAND=alembic upgrade head
+AUTO_ROLLBACK=true
+KEEP_RELEASES=5
+PULL_POLICY=always
+# backup automatico del DB prima di ogni migrazione (consigliato in produzione)
+BACKUP_BEFORE_MIGRATE=true
+
+# --- backup
+BACKUP_KEEP_DAYS=14

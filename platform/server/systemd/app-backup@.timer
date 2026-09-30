@@ -1,0 +1,12 @@
+# Timer giornaliero per app-backup@<nome>.service (abilitato da install-app.sh).
+#   systemctl list-timers 'app-backup@*'
+[Unit]
+Description=Backup giornaliero applicazione %i
+
+[Timer]
+OnCalendar=*-*-* 02:00:00
+RandomizedDelaySec=20m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

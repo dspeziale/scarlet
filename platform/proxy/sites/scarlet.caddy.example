@@ -1,0 +1,25 @@
+# Sito Scarlet. Copiare in sites/scarlet.caddy e adattare il nome DNS (REQUIRED R1) e il TLS (R2).
+# Ricaricare: cd /opt/platform/proxy && docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile
+#
+# TLS, scegliere UNA opzione:
+#   a) certificato della CA aziendale:  tls /certs/scarlet.crt /certs/scarlet.key
+#   b) DNS pubblico + Let's Encrypt:    (nessuna riga tls: automatico; impostare email nel Caddyfile)
+#   c) CA interna di Caddy (test/dev):  tls internal
+scarlet.example.internal {
+    import platform_defaults scarlet
+    tls internal
+
+    # Il container dell'app e' raggiunto per nome sulla rete docker "proxy" (porta interna 8000).
+    reverse_proxy scarlet-app:8000 {
+        health_uri /health
+        health_interval 15s
+        health_timeout 3s
+        # durante un deploy (recreate) Caddy risponde 502 per pochi secondi: nessun retry lato proxy
+    }
+
+    # Gli endpoint tecnici restano accessibili solo dalla rete interna, se necessario limitarli:
+    # @internal path /api/docs /api/openapi.json
+    # abort @internal
+}
+
+# HTTP -> HTTPS e' automatico in Caddy per i siti con TLS.

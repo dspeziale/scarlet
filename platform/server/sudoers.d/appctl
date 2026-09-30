@@ -1,0 +1,4 @@
+# Gli operatori (gruppo appops) possono eseguire SOLO appctl come utente deploy.
+# Nessun accesso diretto a docker, nessuna shell come deploy. SUDO_USER identifica chi opera (audit).
+Defaults:%appops !lecture, env_reset
+%appops ALL=(deploy) NOPASSWD: /usr/local/bin/appctl

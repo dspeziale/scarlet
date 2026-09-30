@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Wrapper di appctl.
+#  - gli operatori (gruppo appops) lo lanciano con il proprio utente: viene rieseguito come "deploy"
+#    tramite sudo (regola in /etc/sudoers.d/appctl); sudo imposta SUDO_USER, usato per l'audit;
+#  - l'utente deploy (pipeline via SSH, systemd) lo esegue direttamente.
+set -euo pipefail
+APPCTL_HOME="/opt/appctl"
+DEPLOY_USER="${APPCTL_DEPLOY_USER:-deploy}"
+
+if [ "$(id -un)" != "$DEPLOY_USER" ] && [ "$(id -u)" -ne 0 ]; then
+  exec sudo -u "$DEPLOY_USER" /usr/local/bin/appctl "$@"
+fi
+if [ "$(id -u)" -eq 0 ]; then
+  # root puo' operare, ma i file di stato devono restare di deploy: rieseguiamo come deploy
+  exec sudo -u "$DEPLOY_USER" env "SUDO_USER=${SUDO_USER:-root}" /usr/local/bin/appctl "$@"
+fi
+export PYTHONPATH="$APPCTL_HOME"
+exec python3 -m appctl "$@"

@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+# Forced command SSH per la chiave della pipeline (authorized_keys di "deploy"):
+#   restrict,command="/usr/local/bin/appctl-ssh-gate" ssh-ed25519 AAAA... github-actions
+#
+# Accetta SOLO invocazioni di appctl con sottocomandi e opzioni in allowlist.
+# Qualsiasi altro comando viene rifiutato e registrato nel journal (facility auth).
+set -euo pipefail
+
+LOG_TAG="appctl-ssh-gate"
+CMD="${SSH_ORIGINAL_COMMAND:-}"
+
+log_auth() {
+  # il log non deve mai impedire il rifiuto (es. logger assente)
+  command -v logger > /dev/null 2>&1 && logger -p "$1" -t "$LOG_TAG" "$2" || true
+}
+
+deny() {
+  log_auth auth.warning "RIFIUTATO da ${SSH_CLIENT:-?}: ${CMD}"
+  echo "appctl-ssh-gate: comando non consentito" >&2
+  exit 126
+}
+
+[ -n "$CMD" ] || deny
+# nessun metacarattere di shell
+[[ "$CMD" =~ ^[A-Za-z0-9:_.@=[:space:]-]+$ ]] || deny
+
+# shellcheck disable=SC2206
+TOKENS=($CMD)
+[ "${TOKENS[0]}" = "appctl" ] || deny
+
+ARGS=()
+i=1
+n=${#TOKENS[@]}
+# opzioni globali consentite
+while [ "$i" -lt "$n" ]; do
+  case "${TOKENS[$i]}" in
+    --app)   [[ "${TOKENS[$((i+1))]:-}" =~ ^[a-z][a-z0-9-]{1,31}$ ]] || deny; ARGS+=("--app" "${TOKENS[$((i+1))]}"); i=$((i+2)) ;;
+    --actor) [[ "${TOKENS[$((i+1))]:-}" =~ ^[A-Za-z0-9:_.@-]{1,128}$ ]] || deny; ARGS+=("--actor" "${TOKENS[$((i+1))]}"); i=$((i+2)) ;;
+    --json)  ARGS+=("--json"); i=$((i+1)) ;;
+    --version) ARGS+=("--version"); i=$((i+1)) ;;
+    *) break ;;
+  esac
+done
+
+if [ "$i" -lt "$n" ]; then
+  SUB="${TOKENS[$i]}"; i=$((i+1))
+  case "$SUB" in
+    deploy)
+      [[ "${TOKENS[$i]:-}" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]] || deny
+      ARGS+=("deploy" "${TOKENS[$i]}"); i=$((i+1)) ;;
+    rollback)
+      ARGS+=("rollback")
+      if [ "$i" -lt "$n" ]; then
+        [[ "${TOKENS[$i]}" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]] || deny
+        ARGS+=("${TOKENS[$i]}"); i=$((i+1))
+      fi ;;
+    status|version|history)
+      ARGS+=("$SUB") ;;
+    health)
+      ARGS+=("health")
+      if [ "$i" -lt "$n" ]; then
+        [ "${TOKENS[$i]}" = "--wait" ] || deny
+        [[ "${TOKENS[$((i+1))]:-}" =~ ^[0-9]{1,4}$ ]] || deny
+        ARGS+=("--wait" "${TOKENS[$((i+1))]}"); i=$((i+2))
+      fi ;;
+    *) deny ;;
+  esac
+fi
+# token residui non ammessi
+[ "$i" -eq "$n" ] || deny
+
+log_auth auth.info "da ${SSH_CLIENT:-?}: appctl ${ARGS[*]}"
+exec "${APPCTL_BIN:-/usr/local/bin/appctl}" "${ARGS[@]}"
