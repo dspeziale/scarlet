@@ -12,3 +12,8 @@ description = "Falsi positivi documentati"
 paths = [
   '''tests/security/test_security\.py''',
 ]
+# Prima versione del test dello script SSH: conteneva un'intestazione PEM finta (poi composta a
+# runtime). Nessuna chiave reale.
+commits = [
+  "6567c044753ad6bd70bacb6bff4e5db75278cdac",
+]
