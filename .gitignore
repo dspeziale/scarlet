@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+dist/
+build/
+*.db
+*.sqlite3
+
+# Ambiente locale (mai versionare secrets)
+.env
+.env.*
+!.env.example
+*.secrets.env
+.local/
+
+# Editor / SO
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Specifica di lavoro locale
+prompt.txt

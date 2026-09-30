@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scarlet"
+description = "Scarlet - inventario dei rilasci: registra quale versione di ogni applicazione e' in esercizio in ogni ambiente"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Proprietary" }
+dynamic = ["version", "dependencies"]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+packages = ["scarlet"]
+
+[tool.setuptools.dynamic]
+version = { file = "VERSION" }
+dependencies = { file = ["requirements.txt"] }
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests", "platform/appctl"]
+extend-exclude = ["migrations/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "N", "C4", "SIM"]
+ignore = ["S101", "S603", "S607", "E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["scarlet", "appctl"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S"]
+"platform/appctl/tests/**" = ["S"]
+"platform/tests/**" = ["S"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "platform/appctl/tests", "platform/tests"]
+addopts = "-ra -q"
+markers = [
+  "integration: test che richiedono Docker reale (abilitare con APPCTL_INTEGRATION=1)",
+]
