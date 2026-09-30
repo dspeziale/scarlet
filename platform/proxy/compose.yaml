@@ -5,7 +5,7 @@ name: platform-proxy
 
 services:
   caddy:
-    image: caddy:2.9-alpine
+    image: caddy:2.11-alpine
     container_name: platform-proxy
     restart: unless-stopped
     ports:
