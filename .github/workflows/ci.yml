@@ -141,14 +141,13 @@ jobs:
           provenance: false
 
       - name: Vulnerability scan immagine (Trivy)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ steps.meta.outputs.image }}
           format: table
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: "1"
-          vuln-type: os,library
 
       - uses: actions/setup-python@v5
         with:
