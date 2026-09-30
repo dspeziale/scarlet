@@ -1,0 +1,25 @@
+# Tutto ciò che non serve dentro l'immagine
+.git
+.github
+.venv
+venv
+.local
+.pytest_cache
+.ruff_cache
+__pycache__
+*.pyc
+*.db
+*.sqlite3
+.env
+.env.*
+*.secrets.env
+tests
+platform
+docs
+dist
+build
+Makefile
+prompt.txt
+README.md
+*.md
+!README.md

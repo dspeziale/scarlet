@@ -1,0 +1,21 @@
+# Override per il server PRODUCTION.
+services:
+  app:
+    networks:
+      - default
+      - proxy
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 768M
+        reservations:
+          memory: 128M
+    logging:
+      options:
+        max-size: "20m"
+        max-file: "10"
+
+networks:
+  proxy:
+    external: true

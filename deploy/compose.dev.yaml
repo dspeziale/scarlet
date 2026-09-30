@@ -1,0 +1,20 @@
+# Override per il server DEVELOPMENT.
+services:
+  app:
+    networks:
+      - default
+      - proxy
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 384M
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  proxy:
+    # Rete condivisa con il reverse proxy Caddy (creata da platform/server/install-server.sh).
+    external: true

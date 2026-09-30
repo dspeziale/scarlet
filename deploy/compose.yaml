@@ -1,0 +1,58 @@
+# Configurazione Compose comune a tutti gli ambienti.
+#
+# Variabili fornite da appctl (o dal Makefile in locale):
+#   IMAGE     riferimento completo dell'immagine (es. ghcr.io/dspeziale/scarlet:git-a1b2c3d4e5f6)
+#   APP_NAME  nome applicazione (= nome del project compose)
+#   APP_DIR   directory dell'applicazione sul server (/opt/apps/scarlet)
+#   APP_PORT  porta locale (127.0.0.1) su cui esporre l'app per operatori/health (default 8080)
+#
+# Questo file viene distribuito DENTRO l'immagine (/deploy) e poi estratto in
+# /opt/apps/<app>/releases/<tag>/ da appctl: e' versionato insieme al codice.
+
+name: ${APP_NAME:-scarlet}
+
+services:
+  app:
+    image: "${IMAGE:?IMAGE non impostata - usare appctl deploy <tag> oppure make run}"
+    container_name: ${APP_NAME:-scarlet}-app
+    env_file:
+      - path: ${APP_DIR:?APP_DIR non impostata}/config/app.env
+        required: true
+      - path: ${APP_DIR}/secrets/app.secrets.env
+        required: true
+    environment:
+      IMAGE: ${IMAGE}
+    ports:
+      # Solo su loopback: l'accesso esterno passa dal reverse proxy (rete "proxy").
+      - "127.0.0.1:${APP_PORT:-8080}:8000"
+    restart: unless-stopped
+    stop_grace_period: 30s
+    # ---- hardening
+    user: "10001:10001"
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    ulimits:
+      nofile:
+        soft: 4096
+        hard: 4096
+    # ---- risorse (override per ambiente)
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+          pids: 256
+    # ---- log: stdout/stderr, rotazione per non riempire il disco
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+    labels:
+      it.ised.platform.app: ${APP_NAME:-scarlet}
+      it.ised.platform.role: app

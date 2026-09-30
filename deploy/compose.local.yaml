@@ -1,0 +1,16 @@
+# Override per la workstation dello sviluppatore (make run).
+# - nessuna rete "proxy";
+# - log leggibili;
+# - dati PostgreSQL in un volume Docker nominato: i bind mount Windows/macOS non conservano
+#   l'ownership richiesta da PostgreSQL (uid 999). Sul server si usa il bind mount (compose.db.yaml).
+services:
+  app:
+    environment:
+      SCARLET_LOG_FORMAT: text
+      SCARLET_LOG_LEVEL: DEBUG
+  db:
+    volumes: !override
+      - local_pgdata:/var/lib/postgresql/data
+
+volumes:
+  local_pgdata:

@@ -1,0 +1,54 @@
+# PostgreSQL containerizzato (ASSUMPTION A7). Da includere solo se il DB gira sullo stesso server.
+# Con un DB esterno: togliere questo file da COMPOSE_FILES in app.conf e impostare
+# SCARLET_DATABASE_URL nei secrets.
+#
+# I dati stanno su bind mount in ${APP_DIR}/data/postgres (owner uid 999 = utente postgres
+# dell'immagine): backup e restore sono file normali, comprensibili agli operatori.
+
+services:
+  db:
+    image: postgres:16-bookworm
+    container_name: ${APP_NAME:-scarlet}-db
+    env_file:
+      # POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB stanno nel file secrets.
+      - path: ${APP_DIR:?APP_DIR non impostata}/secrets/app.secrets.env
+        required: true
+    volumes:
+      - ${APP_DIR}/data/postgres:/var/lib/postgresql/data
+    # Nessuna porta pubblicata: raggiungibile solo dalla rete interna del project compose.
+    restart: unless-stopped
+    stop_grace_period: 60s
+    user: "999:999"
+    tmpfs:
+      - /tmp
+      - /var/run/postgresql
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    shm_size: 128m
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+          pids: 512
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\" -h 127.0.0.1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      it.ised.platform.app: ${APP_NAME:-scarlet}
+      it.ised.platform.role: db
+
+  app:
+    depends_on:
+      db:
+        condition: service_healthy
