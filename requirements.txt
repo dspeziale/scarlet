@@ -1,5 +1,5 @@
 # Dipendenze runtime dell'applicazione (versioni bloccate; Dependabot propone gli aggiornamenti)
-fastapi==0.142.1
+fastapi==0.142.2
 uvicorn[standard]==0.54.0
 SQLAlchemy==2.1.1
 psycopg[binary]==3.3.6
