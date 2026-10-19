@@ -39,7 +39,7 @@ const SETTINGS = {
 };
 
 const STATUS = {
-  appName: 'PKM',
+  appName: 'Scarlet',
   version: '1.0.0',
   apiVersion: 'v1',
   mode: 'live',

@@ -23,7 +23,7 @@ The schedule syntax is the classic Linux cron one, so anyone who knows `crontab`
 - `spec.successfulJobsHistoryLimit` (default 3) and `spec.failedJobsHistoryLimit` (default 1): how many finished Jobs to keep.
 - `spec.jobTemplate`: the Job template, with all the fields described in [Job](guide:job).
 
-Status shows `lastScheduleTime`, `lastSuccessfulTime` and active Jobs. In PKM: [Applicazioni → CronJobs](app:/k8s/cronjobs).
+Status shows `lastScheduleTime`, `lastSuccessfulTime` and active Jobs. In Scarlet: [Applicazioni → CronJobs](app:/k8s/cronjobs).
 
 ## Example
 
@@ -62,7 +62,7 @@ spec:
 
 ## How to verify
 
-In PKM open the CronJob: check schedule, time zone, suspension state, last run and recent Jobs in the Relazioni tab. The Eventi tab reports scheduling errors.
+In Scarlet open the CronJob: check schedule, time zone, suspension state, last run and recent Jobs in the Relazioni tab. The Eventi tab reports scheduling errors.
 
 ```bash
 kubectl -n shop get cronjob cleanup-sessions

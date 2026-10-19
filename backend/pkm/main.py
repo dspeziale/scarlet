@@ -49,16 +49,16 @@ def create_app(settings: Settings, *, start_background: bool = True) -> FastAPI:
                         extra={"setup_token": token})
         if start_background:
             ctx.start_monitor()
-        log.info("PKM started", extra={"version": __version__, "mode": settings.mode, "env": settings.environment})
+        log.info("Scarlet started", extra={"version": __version__, "mode": settings.mode, "env": settings.environment})
         yield
         await ctx.stop()
-        log.info("PKM stopped")
+        log.info("Scarlet stopped")
 
     dev = settings.environment == "development"
     app = FastAPI(
         title=f"{settings.app_name} API",
         version=__version__,
-        description="REST API of Podman Kubernetes Manager. All endpoints except /system/info, /setup/* and "
+        description="REST API of Scarlet. All endpoints except /system/info, /setup/* and "
                     "/auth/login require a session cookie; state-changing requests also need the X-CSRF-Token header.",
         openapi_url=f"/api/{API_VERSION}/openapi.json",
         docs_url="/api/docs" if dev else None,
@@ -184,7 +184,7 @@ def create_app(settings: Settings, *, start_background: bool = True) -> FastAPI:
     else:
         @app.get("/", include_in_schema=False)
         def no_ui() -> JSONResponse:
-            return JSONResponse({"message": "PKM API is running; the web UI is not built (frontend/dist missing).",
+            return JSONResponse({"message": "Scarlet API is running; the web UI is not built (frontend/dist missing).",
                                  "api": f"{prefix}/openapi.json"})  # fmt: skip
 
     return app

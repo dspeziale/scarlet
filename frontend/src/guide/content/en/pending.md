@@ -53,7 +53,7 @@ kubectl describe nodes | grep -A8 "Allocated resources"
 
 1. In the [Operations Center](app:/operations-center) Pending pods and Pending PVCs are reported separately.
 2. Open the pod and read the **Eventi**: the `FailedScheduling` message tells how many nodes were discarded and why.
-3. In the **Diagnostica** tab PKM summarizes the likely cause.
+3. In the **Diagnostica** tab Scarlet summarizes the likely cause.
 4. Check the nodes in [Cluster → Nodi](app:/cluster/nodes): status, schedulability (cordon) and allocated resources.
 5. If there is a volume, check the PVC in [Storage → Persistent Volume Claims](app:/k8s/persistentvolumeclaims) and the [StorageClass](app:/k8s/storageclasses).
 

@@ -9,7 +9,7 @@ async function login(page: Page, user = ADMIN) {
   await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
 }
 
-test.describe('PKM console (DEMO)', () => {
+test.describe('Scarlet console (DEMO)', () => {
   test('DEMO mode is unmistakable and versions are shown', async ({ page }) => {
     await login(page);
     await expect(page.getByText('MODALITÀ DEMO', { exact: false })).toBeVisible();
@@ -172,5 +172,33 @@ test.describe('PKM console (DEMO)', () => {
     await page.goto('/k8s/deployments/production/does-not-exist');
     await expect(page.getByText('Risorsa non trovata')).toBeVisible();
     await expect(page.getByText('Dettagli tecnici')).toBeVisible();
+  });
+  test('footer shows copyright on the left and version on the right', async ({ page }) => {
+    await login(page);
+    const footer = page.locator('footer.app-footer');
+    await expect(footer).toContainText('© ');
+    await expect(footer).toContainText('ISED');
+    await expect(footer).toContainText('Scarlet v1.0.0');
+  });
+
+  test('create a Job from the list page template, validate and apply it', async ({ page }) => {
+    await login(page);
+    await page.goto('/k8s/jobs?namespace=staging');
+    await page.getByRole('link', { name: 'Crea Job' }).click();
+    await expect(page).toHaveURL(/\/operations\/yaml\?template=jobs&namespace=staging/);
+    await expect(page.getByText('Modello Job caricato')).toBeVisible();
+    await page.getByRole('button', { name: /^Valida/ }).click();
+    await expect(page.getByText(/Configurazione valida/)).toBeVisible();
+    await page.getByRole('button', { name: 'Applica', exact: true }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Applica', exact: true }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await page.goto('/k8s/jobs?namespace=staging');
+    await expect(page.getByRole('cell', { name: 'my-job' })).toBeVisible();
+  });
+
+  test('operators do not get the Create Secret button (administrators only)', async ({ page }) => {
+    await login(page, VIEWER);
+    await page.goto('/k8s/secrets');
+    await expect(page.getByRole('link', { name: 'Crea Secret' })).toHaveCount(0);
   });
 });

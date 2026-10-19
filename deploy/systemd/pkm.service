@@ -1,5 +1,5 @@
 [Unit]
-Description=Podman Kubernetes Manager (web console)
+Description=Scarlet (web console)
 Documentation=file:///opt/pkm/current/docs/OPERATIONS.md
 After=network-online.target
 Wants=network-online.target

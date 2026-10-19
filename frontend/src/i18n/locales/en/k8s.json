@@ -73,7 +73,7 @@
     "Secret": {
       "title": "Secret",
       "simple": "Confidential data (passwords, tokens, certificates) used by applications.",
-      "technical": "Base64-encoded values (not encrypted by default in the API); access must be restricted with RBAC. In PKM values are hidden and viewing them is audited."
+      "technical": "Base64-encoded values (not encrypted by default in the API); access must be restricted with RBAC. In Scarlet values are hidden and viewing them is audited."
     },
     "Node": {
       "title": "Node",
@@ -173,7 +173,8 @@
     "onlyProblems": "Only with problems",
     "nodeFilter": "Node: {{node}}",
     "clearFilter": "Clear filter",
-    "notNamespaced": "Cluster-level resource (does not belong to a namespace)."
+    "notNamespaced": "Cluster-level resource (does not belong to a namespace).",
+    "create": "Create {{kind}}"
   },
   "detail": {
     "whatIsIt": "What it is",
@@ -256,7 +257,7 @@
     "applyTitle": "Apply the new configuration?",
     "applyConsequences": "Kubernetes will update the resource; for workloads a progressive Pod update may start.",
     "managedFieldsHidden": "managedFields and Secret values are omitted from the view.",
-    "notEditable": "This resource cannot be edited from PKM.",
+    "notEditable": "This resource cannot be edited from Scarlet.",
     "syntaxError": "Syntax error at line {{line}}: {{message}}",
     "current": "Current",
     "proposed": "Proposed"

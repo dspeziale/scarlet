@@ -24,7 +24,7 @@ Without a Storage Class an administrator must prepare PVs by hand, one by one.
 - **Default class**: annotation `storageclass.kubernetes.io/is-default-class: "true"`. There should be at most one; with several defaults behavior is ambiguous (the most recent one is chosen).
 - Storage Classes are cluster-scoped and largely immutable: to change `parameters` or `provisioner` you create a new class.
 
-In PKM: [Storage → Storage Classes](app:/k8s/storageclasses); the default class is highlighted.
+In Scarlet: [Storage → Storage Classes](app:/k8s/storageclasses); the default class is highlighted.
 
 ## Example
 
@@ -63,7 +63,7 @@ kubectl get csidrivers
 kubectl get pods -A | grep -i csi
 ```
 
-In PKM check that exactly one class is marked as default and that the CSI driver Pods are Running on the [Pod](app:/k8s/pods) page.
+In Scarlet check that exactly one class is marked as default and that the CSI driver Pods are Running on the [Pod](app:/k8s/pods) page.
 
 ## How to fix
 

@@ -27,7 +27,7 @@ def _load(args: argparse.Namespace) -> Settings:
 
 
 def server_main(argv: list[str] | None = None) -> None:
-    parser = argparse.ArgumentParser(prog="pkm-server", description="Podman Kubernetes Manager web server")
+    parser = argparse.ArgumentParser(prog="pkm-server", description="Scarlet web server")
     parser.add_argument("--config", help="configuration file (default: $PKM_CONFIG or /etc/pkm/config.yaml)")
     parser.add_argument("--version", action="version", version=__version__)
     args = parser.parse_args(argv)
@@ -87,7 +87,7 @@ def _cli_audit(audit, action: str, **kw) -> None:  # type: ignore[no-untyped-def
 
 
 def admin_main(argv: list[str] | None = None) -> None:
-    parser = argparse.ArgumentParser(prog="pkm-admin", description="Podman Kubernetes Manager administration")
+    parser = argparse.ArgumentParser(prog="pkm-admin", description="Scarlet administration")
     parser.add_argument("--config", help="configuration file (default: $PKM_CONFIG or /etc/pkm/config.yaml)")
     parser.add_argument("--version", action="version", version=__version__)
     sub = parser.add_subparsers(dest="cmd", required=True)

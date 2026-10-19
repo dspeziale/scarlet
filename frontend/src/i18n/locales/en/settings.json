@@ -12,7 +12,7 @@
     "kubernetes": "Connection to the Kubernetes cluster and metric sources.",
     "podman": "Connection to the Podman API on this host.",
     "logging": "Service log verbosity and log viewer limits.",
-    "backup": "Retention of PKM backups and of the audit log.",
+    "backup": "Retention of Scarlet backups and of the audit log.",
     "auth": "Session duration, lockout after failed attempts and password rules."
   },
   "group": {
@@ -26,7 +26,7 @@
     "auth": "Sessions and passwords"
   },
   "groupHelp": {
-    "kubernetes": "PKM uses a kubeconfig readable by the pkm service user (recommended: a dedicated ServiceAccount with minimal permissions).",
+    "kubernetes": "Scarlet uses a kubeconfig readable by the pkm service user (recommended: a dedicated ServiceAccount with minimal permissions).",
     "monitoring": "metrics-server provides current CPU and memory usage; Prometheus (optional) provides history, network and volume usage.",
     "podman": "Address of the Podman API socket. Warning: access to the rootful socket is equivalent to root access on the host.",
     "logging": "The level is applied immediately, without restart.",
@@ -40,7 +40,7 @@
       "enabled": { "label": "Kubernetes integration enabled" },
       "kubeconfig": { "label": "kubeconfig path", "hint": "Absolute path on the server, for example /etc/pkm/kubeconfig (mode 0640 root:pkm)." },
       "context": { "label": "Context", "hint": "Empty = current context of the kubeconfig." },
-      "in_cluster": { "label": "PKM runs inside the cluster (Pod service account)", "hint": "Use only when PKM runs as a Pod in Kubernetes." },
+      "in_cluster": { "label": "Scarlet runs inside the cluster (Pod service account)", "hint": "Use only when Scarlet runs as a Pod in Kubernetes." },
       "request_timeout": { "label": "Request timeout (seconds)" },
       "cache_ttl_seconds": { "label": "Read cache (seconds)", "hint": "Avoids repeated requests to the API server; 0 disables the cache." }
     },
@@ -49,7 +49,7 @@
       "prometheus_url": { "label": "Prometheus URL", "hint": "For example http://prometheus.monitoring.svc:9090. Empty = Prometheus not used." },
       "prometheus_timeout": { "label": "Prometheus timeout (seconds)" },
       "prometheus_verify_tls": { "label": "Verify the Prometheus TLS certificate" },
-      "poll_interval_seconds": { "label": "Problem detection interval (seconds)", "hint": "How often PKM re-checks the cluster to update the Operations Center and notifications." }
+      "poll_interval_seconds": { "label": "Problem detection interval (seconds)", "hint": "How often Scarlet re-checks the cluster to update the Operations Center and notifications." }
     },
     "podman": {
       "enabled": { "label": "Podman integration enabled" },

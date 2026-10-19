@@ -1,4 +1,6 @@
-# Podman Kubernetes Manager (PKM)
+# Scarlet
+
+> **S**ecure **C**luster **A**dministration, **R**untime & **L**ifecycle **E**ngineering **T**ool
 
 Console web operativa per **Kubernetes** e **Podman**, installabile su **Oracle Linux 9.7 x86_64** come servizio systemd.
 Non è una semplice dashboard: è un centro operativo che risponde subito a *ci sono problemi? quali? quanto gravi?
@@ -70,7 +72,7 @@ Sviluppo in DEMO (Windows/Linux, dalla radice del repository):
 ```bash
 python -m venv backend/.venv && backend/.venv/Scripts/pip install -e "backend[dev]"   # Linux: backend/.venv/bin/pip
 cd frontend && npm ci && npm run build && cd ..
-PKM_CONFIG=config/dev-demo.yaml backend/.venv/Scripts/pkm-server     # http://127.0.0.1:8080
+backend/.venv/Scripts/pkm-server --config config/dev-demo.yaml     # http://127.0.0.1:8080
 ```
 
 Dettagli in [DEVELOPMENT.md](DEVELOPMENT.md).

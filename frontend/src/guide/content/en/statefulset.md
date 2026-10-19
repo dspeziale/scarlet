@@ -21,7 +21,7 @@ If `db-1` dies, Kubernetes recreates exactly `db-1`, with the same name and the 
 - **Ordering**: with `podManagementPolicy: OrderedReady` (default) Pods are created in order 0→N-1, each only once the previous one is Ready, and removed in reverse order. `Parallel` removes this constraint.
 - **Updates**: `updateStrategy.type: RollingUpdate` updates from the highest ordinal to the lowest; `rollingUpdate.partition` enables staged (canary) updates. `OnDelete` updates a Pod only when you delete it yourself.
 
-In PKM: [Applicazioni → StatefulSets](app:/k8s/statefulsets). The Relazioni tab shows linked Pods and PVCs.
+In Scarlet: [Applicazioni → StatefulSets](app:/k8s/statefulsets). The Relazioni tab shows linked Pods and PVCs.
 
 ## Example
 
@@ -66,7 +66,7 @@ spec:
 
 ## How to verify
 
-In PKM check ready replicas, then Pods and PVCs in the Relazioni tab; in [Storage → Persistent Volume Claims](app:/k8s/persistentvolumeclaims) verify that PVCs are `Bound`.
+In Scarlet check ready replicas, then Pods and PVCs in the Relazioni tab; in [Storage → Persistent Volume Claims](app:/k8s/persistentvolumeclaims) verify that PVCs are `Bound`.
 
 ```bash
 kubectl -n shop get statefulset db
@@ -80,4 +80,4 @@ kubectl -n shop rollout status statefulset/db
 1. If a PVC is Pending, fix storage first: see [Persistent Volume Claim](guide:persistent-volume-claim).
 2. If a Pod does not become Ready, diagnose it like any Pod ([procedure](guide:proc-diagnosticare-pod)); the other ordinals wait.
 3. If a node is permanently lost, an administrator can, after verifying the node is really powered off, force-delete the Pod (`kubectl delete pod db-1 --grace-period=0 --force`): this is a risky operation.
-4. Before scaling down or deleting PVCs, take a [backup](guide:backup) of the application data: PKM does not save volume contents.
+4. Before scaling down or deleting PVCs, take a [backup](guide:backup) of the application data: Scarlet does not save volume contents.

@@ -1,13 +1,13 @@
-# Kubernetes identity for Podman Kubernetes Manager (PKM).
+# Kubernetes identity for Scarlet.
 #
 # kubectl apply -f pkm-rbac.yaml
 # then generate a kubeconfig for the ServiceAccount with scripts/make-kubeconfig.sh
 #
 # Two ClusterRoles are provided:
-#   pkm-operator  (bound by default)  read everything PKM shows + the write operations it offers
-#   pkm-readonly  (alternative)       read only: PKM then works as a monitoring console and the
+#   pkm-operator  (bound by default)  read everything Scarlet shows + the write operations it offers
+#   pkm-readonly  (alternative)       read only: Scarlet then works as a monitoring console and the
 #                                     write buttons fail with "Permessi Kubernetes insufficienti"
-# PKM never needs: nodes/proxy, pods/exec, pods/attach, clusterroles, RBAC objects, etcd access.
+# Scarlet never needs: nodes/proxy, pods/exec, pods/attach, clusterroles, RBAC objects, etcd access.
 ---
 apiVersion: v1
 kind: Namespace
@@ -101,7 +101,7 @@ rules:
   - apiGroups: [metrics.k8s.io]
     resources: [nodes, pods]
     verbs: [get, list]
-  # write operations offered by PKM (deploy wizard, YAML apply, scale, restart, rollout, delete)
+  # write operations offered by Scarlet (deploy wizard, YAML apply, scale, restart, rollout, delete)
   - apiGroups: [apps]
     resources: [deployments, statefulsets, daemonsets, replicasets]
     verbs: [create, update, patch, delete]

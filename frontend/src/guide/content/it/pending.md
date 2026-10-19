@@ -53,7 +53,7 @@ kubectl describe nodes | grep -A8 "Allocated resources"
 
 1. Nel [Centro Operativo](app:/operations-center) i pod Pending e i PVC Pending sono segnalati separatamente.
 2. Apri il pod e leggi gli **Eventi**: il messaggio `FailedScheduling` dice quanti nodi sono stati scartati e perché.
-3. Nella scheda **Diagnostica** PKM riassume la causa probabile.
+3. Nella scheda **Diagnostica** Scarlet riassume la causa probabile.
 4. Controlla i nodi in [Cluster → Nodi](app:/cluster/nodes): stato, schedulabilità (cordon) e risorse allocate.
 5. Se c'è un volume, verifica il PVC in [Storage → Persistent Volume Claims](app:/k8s/persistentvolumeclaims) e la [StorageClass](app:/k8s/storageclasses).
 

@@ -22,13 +22,13 @@ Prima di qualsiasi intervento che rende un nodo indisponibile: aggiornamento del
 
 1. **Verifica il nodo** come descritto in [Verificare un nodo](guide:proc-verificare-nodo) e annota quali Pod ospita.
 2. **Cordon.** In [Operazioni → Manutenzione](app:/operations/maintenance) seleziona il nodo ed esegui **Cordon**. Il nodo diventa `SchedulingDisabled`: i Pod esistenti continuano a girare, ma non ne arrivano di nuovi.
-3. **Drain.** Esegui **Drain** sullo stesso nodo. PKM:
+3. **Drain.** Esegui **Drain** sullo stesso nodo. Scarlet:
    - sfratta i Pod tramite l'**Eviction API**, quindi rispetta i **PodDisruptionBudget**: se uno sfratto violerebbe un PDB viene rifiutato e ritentato;
    - **salta i Pod dei DaemonSet**, che per definizione devono restare su ogni nodo;
    - lascia ai controller (Deployment, StatefulSet, ReplicaSet) il compito di ricreare i Pod su altri nodi.
 4. **Segui l'avanzamento.** Il drain termina quando sul nodo restano solo Pod di DaemonSet (e Pod statici). Se rimane bloccato, leggi il motivo indicato (di solito un PDB che non consente interruzioni).
 5. **Controlla le applicazioni.** Nel [Centro Operativo](app:/operations-center) non devono comparire nuovi Pod `Pending` o Deployment degradati.
-6. **Esegui la manutenzione** sul nodo (fuori da PKM, ad esempio via SSH): aggiornamenti, riavvio, ecc.
+6. **Esegui la manutenzione** sul nodo (fuori da Scarlet, ad esempio via SSH): aggiornamenti, riavvio, ecc.
 7. **Attendi che il nodo torni `Ready`** in [Cluster → Nodi](app:/cluster/nodes).
 8. **Uncordon.** Esegui **Uncordon** in [Manutenzione](app:/operations/maintenance). Il nodo torna schedulabile.
 

@@ -24,7 +24,7 @@ Non crei i Pod a mano: li crea il Deployment, tramite un oggetto intermedio chia
 
 Lo stato si legge in `status`: `replicas`, `updatedReplicas`, `readyReplicas`, `availableReplicas` e le condizioni `Available` e `Progressing`. Un Pod conta come "ready" solo quando la sua [readiness probe](guide:readiness-probe) ha successo.
 
-In PKM trovi l'elenco in [Applicazioni → Deployments](app:/k8s/deployments); la pagina di dettaglio mostra repliche pronte/desiderate, i ReplicaSet collegati (scheda Relazioni), gli eventi e lo YAML.
+In Scarlet trovi l'elenco in [Applicazioni → Deployments](app:/k8s/deployments); la pagina di dettaglio mostra repliche pronte/desiderate, i ReplicaSet collegati (scheda Relazioni), gli eventi e lo YAML.
 
 ## Esempio
 
@@ -71,7 +71,7 @@ spec:
 
 ## Come verificare
 
-In PKM: apri il Deployment, controlla repliche pronte/desiderate e la scheda Eventi; la pagina [Operazioni → Rollout](app:/operations/rollout) mostra lo stato dell'aggiornamento in corso.
+In Scarlet: apri il Deployment, controlla repliche pronte/desiderate e la scheda Eventi; la pagina [Operazioni → Rollout](app:/operations/rollout) mostra lo stato dell'aggiornamento in corso.
 
 Da shell (alternativa per l'amministratore):
 

@@ -45,7 +45,7 @@ resources:
 - Si alza il limite all'infinito per mascherare un memory leak: il problema si sposta sul nodo.
 - Limite impostato in unità sbagliate (`1G` contro `1Gi`, oppure `512m` che significa 0,512 byte).
 - Picchi di memoria all'avvio (cache, caricamento dati) superano il limite anche se l'uso a regime è basso.
-- Senza metrics-server non si vede l'andamento della memoria: PKM mostra "Metriche avanzate non configurate".
+- Senza metrics-server non si vede l'andamento della memoria: Scarlet mostra "Metriche avanzate non configurate".
 
 ## Come verificare
 

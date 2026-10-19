@@ -227,7 +227,7 @@
     },
     "KubernetesUnreachable": {
       "title": "Kubernetes non raggiungibile",
-      "simple": "PKM non riesce a comunicare con l'API server di Kubernetes.",
+      "simple": "Scarlet non riesce a comunicare con l'API server di Kubernetes.",
       "risk": "Monitoraggio e operazioni sul cluster non sono disponibili.",
       "causes": [
         "API server spento",
@@ -237,7 +237,7 @@
     },
     "PodmanUnreachable": {
       "title": "Podman non raggiungibile",
-      "simple": "PKM non riesce a comunicare con l'API di Podman.",
+      "simple": "Scarlet non riesce a comunicare con l'API di Podman.",
       "risk": "La gestione dei container Podman non è disponibile.",
       "causes": [
         "podman.socket non attivo",
@@ -519,7 +519,7 @@
   "centerSubtitle": "Problemi rilevati automaticamente, dal più grave. Ogni scheda spiega cosa succede, il rischio e cosa fare.",
   "noIssues": "Nessun problema rilevato. Il cluster è in salute.",
   "onlyActive": "Nascondi quelli già gestiti",
-  "partialData": "Dati parziali: alcune risorse non sono leggibili con i permessi dell'account Kubernetes di PKM ({{kinds}}).",
+  "partialData": "Dati parziali: alcune risorse non sono leggibili con i permessi dell'account Kubernetes di Scarlet ({{kinds}}).",
   "counts": "{{critical}} critici · {{error}} errori · {{warning}} avvisi",
   "replicasAvailable": "repliche disponibili",
   "markHandled": "Segna come gestito"

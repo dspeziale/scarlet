@@ -5,7 +5,7 @@
 
 ## Contesto
 
-PKM deve conservare utenti, sessioni, audit, impostazioni, notifiche e cronologia backup; deve essere semplice da installare, salvare e ripristinare.
+Scarlet deve conservare utenti, sessioni, audit, impostazioni, notifiche e cronologia backup; deve essere semplice da installare, salvare e ripristinare.
 
 ## Decisione
 

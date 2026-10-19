@@ -14,7 +14,7 @@ Quando un servizio è degradato o non disponibile: utenti che segnalano errori, 
 ## Prerequisiti
 
 - Ruolo **Operator** per diagnosi e azioni correttive (restart, scale, rollback, cordon/drain); **Administrator** per azioni su Secret, utenti e impostazioni.
-- PKM in modalità **LIVE** (badge verde con il contesto del cluster). Se vedi il banner a strisce "DEMO" stai guardando dati di esempio: non è il cluster reale.
+- Scarlet in modalità **LIVE** (badge verde con il contesto del cluster). Se vedi il banner a strisce "DEMO" stai guardando dati di esempio: non è il cluster reale.
 - Sapere chi contattare per l'escalation (responsabile dell'applicazione, amministratore del cluster).
 
 ## Procedura
@@ -36,7 +36,7 @@ Quando un servizio è degradato o non disponibile: utenti che segnalano errori, 
    Leggi i rischi indicati dall'app prima di confermare. Evita modifiche multiple contemporanee: non capiresti quale ha funzionato.
 6. **Agire.** Esegui una sola azione alla volta e annota ora ed esito. Ogni azione resta registrata nell'Audit Log.
 7. **Verificare.** Controlla che il problema sparisca dal Centro Operativo, che Pod e repliche siano `Ready` e che il servizio risponda dal punto di vista dell'utente.
-8. **Escalation** se entro il tempo concordato (ad esempio 30 minuti) il servizio non è ripristinato, o se la causa è fuori da PKM (rete, storage, registry, database esterno).
+8. **Escalation** se entro il tempo concordato (ad esempio 30 minuti) il servizio non è ripristinato, o se la causa è fuori da Scarlet (rete, storage, registry, database esterno).
 9. **Chiudere.** Segna il problema come gestito nel Notification Center e scrivi un breve resoconto: cronologia, causa, azione risolutiva, azioni preventive (probe, limiti di memoria, repliche, PodDisruptionBudget).
 
 ## Verifica
@@ -49,8 +49,8 @@ Quando un servizio è degradato o non disponibile: utenti che segnalano errori, 
 
 ## Se qualcosa va storto
 
-- **PKM stesso non risponde**: controlla sul server `systemctl status pkm` e `journalctl -u pkm`. Nel frattempo puoi operare con `kubectl` da shell; il cluster continua a funzionare anche senza PKM.
-- **Kubernetes Unhealthy nella pagina Health**: PKM non raggiunge l'API server. Verifica rete e kubeconfig, poi chiedi all'amministratore del cluster lo stato del control plane.
+- **Scarlet stesso non risponde**: controlla sul server `systemctl status pkm` e `journalctl -u pkm`. Nel frattempo puoi operare con `kubectl` da shell; il cluster continua a funzionare anche senza Scarlet.
+- **Kubernetes Unhealthy nella pagina Health**: Scarlet non raggiunge l'API server. Verifica rete e kubeconfig, poi chiedi all'amministratore del cluster lo stato del control plane.
 - **L'azione peggiora la situazione**: fermati, annulla l'ultima azione (ad esempio rollback del rollback, ritorno al numero di repliche precedente) e passa all'escalation.
-- **Metriche non disponibili**: senza metrics-server o Prometheus PKM mostra "Metriche avanzate non configurate" e non stima i consumi; basati su eventi e log.
+- **Metriche non disponibili**: senza metrics-server o Prometheus Scarlet mostra "Metriche avanzate non configurate" e non stima i consumi; basati su eventi e log.
 - **Troppi allarmi insieme**: parti dal livello più basso dell'infrastruttura (nodi, storage, rete). Un nodo guasto genera decine di problemi a cascata sui Pod.

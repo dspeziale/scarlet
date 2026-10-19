@@ -20,9 +20,9 @@ It is used for "system services" that must run on every machine: log collection 
 - Nodes with **taints** (e.g. control-plane nodes with `node-role.kubernetes.io/control-plane:NoSchedule`) are excluded unless the Pod has a matching `toleration`. The controller automatically adds some tolerations (for example for `node.kubernetes.io/not-ready` and `unreachable` with NoExecute effect, and `unschedulable`).
 - DaemonSet Pods are scheduled by the default scheduler through node affinity to the specific node.
 - `updateStrategy`: `RollingUpdate` (default, `maxUnavailable: 1`) or `OnDelete`.
-- During a node **drain** DaemonSet Pods are **skipped**: they would be recreated immediately on the same node anyway. PKM's drain in [Operazioni → Manutenzione](app:/operations/maintenance) does exactly this.
+- During a node **drain** DaemonSet Pods are **skipped**: they would be recreated immediately on the same node anyway. Scarlet's drain in [Operazioni → Manutenzione](app:/operations/maintenance) does exactly this.
 
-In PKM: [Applicazioni → DaemonSets](app:/k8s/daemonsets).
+In Scarlet: [Applicazioni → DaemonSets](app:/k8s/daemonsets).
 
 ## Example
 
@@ -61,7 +61,7 @@ spec:
 
 ## How to verify
 
-In PKM open the DaemonSet and compare scheduled/ready; the Relazioni tab shows which node each Pod runs on.
+In Scarlet open the DaemonSet and compare scheduled/ready; the Relazioni tab shows which node each Pod runs on.
 
 ```bash
 kubectl -n monitoring get daemonset node-exporter

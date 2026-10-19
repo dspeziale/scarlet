@@ -11,7 +11,7 @@ related: crashloopbackoff, imagepullbackoff, oomkilled, pending, node-notready, 
 
 Quando qualcosa non funziona, la tentazione è riavviare subito tutto. Spesso il problema sparisce per qualche minuto e poi ritorna, e nel frattempo si sono persi gli indizi. Il troubleshooting efficace segue invece un metodo: **Capire → Diagnosticare → Decidere → Agire → Verificare**. Prima si raccolgono i fatti (stato, eventi, log), poi si formula un'ipotesi, si sceglie l'azione con il rischio più basso, la si esegue e si controlla che il problema sia davvero risolto.
 
-PKM è costruito attorno a questo metodo: il [Centro Operativo](app:/operations-center) rileva automaticamente i problemi più comuni, ogni risorsa ha una scheda **Diagnostica**, e le azioni (restart, rollback, scale) sono a portata di clic, ma solo dopo aver capito cosa succede.
+Scarlet è costruito attorno a questo metodo: il [Centro Operativo](app:/operations-center) rileva automaticamente i problemi più comuni, ogni risorsa ha una scheda **Diagnostica**, e le azioni (restart, rollback, scale) sono a portata di clic, ma solo dopo aver capito cosa succede.
 
 ## Dettagli tecnici
 
@@ -32,11 +32,11 @@ Le fonti di informazione principali sono tre:
 - **Eventi**: messaggi brevi generati dai controller e dal kubelet. Durano per default circa un'ora, quindi vanno letti presto.
 - **Log**: l'output del processo. Per un container che si riavvia, i log utili sono spesso quelli dell'istanza **precedente** (`--previous`).
 
-Il Centro Operativo assegna una severità (CRITICAL, ERROR, WARNING, INFO), indica la risorsa coinvolta, il rischio e le azioni suggerite. Le metriche di CPU e memoria richiedono metrics-server: se non è installato, PKM mostra "Metriche avanzate non configurate" e non inventa valori.
+Il Centro Operativo assegna una severità (CRITICAL, ERROR, WARNING, INFO), indica la risorsa coinvolta, il rischio e le azioni suggerite. Le metriche di CPU e memoria richiedono metrics-server: se non è installato, Scarlet mostra "Metriche avanzate non configurate" e non inventa valori.
 
 ## Esempio
 
-Equivalente da shell del percorso che PKM segue nella scheda Diagnostica:
+Equivalente da shell del percorso che Scarlet segue nella scheda Diagnostica:
 
 ```bash
 kubectl get pods -n shop -o wide

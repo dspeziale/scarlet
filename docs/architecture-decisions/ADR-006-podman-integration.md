@@ -5,7 +5,7 @@
 
 ## Contesto
 
-PKM deve gestire anche i container Podman dell'host, tecnologia distinta da Kubernetes.
+Scarlet deve gestire anche i container Podman dell'host, tecnologia distinta da Kubernetes.
 
 ## Decisione
 

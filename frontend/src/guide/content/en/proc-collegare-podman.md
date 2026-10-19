@@ -1,6 +1,6 @@
 ---
-title: Connecting PKM to Podman
-summary: Enable the Podman API socket (rootful or rootless) and configure it in PKM, aware of the security implications.
+title: Connecting Scarlet to Podman
+summary: Enable the Podman API socket (rootful or rootless) and configure it in Scarlet, aware of the security implications.
 category: procedures
 order: 30
 keywords: podman, socket, podman.socket, rootful, rootless, libpod, api, security
@@ -9,17 +9,17 @@ related: cos-e-podman, container, proc-installare, proc-diagnosticare-pod, faq
 
 ## When you need it
 
-When you want to manage the host's Podman containers from PKM (**Container** section: Container, Immagini, Registry), during the **Podman** step of the wizard, or if Podman is **Unhealthy** on the [Health](app:/monitoring/health) page.
+When you want to manage the host's Podman containers from Scarlet (**Container** section: Container, Immagini, Registry), during the **Podman** step of the wizard, or if Podman is **Unhealthy** on the [Health](app:/monitoring/health) page.
 
 ## Prerequisites
 
-- PKM installed.
+- Scarlet installed.
 - Podman installed on the host (`podman --version`).
 - A decision on **which** Podman to manage:
   - **rootful**: containers started by root, socket `/run/podman/podman.sock`;
   - **rootless**: containers of a specific user, socket `/run/user/<uid>/podman/podman.sock`.
 
-> **Security warning.** Anyone who can write to the rootful socket can start privileged containers and mount the host filesystem: that access is effectively **root on the machine**. Giving the `pkm` group access to the socket means a compromise of PKM is a compromise of the host. Protect PKM accordingly (TLS, strong passwords, least-privilege roles) or prefer rootless mode.
+> **Security warning.** Anyone who can write to the rootful socket can start privileged containers and mount the host filesystem: that access is effectively **root on the machine**. Giving the `pkm` group access to the socket means a compromise of Scarlet is a compromise of the host. Protect Scarlet accordingly (TLS, strong passwords, least-privilege roles) or prefer rootless mode.
 
 ## Procedure
 
@@ -58,7 +58,7 @@ When you want to manage the host's Podman containers from PKM (**Container** sec
 
 ## Verification
 
-- From the server, with PKM's identity:
+- From the server, with Scarlet's identity:
 
   ```bash
   sudo -u pkm curl -s --unix-socket /run/podman/podman.sock http://d/v4.0.0/libpod/_ping

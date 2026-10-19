@@ -1,6 +1,6 @@
 ---
 title: Eseguire un backup
-summary: Come salvare database e configurazione di PKM, verificare il backup e conservarlo in modo sicuro.
+summary: Come salvare database e configurazione di Scarlet, verificare il backup e conservarlo in modo sicuro.
 category: procedures
 order: 120
 keywords: backup, pkm-admin, backup.sh, pkm-backup.timer, sqlite, esportazione manifest, verify-backup
@@ -9,7 +9,7 @@ related: backup, proc-restore, proc-installare, faq
 
 ## Quando serve
 
-- Prima di un aggiornamento di PKM (`upgrade.sh` ne prende comunque uno, ma conviene averne uno tuo verificato).
+- Prima di un aggiornamento di Scarlet (`upgrade.sh` ne prende comunque uno, ma conviene averne uno tuo verificato).
 - Prima di modifiche importanti a utenti, ruoli o impostazioni.
 - Per controllare che il backup automatico notturno funzioni.
 
@@ -17,15 +17,15 @@ Prima di tutto, chiarisci **cosa** stai salvando (dettagli in [Backup](guide:bac
 
 | Tipo | Cosa contiene | Chi lo fa |
 |---|---|---|
-| Backup applicativo PKM | DB SQLite `/var/lib/pkm/pkm.db` + configurazione di PKM | PKM |
-| Esportazione manifest Kubernetes | YAML delle risorse; **non** i dati dei PV, **non** etcd | PKM |
-| Backup del cluster | snapshot etcd, Velero, backup dei volumi | **non** PKM: strumenti del cluster |
+| Backup applicativo Scarlet | DB SQLite `/var/lib/pkm/pkm.db` + configurazione di Scarlet | Scarlet |
+| Esportazione manifest Kubernetes | YAML delle risorse; **non** i dati dei PV, **non** etcd | Scarlet |
+| Backup del cluster | snapshot etcd, Velero, backup dei volumi | **non** Scarlet: strumenti del cluster |
 
-Questa procedura riguarda il **backup applicativo PKM**.
+Questa procedura riguarda il **backup applicativo Scarlet**.
 
 ## Prerequisiti
 
-- Ruolo **Administrator** in PKM, oppure accesso `sudo` al server dove PKM è installato.
+- Ruolo **Administrator** in Scarlet, oppure accesso `sudo` al server dove Scarlet è installato.
 - Spazio libero sufficiente nella directory dati `/var/lib/pkm` (controlla la voce storage in [Monitoraggio → Health](app:/monitoring/health)).
 - Una destinazione esterna al server dove copiare i backup (un backup che vive solo sullo stesso disco non protegge da un guasto del disco).
 
@@ -61,7 +61,7 @@ Questa procedura riguarda il **backup applicativo PKM**.
 
 - Il backup compare in [Operazioni → Backup](app:/operations/backup) e in `/var/lib/pkm/backups`.
 - `pkm-admin verify-backup` termina senza errori.
-- Esiste una copia su un sistema diverso dal server PKM.
+- Esiste una copia su un sistema diverso dal server Scarlet.
 - `systemctl list-timers` mostra la prossima esecuzione di `pkm-backup.timer`.
 - Periodicamente (ad esempio ogni trimestre) prova un [ripristino](guide:proc-restore) su un ambiente di test: un backup mai provato non è un backup affidabile.
 
@@ -71,4 +71,4 @@ Questa procedura riguarda il **backup applicativo PKM**.
 - **Permesso negato**: esegui i comandi con `sudo`; i file sono di proprietà dell'utente di sistema `pkm`.
 - **`verify-backup` fallisce**: il file è incompleto o alterato. Non usarlo; crea un nuovo backup e controlla i log in `/var/log/pkm/pkm.log` o con `journalctl -u pkm`.
 - **Il timer non parte**: abilitalo con `sudo systemctl enable --now pkm-backup.timer`.
-- **Ti serve un backup del cluster**: PKM non lo fa. Usa snapshot di etcd o uno strumento come Velero, gestiti dall'amministratore del cluster.
+- **Ti serve un backup del cluster**: Scarlet non lo fa. Usa snapshot di etcd o uno strumento come Velero, gestiti dall'amministratore del cluster.

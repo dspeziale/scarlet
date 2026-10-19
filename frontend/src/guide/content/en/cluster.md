@@ -11,7 +11,7 @@ related: node, namespace, cos-e-kubernetes, proc-verificare-cluster, alta-dispon
 
 A cluster is the "single computer" Kubernetes builds by combining many machines. You hand applications to the cluster, not to a specific machine: the cluster decides where to run them and keeps them alive.
 
-In PKM, the [Cluster → Panoramica](app:/cluster) page gives you a snapshot of the cluster you are connected to: the context name (the same as in the LIVE badge), the Kubernetes version, how many nodes there are and whether they are ready, how many pods are running, and which problems are open.
+In Scarlet, the [Cluster → Panoramica](app:/cluster) page gives you a snapshot of the cluster you are connected to: the context name (the same as in the LIVE badge), the Kubernetes version, how many nodes there are and whether they are ready, how many pods are running, and which problems are open.
 
 ## Technical details
 
@@ -20,9 +20,9 @@ A cluster has two parts:
 - **Control plane**: `kube-apiserver`, `etcd`, `kube-scheduler`, `kube-controller-manager` (and, in clouds, `cloud-controller-manager`). In a production cluster the control plane has **at least three nodes**, because `etcd` uses a quorum (majority): with 3 members it tolerates losing 1, with 5 it tolerates losing 2.
 - **Worker nodes**: run the pods. See [Node](guide:node).
 
-The client (PKM, `kubectl`) connects to the API server using a **kubeconfig**, which contains the server address, the CA certificate and the credentials. A kubeconfig can hold multiple **contexts** (cluster + user + default namespace); PKM uses the one configured in [Impostazioni → Kubernetes](app:/settings/kubernetes).
+The client (Scarlet, `kubectl`) connects to the API server using a **kubeconfig**, which contains the server address, the CA certificate and the credentials. A kubeconfig can hold multiple **contexts** (cluster + user + default namespace); Scarlet uses the one configured in [Impostazioni → Kubernetes](app:/settings/kubernetes).
 
-All cluster state lives in `etcd`. This is why a real cluster backup is an **etcd snapshot** (or a tool such as Velero), which is different from the manifests export PKM offers: see [Backup](guide:backup).
+All cluster state lives in `etcd`. This is why a real cluster backup is an **etcd snapshot** (or a tool such as Velero), which is different from the manifests export Scarlet offers: see [Backup](guide:backup).
 
 Resources are either **namespaced** (Pod, Deployment, Service, ConfigMap, Secret, PVC...) or **cluster-scoped** (Node, PersistentVolume, StorageClass, Namespace, ClusterRole...).
 
@@ -57,7 +57,7 @@ current-context: pkm@prod
 
 ## What can go wrong
 
-- **API server unreachable**: network, firewall, expired certificates, control plane down. PKM shows Kubernetes as Unhealthy.
+- **API server unreachable**: network, firewall, expired certificates, control plane down. Scarlet shows Kubernetes as Unhealthy.
 - **Loss of etcd quorum**: the API server becomes read-only or stops responding; no changes are possible.
 - **Expired cluster certificates** (typical of kubeadm clusters not upgraded for a year).
 - **Wrong context**: you are looking at (or changing) the wrong cluster.
@@ -73,6 +73,6 @@ current-context: pkm@prod
 ## How to fix
 
 - No connection: check network and firewall towards the API server port (usually 6443), then the kubeconfig in [Impostazioni → Kubernetes](app:/settings/kubernetes).
-- Expired certificates or control plane issues: these are cluster administrator tasks (e.g. `kubeadm certs check-expiration`) and cannot be fixed from PKM.
+- Expired certificates or control plane issues: these are cluster administrator tasks (e.g. `kubeadm certs check-expiration`) and cannot be fixed from Scarlet.
 - NotReady nodes: follow [Node NotReady](guide:node-notready).
 - Wrong context: fix the configured kubeconfig and check the badge again.

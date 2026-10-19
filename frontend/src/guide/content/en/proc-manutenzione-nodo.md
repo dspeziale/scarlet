@@ -22,13 +22,13 @@ Before any intervention that makes a node unavailable: operating system update, 
 
 1. **Verify the node** as described in [Verify a node](guide:proc-verificare-nodo) and note which Pods it hosts.
 2. **Cordon.** In [Operations → Maintenance](app:/operations/maintenance) select the node and run **Cordon**. The node becomes `SchedulingDisabled`: existing Pods keep running, but no new ones arrive.
-3. **Drain.** Run **Drain** on the same node. PKM:
+3. **Drain.** Run **Drain** on the same node. Scarlet:
    - evicts Pods through the **Eviction API**, so it respects **PodDisruptionBudgets**: if an eviction would violate a PDB it is refused and retried;
    - **skips DaemonSet Pods**, which by definition must stay on every node;
    - leaves it to the controllers (Deployment, StatefulSet, ReplicaSet) to recreate the Pods on other nodes.
 4. **Follow the progress.** The drain completes when only DaemonSet Pods (and static Pods) remain on the node. If it gets stuck, read the reported reason (usually a PDB that allows no disruptions).
 5. **Check the applications.** No new `Pending` Pods or degraded Deployments should appear in the [Operations Center](app:/operations-center).
-6. **Perform the maintenance** on the node (outside PKM, for example via SSH): updates, reboot, etc.
+6. **Perform the maintenance** on the node (outside Scarlet, for example via SSH): updates, reboot, etc.
 7. **Wait for the node to be `Ready` again** in [Cluster → Nodes](app:/cluster/nodes).
 8. **Uncordon.** Run **Uncordon** in [Maintenance](app:/operations/maintenance). The node becomes schedulable again.
 

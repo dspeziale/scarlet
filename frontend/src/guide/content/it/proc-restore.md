@@ -1,6 +1,6 @@
 ---
 title: Ripristinare da un backup
-summary: Come riportare PKM a uno stato salvato in precedenza con restore.sh (verifica, arresto del servizio, ripristino, riavvio).
+summary: Come riportare Scarlet a uno stato salvato in precedenza con restore.sh (verifica, arresto del servizio, ripristino, riavvio).
 category: procedures
 order: 130
 keywords: restore, ripristino, restore.sh, pkm-admin restore, verify-backup, checksum, disaster recovery
@@ -9,23 +9,23 @@ related: backup, proc-backup, proc-installare, faq
 
 ## Quando serve
 
-- Il database di PKM è danneggiato o PKM non parte più dopo un errore.
+- Il database di Scarlet è danneggiato o Scarlet non parte più dopo un errore.
 - Una modifica errata (utenti cancellati, impostazioni sbagliate) va annullata.
-- Devi ricostruire PKM su un nuovo server dopo la perdita di quello originale.
+- Devi ricostruire Scarlet su un nuovo server dopo la perdita di quello originale.
 
-> Il ripristino riguarda **solo PKM** (database e configurazione). Non ripristina risorse Kubernetes, dati dei Persistent Volume né etcd. Per quelli servono gli strumenti di backup del cluster: vedi [Backup](guide:backup).
+> Il ripristino riguarda **solo Scarlet** (database e configurazione). Non ripristina risorse Kubernetes, dati dei Persistent Volume né etcd. Per quelli servono gli strumenti di backup del cluster: vedi [Backup](guide:backup).
 
 ## Prerequisiti
 
-- Accesso `sudo` al server PKM.
+- Accesso `sudo` al server Scarlet.
 - Il file di backup da ripristinare, già verificato o verificabile.
 - Lo script `restore.sh`, installato in `/opt/pkm/current/scripts/restore.sh` (è anche nel pacchetto di rilascio).
-- Una finestra di manutenzione: durante il ripristino PKM non è disponibile. I carichi di lavoro nel cluster **non** sono toccati.
-- Se ripristini su un server nuovo: PKM già installato con `install.sh`, preferibilmente nella **stessa versione** del backup o in una più recente.
+- Una finestra di manutenzione: durante il ripristino Scarlet non è disponibile. I carichi di lavoro nel cluster **non** sono toccati.
+- Se ripristini su un server nuovo: Scarlet già installato con `install.sh`, preferibilmente nella **stessa versione** del backup o in una più recente.
 
 ## Procedura
 
-1. **Avvisa gli utenti** che PKM sarà indisponibile per qualche minuto.
+1. **Avvisa gli utenti** che Scarlet sarà indisponibile per qualche minuto.
 2. **Fai un backup dello stato attuale**, anche se difettoso: ti permette di tornare indietro se il ripristino non è quello giusto.
 
    ```bash
@@ -67,7 +67,7 @@ related: backup, proc-backup, proc-installare, faq
 ## Se qualcosa va storto
 
 - **Checksum non valido**: `restore.sh` si interrompe senza modificare nulla. Usa un altro backup, ad esempio la copia conservata fuori dal server.
-- **Il servizio non riparte**: leggi `journalctl -u pkm -n 200` e `/var/log/pkm/pkm.log`. Se l'errore riguarda la versione del database, installa la stessa versione di PKM che ha prodotto il backup o una più recente (l'aggiornamento migra il database).
+- **Il servizio non riparte**: leggi `journalctl -u pkm -n 200` e `/var/log/pkm/pkm.log`. Se l'errore riguarda la versione del database, installa la stessa versione di Scarlet che ha prodotto il backup o una più recente (l'aggiornamento migra il database).
 - **Kubernetes Unhealthy dopo il ripristino**: il kubeconfig indicato in configurazione non esiste sul server o non è leggibile dall'utente `pkm` (permessi consigliati 0640 root:pkm).
 - **Password dimenticata dopo il ripristino**: `sudo pkm-admin reset-password <utente>`.
 - **Vuoi tornare allo stato precedente**: ripristina il backup fatto al passo 2, oppure (servizio fermo) rimetti al suo posto `/var/lib/pkm/pkm.db.pre-restore-<data>` con proprietario `pkm:pkm`.

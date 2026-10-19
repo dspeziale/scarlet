@@ -23,7 +23,7 @@ Attenzione: l'Ingress è solo una **configurazione**. Per funzionare serve un **
 - Funzioni avanzate (redirect, timeout, dimensione massima del body, rewrite) si configurano con **annotazioni specifiche del controller**, ad esempio `nginx.ingress.kubernetes.io/proxy-body-size`.
 - L'Ingress gestisce solo HTTP/HTTPS. Per TCP/UDP generico usa un [Service](guide:service) di tipo LoadBalancer o NodePort.
 
-In PKM: [Networking → Ingress](app:/k8s/ingresses).
+In Scarlet: [Networking → Ingress](app:/k8s/ingresses).
 
 ## Esempio
 
@@ -64,7 +64,7 @@ spec:
 
 ## Come verificare
 
-In PKM apri l'Ingress: la scheda Relazioni mostra Service e Secret collegati, la scheda Eventi gli eventuali errori segnalati dal controller.
+In Scarlet apri l'Ingress: la scheda Relazioni mostra Service e Secret collegati, la scheda Eventi gli eventuali errori segnalati dal controller.
 
 ```bash
 kubectl -n shop get ingress shop

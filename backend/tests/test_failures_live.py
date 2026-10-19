@@ -160,7 +160,7 @@ def test_settings_change_reconnects(tmp_path, live_app):
 
 def test_kubernetes_forbidden_mapped(admin, ctx, monkeypatch):
     def deny(*a, **k):
-        raise K8sForbidden("the Kubernetes account used by PKM is not allowed to do this", params={"status": 403})
+        raise K8sForbidden("the Kubernetes account used by Scarlet is not allowed to do this", params={"status": 403})
 
     monkeypatch.setattr(ctx.k8s.provider, "list", deny)
     ctx.k8s.invalidate()

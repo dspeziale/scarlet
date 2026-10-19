@@ -5,7 +5,7 @@
 
 ## Contesto
 
-Serve un backup affidabile di PKM senza presentare come backup del cluster qualcosa che non lo è.
+Serve un backup affidabile di Scarlet senza presentare come backup del cluster qualcosa che non lo è.
 
 ## Decisione
 

@@ -15,12 +15,12 @@ related: cluster, node, monitoring, proc-verificare-nodo, troubleshooting, node-
 
 ## Prerequisiti
 
-- PKM collegato al cluster (badge **LIVE** visibile). Se vedi il banner **DEMO**, stai guardando dati di esempio.
+- Scarlet collegato al cluster (badge **LIVE** visibile). Se vedi il banner **DEMO**, stai guardando dati di esempio.
 - Ruolo almeno **Viewer**.
 
 ## Procedura
 
-1. **Salute di PKM e delle integrazioni.** Apri [Monitoraggio → Health](app:/monitoring/health). Backend, database, Kubernetes e Podman dovrebbero essere **Healthy**. Se Kubernetes è Unhealthy, tutto ciò che vedi dopo potrebbe essere incompleto: risolvi prima la connessione ([Collegare Kubernetes](guide:proc-collegare-kubernetes)).
+1. **Salute di Scarlet e delle integrazioni.** Apri [Monitoraggio → Health](app:/monitoring/health). Backend, database, Kubernetes e Podman dovrebbero essere **Healthy**. Se Kubernetes è Unhealthy, tutto ciò che vedi dopo potrebbe essere incompleto: risolvi prima la connessione ([Collegare Kubernetes](guide:proc-collegare-kubernetes)).
 
 2. **Problemi già rilevati.** Apri il [Centro Operativo](app:/operations-center). Ordina per gravità: prima **CRITICAL** ed **ERROR**, poi WARNING. Per ogni voce leggi la risorsa coinvolta, il rischio e le azioni suggerite.
 
@@ -28,7 +28,7 @@ related: cluster, node, monitoring, proc-verificare-nodo, troubleshooting, node-
    - nodi marcati **SchedulingDisabled** (cordon dimenticato dopo una manutenzione?);
    - condizioni di pressione: `MemoryPressure`, `DiskPressure`, `PIDPressure` devono essere `False`.
 
-4. **Uso delle risorse.** In [Monitoraggio → CPU](app:/monitoring/cpu) e [Memoria](app:/monitoring/memory) cerca nodi stabilmente sopra l'80-90%. Se compare "Metriche avanzate non configurate", metrics-server non è disponibile: PKM non inventa i valori. In [Storage](app:/monitoring/storage) controlla lo spazio.
+4. **Uso delle risorse.** In [Monitoraggio → CPU](app:/monitoring/cpu) e [Memoria](app:/monitoring/memory) cerca nodi stabilmente sopra l'80-90%. Se compare "Metriche avanzate non configurate", metrics-server non è disponibile: Scarlet non inventa i valori. In [Storage](app:/monitoring/storage) controlla lo spazio.
 
 5. **Workload.** In [Applicazioni → Deployments](app:/k8s/deployments) confronta repliche desiderate e pronte (es. `3/3`). Un `2/3` persistente indica un problema. Fai lo stesso per StatefulSets e DaemonSets.
 

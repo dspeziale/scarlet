@@ -40,3 +40,6 @@ kubeconfig*
 .idea/
 .DS_Store
 Thumbs.db
+
+# Local credentials - never commit
+account.txt

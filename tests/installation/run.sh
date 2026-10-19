@@ -62,7 +62,7 @@ check "TLS key not world readable" x "[ \"\$(stat -c '%a' /etc/pkm/tls/pkm.key)\
 check "data dir owned by pkm" x "[ \"\$(stat -c '%U' /var/lib/pkm/pkm.db)\" = 'pkm' ]"
 check "service runs as pkm" x "ps -o user= -p \$(systemctl show -p MainPID --value pkm.service) | grep -qx pkm"
 check "podman socket drop-in installed" x "test -f /etc/systemd/system/podman.socket.d/10-pkm.conf"
-check "journald logs present" x "journalctl -u pkm --no-pager | grep -q 'PKM started'"
+check "journald logs present" x "journalctl -u pkm --no-pager | grep -q 'Scarlet started'"
 check "file log present" x "test -s /var/log/pkm/pkm.log"
 check "systemd hardening applied" x "systemctl show pkm.service -p NoNewPrivileges -p ProtectSystem | grep -q 'ProtectSystem=strict'"
 

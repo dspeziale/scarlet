@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "pkm"
 dynamic = ["version"]
-description = "Podman Kubernetes Manager - operations console for Kubernetes and Podman"
+description = "Scarlet - operations console for Kubernetes and Podman"
 requires-python = ">=3.11"
 license = { text = "Proprietary" }
 dependencies = [

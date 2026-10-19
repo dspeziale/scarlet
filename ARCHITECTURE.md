@@ -1,5 +1,7 @@
 # Architettura
 
+Scarlet — *Secure Cluster Administration, Runtime & Lifecycle Engineering Tool*.
+
 ## Componenti
 
 ```text

@@ -2,7 +2,7 @@
 
 ## Modello di minaccia (sintesi)
 
-PKM è una console con credenziali potenti verso Kubernetes (ServiceAccount `pkm`) e, se abilitato, verso Podman.
+Scarlet è una console con credenziali potenti verso Kubernetes (ServiceAccount `pkm`) e, se abilitato, verso Podman.
 Gli asset da proteggere sono: queste credenziali, la possibilità di modificare il cluster, i valori dei Secret, i log
 applicativi, l'integrità dell'audit. Minacce considerate: accesso non autenticato alla porta, furto di sessione, CSRF,
 XSS, brute force delle password, escalation di ruolo (UI aggirata chiamando l'API), presa di possesso del primo
@@ -78,7 +78,7 @@ riferimento di sessione (12 caratteri dell'hash) e request id. I campi `password
 
 ## Kubernetes: privilegio minimo
 
-`deploy/kubernetes/pkm-rbac.yaml` concede solo i verbi usati da PKM. **Non** concede: `nodes/proxy`, `pods/exec`,
+`deploy/kubernetes/pkm-rbac.yaml` concede solo i verbi usati da Scarlet. **Non** concede: `nodes/proxy`, `pods/exec`,
 `pods/attach`, `pods/portforward`, risorse RBAC (`roles`, `clusterroles`, binding), `serviceaccounts/token`, CRD,
 webhook o accesso a etcd. Per una console di sola osservazione usare `pkm-readonly`.
 
@@ -90,7 +90,7 @@ esplicita. Alternativa: socket rootless di un utente dedicato.
 
 ## Ispezione delle immagini (wizard di onboarding)
 
-`POST /api/v1/images/inspect` fa sì che il server PKM contatti il registry indicato dall'utente (Registry v2 API).
+`POST /api/v1/images/inspect` fa sì che il server Scarlet contatti il registry indicato dall'utente (Registry v2 API).
 Per evitare che diventi un mezzo per chiamare servizi interni (SSRF):
 
 - è disponibile solo con il permesso `workloads.deploy` (Operator e Administrator) ed è registrato nell'audit log;

@@ -1,4 +1,4 @@
-// HTTP client for the PKM REST API (/api/v1).
+// HTTP client for the Scarlet REST API (/api/v1).
 // The browser never talks to Kubernetes or Podman directly: only to this backend.
 
 export const API_BASE = '/api/v1';

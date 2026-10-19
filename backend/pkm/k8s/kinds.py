@@ -1,4 +1,4 @@
-"""Registry of the Kubernetes resource kinds managed by PKM.
+"""Registry of the Kubernetes resource kinds managed by Scarlet.
 
 Only the kinds listed here can be read or written through the API: this keeps
 the attack surface explicit and lets the UI know what each kind supports.

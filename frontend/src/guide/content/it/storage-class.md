@@ -24,7 +24,7 @@ Senza Storage Class un amministratore deve preparare i PV a mano, uno per uno.
 - **Classe di default**: annotazione `storageclass.kubernetes.io/is-default-class: "true"`. Deve essercene al massimo una; con più default il comportamento è ambiguo (viene scelta la più recente).
 - Le Storage Class sono oggetti di cluster e in gran parte immutabili: per cambiare `parameters` o `provisioner` si crea una nuova classe.
 
-In PKM: [Storage → Storage Classes](app:/k8s/storageclasses); la classe di default è evidenziata.
+In Scarlet: [Storage → Storage Classes](app:/k8s/storageclasses); la classe di default è evidenziata.
 
 ## Esempio
 
@@ -63,7 +63,7 @@ kubectl get csidrivers
 kubectl get pods -A | grep -i csi
 ```
 
-In PKM controlla che una sola classe sia marcata come default e che i Pod del driver CSI siano Running nella pagina [Pod](app:/k8s/pods).
+In Scarlet controlla che una sola classe sia marcata come default e che i Pod del driver CSI siano Running nella pagina [Pod](app:/k8s/pods).
 
 ## Come risolvere
 

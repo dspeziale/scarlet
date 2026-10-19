@@ -25,7 +25,7 @@ VERSION="$("$PY" -c "import re,sys; print(re.search(r'__version__ = \"([^\"]+)\"
 NAME="pkm-$VERSION-linux-x86_64"
 OUT="$REPO/release"
 STAGE="$OUT/$NAME"
-echo "== building Podman Kubernetes Manager $VERSION"
+echo "== building Scarlet $VERSION"
 
 # 1. frontend -> backend/pkm/static
 if [[ "$SKIP_FE" == no ]]; then

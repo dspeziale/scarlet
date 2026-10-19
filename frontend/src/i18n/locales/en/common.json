@@ -1,4 +1,6 @@
 {
+  "copyright": "© {{year}} ISED – All rights reserved",
+  "appExpansion": "Secure Cluster Administration, Runtime & Lifecycle Engineering Tool",
   "loading": "Loading…",
   "close": "Close",
   "cancel": "Cancel",

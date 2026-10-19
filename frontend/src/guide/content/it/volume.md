@@ -69,7 +69,7 @@ spec:
 
 ## Come verificare
 
-In PKM apri il Pod: la scheda Panoramica elenca i volumi montati, la scheda Eventi mostra `FailedMount` con il motivo, la scheda Relazioni collega PVC, ConfigMap e Secret.
+In Scarlet apri il Pod: la scheda Panoramica elenca i volumi montati, la scheda Eventi mostra `FailedMount` con il motivo, la scheda Relazioni collega PVC, ConfigMap e Secret.
 
 ```bash
 kubectl -n shop describe pod web | sed -n '/Volumes:/,/QoS/p'

@@ -27,11 +27,11 @@ backend/.venv/Scripts/pip install -e "backend[dev]"      # Linux: backend/.venv/
 Avvio in DEMO (dati simulati, HTTP su 127.0.0.1:8080, DB in `var/dev/`), dalla radice del repository:
 
 ```bash
-PKM_CONFIG=config/dev-demo.yaml backend/.venv/Scripts/pkm-server
+backend/.venv/Scripts/pkm-server --config config/dev-demo.yaml
 ```
 
 Al primo avvio il log stampa il token di setup (`setup_token=...`); in alternativa:
-`PKM_CONFIG=config/dev-demo.yaml backend/.venv/Scripts/pkm-admin create-admin --username dev`.
+`backend/.venv/Scripts/pkm-admin --config config/dev-demo.yaml create-admin --username dev`.
 Con `environment: development` la Swagger UI è su `http://127.0.0.1:8080/api/docs`.
 
 Per sviluppare contro un cluster reale: copiare `config/dev-demo.yaml`, impostare `mode: live` e `kubernetes.kubeconfig`.

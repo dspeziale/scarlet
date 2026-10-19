@@ -1,6 +1,6 @@
 ---
-title: Installare PKM su Oracle Linux 9.7
-summary: Installa Podman Kubernetes Manager su un server Oracle Linux 9.7 x86_64 e completa il primo avvio guidato.
+title: Installare Scarlet su Oracle Linux 9.7
+summary: Installa Scarlet su un server Oracle Linux 9.7 x86_64 e completa il primo avvio guidato.
 category: procedures
 order: 10
 keywords: installazione, install.sh, oracle linux, setup, token, systemd, tls, pkm-admin
@@ -9,7 +9,7 @@ related: introduzione, proc-collegare-kubernetes, proc-collegare-podman, proc-ba
 
 ## Quando serve
 
-Quando devi mettere in funzione PKM per la prima volta su un server, oppure reinstallarlo su una macchina nuova. Per passare a una versione più recente su un server dove PKM è già installato non serve reinstallare: si usa `upgrade.sh` (vedi la sezione finale).
+Quando devi mettere in funzione Scarlet per la prima volta su un server, oppure reinstallarlo su una macchina nuova. Per passare a una versione più recente su un server dove Scarlet è già installato non serve reinstallare: si usa `upgrade.sh` (vedi la sezione finale).
 
 ## Prerequisiti
 

@@ -139,7 +139,7 @@
     "failureThreshold": "Fallimenti prima dell'azione"
   },
   "summary": {
-    "explain": "Ecco cosa verrà creato. PKM ha validato la configurazione direttamente sul cluster (dry-run): nulla è stato ancora applicato.",
+    "explain": "Ecco cosa verrà creato. Scarlet ha validato la configurazione direttamente sul cluster (dry-run): nulla è stato ancora applicato.",
     "what": "In breve",
     "whatText": "Verrà avviata l'applicazione {{name}} nel namespace {{namespace}} con {{replicas}} repliche dell'immagine {{image}}.",
     "resources": "Risorse (request / limit)",

@@ -30,7 +30,7 @@ namespace (`/k8s/nodes/_/node-01`).
 ## Errori
 
 ```json
-{"error": {"code": "k8s_forbidden", "message": "the Kubernetes account used by PKM is not allowed to do this",
+{"error": {"code": "k8s_forbidden", "message": "the Kubernetes account used by Scarlet is not allowed to do this",
            "params": {"status": 403, "reason": "Forbidden"}, "details": "<messaggio dell'API server>", "requestId": "…"}}
 ```
 
@@ -38,7 +38,7 @@ namespace (`/k8s/nodes/_/node-01`).
 |---|---|
 | 400 | `bad_request` |
 | 401 | `unauthorized` |
-| 403 | `forbidden` (RBAC PKM, CSRF), `k8s_forbidden` |
+| 403 | `forbidden` (RBAC Scarlet, CSRF), `k8s_forbidden` |
 | 404 | `not_found`, `k8s_not_found`, `podman_not_found` |
 | 409 | `conflict`, `k8s_conflict` |
 | 422 | `validation_failed` (`params.errors[]` con `field`/`message`, righe YAML), `k8s_invalid` (`params.causes[]`) |

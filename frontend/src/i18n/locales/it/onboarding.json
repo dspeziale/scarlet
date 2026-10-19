@@ -24,8 +24,8 @@
   },
   "verify": {
     "title": "Verifica dell'immagine",
-    "explain": "PKM controlla che {{image}} esista sul registry, che il registry sia raggiungibile da questo server, che le credenziali siano corrette e che l'immagine sia disponibile per linux/amd64.",
-    "explainLocal": "PKM legge la configurazione di {{image}} dallo storage Podman locale.",
+    "explain": "Scarlet controlla che {{image}} esista sul registry, che il registry sia raggiungibile da questo server, che le credenziali siano corrette e che l'immagine sia disponibile per linux/amd64.",
+    "explainLocal": "Scarlet legge la configurazione di {{image}} dallo storage Podman locale.",
     "running": "Verifica in corso sul registry…",
     "demo": "Modalità DEMO: il risultato è simulato, nessun registry reale è stato contattato.",
     "okTitle": "Immagine verificata",
@@ -78,7 +78,7 @@
   },
   "dest": {
     "title": "Dove e come pubblicarla",
-    "explain": "PKM ha preparato dei valori consigliati in base all'immagine. Potrai rifinire tutto (CPU, memoria, rete, ingress) nel wizard di deploy.",
+    "explain": "Scarlet ha preparato dei valori consigliati in base all'immagine. Potrai rifinire tutto (CPU, memoria, rete, ingress) nel wizard di deploy.",
     "name": "Nome dell'applicazione",
     "nameHint": "Lettere minuscole, numeri e '-', massimo 50 caratteri. Diventa il nome di Deployment e Service.",
     "replicas": "Repliche",

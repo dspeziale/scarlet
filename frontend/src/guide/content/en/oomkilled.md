@@ -45,7 +45,7 @@ resources:
 - The limit is raised indefinitely to hide a memory leak: the problem moves to the node.
 - The limit is set in the wrong units (`1G` versus `1Gi`, or `512m`, which means 0.512 bytes).
 - Memory spikes at startup (caches, data loading) exceed the limit even if steady-state usage is low.
-- Without metrics-server the memory trend is not visible: PKM shows "Metriche avanzate non configurate".
+- Without metrics-server the memory trend is not visible: Scarlet shows "Metriche avanzate non configurate".
 
 ## How to verify
 

@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { TEMPLATES, templateFor } from './templates';
 import { useTranslation } from 'react-i18next';
 import { CheckCircle2, FileCheck2, GitCompare, Upload, XCircle } from 'lucide-react';
 import { dump, loadAll } from 'js-yaml';
@@ -70,8 +72,11 @@ export default function ApplyYaml() {
   const kindsQ = useApi<{ items: KindInfo[] }>('/k8s/kinds', undefined, { staleTime: Infinity });
   const workloadKinds = useMemo(() => new Set((kindsQ.data?.items ?? []).filter((k) => k.workload).map((k) => k.kind)), [kindsQ.data]);
   const toast = useToast();
-  const [text, setText] = useState(EXAMPLE);
-  const [namespace, setNamespace] = useState('default');
+  const [params] = useSearchParams();
+  const initialNs = params.get('namespace') || 'default';
+  const initialTpl = templateFor(params.get('template'));
+  const [text, setText] = useState(() => (initialTpl ? initialTpl.yaml(initialNs) : EXAMPLE));
+  const [namespace, setNamespace] = useState(initialNs);
   const [validation, setValidation] = useState<ValidateResult | null>(null);
   const [busy, setBusy] = useState<'validate' | 'diff' | 'apply' | null>(null);
   const [error, setError] = useState<unknown>(null);
@@ -174,7 +179,26 @@ export default function ApplyYaml() {
           <Field label={t('yaml.defaultNs')} htmlFor="ay-ns" hint={t('yaml.defaultNsHint')}>
             <NamespaceSelect id="ay-ns" value={namespace} allowAll={false} onChange={setNamespace} />
           </Field>
+          <Field label={t('yaml.template')} htmlFor="ay-tpl" hint={t('yaml.templateHint')}>
+            <select
+              id="ay-tpl"
+              className="input sm"
+              value=""
+              onChange={(e) => {
+                const tpl = templateFor(e.target.value);
+                if (tpl) change(tpl.yaml(namespace));
+              }}
+            >
+              <option value="">{t('yaml.templatePick')}</option>
+              {TEMPLATES.filter((x) => (x.adminOnly ? can('resources.apply') : can('workloads.deploy'))).map((x) => (
+                <option key={x.key} value={x.key}>
+                  {x.kind}
+                </option>
+              ))}
+            </select>
+          </Field>
         </div>
+        {initialTpl && <Alert tone="info" title={t('yaml.templateLoaded', { kind: initialTpl.kind })}>{t('yaml.templateSteps')}</Alert>}
         <YamlEditor value={text} onChange={change} label={t('yaml.editor')} minHeight={320} />
         <div aria-live="polite" style={{ marginTop: 8 }}>
           {syntax.length > 0 ? (

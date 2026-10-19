@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Podman Kubernetes Manager - create a backup now.
+# Scarlet - create a backup now.
 #
 #   sudo ./backup.sh [--include-manifests] [--copy-to DIR]
 #
-# Creates /var/lib/pkm/backups/pkm-backup-<UTC>.tar.gz (+ .sha256) with the PKM database and
+# Creates /var/lib/pkm/backups/pkm-backup-<UTC>.tar.gz (+ .sha256) with the Scarlet database and
 # configuration (and, with --include-manifests, a YAML export of the application resources:
 # no Secrets, no volume data). This is NOT a Kubernetes cluster backup (see BACKUP.md).
 # --copy-to DIR also copies the archive and its checksum to DIR (e.g. an NFS mount) and verifies the copy.
@@ -23,7 +23,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 require_root
-[[ -x "$PKM_CURRENT/venv/bin/pkm-admin" ]] || die "PKM is not installed"
+[[ -x "$PKM_CURRENT/venv/bin/pkm-admin" ]] || die "Scarlet is not installed"
 
 OUT="$(runuser -u "$PKM_USER" -- env PKM_CONFIG="$PKM_CONFIG_FILE" "$PKM_CURRENT/venv/bin/pkm-admin" backup "${ARGS[@]}")" \
   || die "backup failed"

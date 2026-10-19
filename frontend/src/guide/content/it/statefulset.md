@@ -21,7 +21,7 @@ Se `db-1` muore, Kubernetes ricrea esattamente `db-1`, con lo stesso nome e lo s
 - **Ordine**: con `podManagementPolicy: OrderedReady` (default) i Pod vengono creati in ordine 0→N-1, ciascuno solo quando il precedente è Ready, e rimossi in ordine inverso. `Parallel` elimina questo vincolo.
 - **Aggiornamenti**: `updateStrategy.type: RollingUpdate` aggiorna dal Pod con ordinale più alto al più basso; `rollingUpdate.partition` permette aggiornamenti a stadi (canary). `OnDelete` aggiorna un Pod solo quando lo cancelli tu.
 
-In PKM: [Applicazioni → StatefulSets](app:/k8s/statefulsets). La scheda Relazioni mostra Pod e PVC collegati.
+In Scarlet: [Applicazioni → StatefulSets](app:/k8s/statefulsets). La scheda Relazioni mostra Pod e PVC collegati.
 
 ## Esempio
 
@@ -66,7 +66,7 @@ spec:
 
 ## Come verificare
 
-In PKM controlla repliche pronte, poi Pod e PVC nella scheda Relazioni; in [Storage → Persistent Volume Claims](app:/k8s/persistentvolumeclaims) verifica che i PVC siano `Bound`.
+In Scarlet controlla repliche pronte, poi Pod e PVC nella scheda Relazioni; in [Storage → Persistent Volume Claims](app:/k8s/persistentvolumeclaims) verifica che i PVC siano `Bound`.
 
 ```bash
 kubectl -n shop get statefulset db
@@ -80,4 +80,4 @@ kubectl -n shop rollout status statefulset/db
 1. Se un PVC è Pending, risolvi prima lo storage: vedi [Persistent Volume Claim](guide:persistent-volume-claim).
 2. Se un Pod non diventa Ready, diagnosticalo come un qualsiasi Pod ([procedura](guide:proc-diagnosticare-pod)); gli altri ordinali attendono.
 3. In caso di nodo perso definitivamente, un amministratore può, dopo aver verificato che il nodo sia davvero spento, forzare la cancellazione del Pod (`kubectl delete pod db-1 --grace-period=0 --force`): è un'operazione rischiosa.
-4. Prima di ridurre le repliche o cancellare PVC fai un [backup](guide:backup) dei dati applicativi: PKM non salva il contenuto dei volumi.
+4. Prima di ridurre le repliche o cancellare PVC fai un [backup](guide:backup) dei dati applicativi: Scarlet non salva il contenuto dei volumi.

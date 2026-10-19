@@ -11,7 +11,7 @@
   "prometheusNotConfigured": "Storico e traffico di rete richiedono Prometheus, che non è configurato.",
   "prometheusError": "Prometheus è configurato ma non risponde: {{error}}",
   "configure": "Configura",
-  "partial": "Dati parziali: alcune risorse non sono leggibili con i permessi dell'account Kubernetes di PKM ({{kinds}}).",
+  "partial": "Dati parziali: alcune risorse non sono leggibili con i permessi dell'account Kubernetes di Scarlet ({{kinds}}).",
   "allocatable": "Allocabile",
   "readyNodesOnly": "somma dei nodi pronti",
   "usage": "Uso reale",
@@ -82,15 +82,15 @@
       "backup": "Backup"
     },
     "describe": {
-      "backend": "Il servizio PKM che risponde a questa pagina.",
+      "backend": "Il servizio Scarlet che risponde a questa pagina.",
       "database": "Il database SQLite con utenti, audit e impostazioni.",
       "kubernetes": "Connessione all'API server del cluster.",
       "podman": "Connessione all'API di Podman su questo host.",
-      "storage": "Spazio libero nella directory dei dati di PKM.",
+      "storage": "Spazio libero nella directory dei dati di Scarlet.",
       "configuration": "Controlli di sicurezza della configurazione.",
       "metrics_server": "Fornisce l'uso reale di CPU e memoria.",
       "prometheus": "Fornisce storico, rete e occupazione volumi.",
-      "backup": "Età dell'ultimo backup riuscito di PKM."
+      "backup": "Età dell'ultimo backup riuscito di Scarlet."
     },
     "msg": {
       "running": "In esecuzione",

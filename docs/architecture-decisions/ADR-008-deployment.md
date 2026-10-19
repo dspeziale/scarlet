@@ -5,7 +5,7 @@
 
 ## Contesto
 
-PKM va installato su Oracle Linux 9.7 con systemd, anche su server senza accesso a Internet, in modo semplice (`./install.sh`) e aggiornabile in sicurezza.
+Scarlet va installato su Oracle Linux 9.7 con systemd, anche su server senza accesso a Internet, in modo semplice (`./install.sh`) e aggiornabile in sicurezza.
 
 ## Decisione
 

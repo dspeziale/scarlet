@@ -1,6 +1,6 @@
 ---
 title: Monitoraggio
-summary: Da dove arrivano metriche, eventi, log e stato di salute in PKM, e come leggerli senza farsi ingannare.
+summary: Da dove arrivano metriche, eventi, log e stato di salute in Scarlet, e come leggerli senza farsi ingannare.
 category: concepts
 order: 70
 keywords: monitoraggio, metriche, metrics-server, prometheus, health, eventi, log, cpu, memoria
@@ -9,18 +9,18 @@ related: resource-request, resource-limit, node, proc-visualizzare-log, troubles
 
 ## In parole semplici
 
-Monitorare significa sapere, in ogni momento, se le applicazioni e il cluster stanno bene e accorgersi dei problemi prima degli utenti. In PKM hai quattro fonti di informazione:
+Monitorare significa sapere, in ogni momento, se le applicazioni e il cluster stanno bene e accorgersi dei problemi prima degli utenti. In Scarlet hai quattro fonti di informazione:
 
 - **Metriche**: quanta CPU, memoria, disco e rete usano pod e nodi.
 - **Eventi**: cosa è appena successo nel cluster (pod creati, pull falliti, scheduling impossibile...).
 - **Log**: cosa scrivono le applicazioni.
-- **Health**: se PKM stesso e i sistemi a cui è collegato funzionano.
+- **Health**: se Scarlet stesso e i sistemi a cui è collegato funzionano.
 
 Il [Centro Operativo](app:/operations-center) combina queste fonti e ti mostra i problemi già interpretati.
 
 ## Dettagli tecnici
 
-**Metriche CPU/RAM** di pod e nodi provengono da **metrics-server** (API `metrics.k8s.io`). Sono valori istantanei, campionati circa ogni 15 secondi, senza storico. **Storico e metriche di rete** provengono da **Prometheus**, se configurato in [Impostazioni → Kubernetes](app:/settings/kubernetes). Se nessuno dei due è disponibile, PKM mostra "Metriche avanzate non configurate": **non stima e non inventa valori**.
+**Metriche CPU/RAM** di pod e nodi provengono da **metrics-server** (API `metrics.k8s.io`). Sono valori istantanei, campionati circa ogni 15 secondi, senza storico. **Storico e metriche di rete** provengono da **Prometheus**, se configurato in [Impostazioni → Kubernetes](app:/settings/kubernetes). Se nessuno dei due è disponibile, Scarlet mostra "Metriche avanzate non configurate": **non stima e non inventa valori**.
 
 Come leggere i numeri:
 
@@ -69,5 +69,5 @@ Interpretazione rapida di un pod:
 
 - Installa o ripara metrics-server (compito dell'amministratore del cluster); verifica con `kubectl get apiservice v1beta1.metrics.k8s.io`.
 - Configura l'URL di Prometheus nelle impostazioni per avere storico e rete.
-- Per non perdere log ed eventi, usa una soluzione centralizzata (es. stack di logging del cluster); PKM la affianca, non la sostituisce.
+- Per non perdere log ed eventi, usa una soluzione centralizzata (es. stack di logging del cluster); Scarlet la affianca, non la sostituisce.
 - Quando un pod è stabilmente vicino ai limiti, rivedi request e limit invece di aspettare l'incidente.

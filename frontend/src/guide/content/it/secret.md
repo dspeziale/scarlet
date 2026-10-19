@@ -11,7 +11,7 @@ related: configmap, volume, ingress, imagepullbackoff, createcontainerconfigerro
 
 Un **Secret** funziona come una [ConfigMap](guide:configmap), ma è destinato a informazioni **riservate**: password del database, chiavi API, certificati TLS, credenziali per scaricare immagini da un registry privato.
 
-In PKM i valori dei Secret sono **nascosti per impostazione predefinita**. Solo un utente con ruolo **Administrator** può rivelarli, e ogni rivelazione viene registrata nell'[Audit Log](app:/security/audit). Il ruolo Viewer non vede mai i valori.
+In Scarlet i valori dei Secret sono **nascosti per impostazione predefinita**. Solo un utente con ruolo **Administrator** può rivelarli, e ogni rivelazione viene registrata nell'[Audit Log](app:/security/audit). Il ruolo Viewer non vede mai i valori.
 
 ## Dettagli tecnici
 
@@ -25,7 +25,7 @@ In PKM i valori dei Secret sono **nascosti per impostazione predefinita**. Solo 
 - Uso nel Pod: `env[].valueFrom.secretKeyRef`, `envFrom[].secretRef` o volume `secret` (montato su tmpfs, quindi non scritto sul disco del nodo).
 - Le stesse regole di aggiornamento delle ConfigMap: le variabili richiedono un riavvio, i volumi si aggiornano (salvo `subPath`). Limite 1 MiB; supporta `immutable: true`.
 
-In PKM: [Configurazione → Secrets](app:/k8s/secrets).
+In Scarlet: [Configurazione → Secrets](app:/k8s/secrets).
 
 ## Esempio
 
@@ -59,7 +59,7 @@ kubectl -n shop create secret docker-registry regcred \
 
 ## Come verificare
 
-In PKM apri il Secret: vedi tipo, chiavi e dimensione dei valori senza rivelarli; la scheda Relazioni mostra i Pod che lo usano.
+In Scarlet apri il Secret: vedi tipo, chiavi e dimensione dei valori senza rivelarli; la scheda Relazioni mostra i Pod che lo usano.
 
 ```bash
 kubectl -n shop get secret db-credentials
@@ -71,6 +71,6 @@ kubectl auth can-i get secrets -n shop --as=system:serviceaccount:shop:default
 
 1. Crea il Secret mancante o correggi nome e chiave nel workload.
 2. Dopo una rotazione delle credenziali riavvia il workload da [Operazioni → Restart](app:/operations/restart).
-3. Limita con RBAC chi può leggere i Secret e, in PKM, assegna il ruolo Administrator solo a chi deve davvero rivelare i valori.
+3. Limita con RBAC chi può leggere i Secret e, in Scarlet, assegna il ruolo Administrator solo a chi deve davvero rivelare i valori.
 4. Se un Secret è stato esposto, considera la credenziale compromessa: cambiala alla fonte, poi aggiorna il Secret.
 5. Non includere valori reali nei manifest salvati in Git; usa strumenti dedicati (Sealed Secrets, External Secrets) se necessario.

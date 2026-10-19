@@ -62,12 +62,16 @@
     "syntaxError": "YAML syntax error",
     "atLine": "Line {{line}}: {{message}}",
     "docsFound": "{{count}} documents found.",
-    "unknownKinds": "Kinds not managed by PKM: {{kinds}}.",
+    "unknownKinds": "Kinds not managed by Scarlet: {{kinds}}.",
     "forbiddenKinds": "Your role cannot apply: {{kinds}}.",
     "validate": "Validate",
     "diff": "Diff",
     "apply": "Apply",
-    "busy": { "validate": "Validating…", "diff": "Computing differences…", "apply": "Applying…" },
+    "busy": {
+      "validate": "Validating…",
+      "diff": "Computing differences…",
+      "apply": "Applying…"
+    },
     "validationTitle": "Validation result",
     "validServer": "Valid configuration: Kubernetes accepted it in dry-run mode (no change applied).",
     "validLocal": "Valid structure. Cluster validation was not run because your role cannot apply these resources.",
@@ -85,7 +89,7 @@
     "force": "Force apply",
     "forceAdminOnly": "Only an Administrator can force the apply.",
     "forceTitle": "Force the apply?",
-    "forceCons1": "Conflicting fields move under PKM management.",
+    "forceCons1": "Conflicting fields move under Scarlet management.",
     "forceCons2": "The tool that managed them may overwrite them again.",
     "diffTitle": "Differences from the cluster",
     "new": "new",
@@ -94,13 +98,18 @@
     "confirmTitle": "Apply {{count}} documents?",
     "cons1": "Resources are created or updated in the cluster with server-side apply.",
     "cons2": "Workload changes start a progressive update of the Pods.",
-    "cons3": "The operation is recorded in the audit log."
+    "cons3": "The operation is recorded in the audit log.",
+    "template": "Template",
+    "templateHint": "Inserts a commented example for the chosen resource type.",
+    "templatePick": "Pick a template…",
+    "templateLoaded": "{{kind}} template loaded",
+    "templateSteps": "Edit the values (name, data, image…) following the comments, then press Validate for the cluster check, Differences to see what changes and Apply to create it."
   },
   "backup": {
     "title": "Backup",
-    "subtitle": "Backup of the PKM application: status, history, verification and restore procedure.",
+    "subtitle": "Backup of the Scarlet application: status, history, verification and restore procedure.",
     "whatTitle": "What is saved",
-    "what1": "The PKM database: users, roles, audit log, settings, notifications and backup history.",
+    "what1": "The Scarlet database: users, roles, audit log, settings, notifications and backup history.",
     "what2": "Configuration files (config.yaml and pkm.env, which may contain secrets: the archive is readable only by the service).",
     "what3": "Optional: an export of the Kubernetes manifests of the applications (Deployments, Services, ConfigMaps, …) as YAML.",
     "notTitle": "What is NOT saved",
@@ -119,17 +128,39 @@
     "includeHint": "The backup runs in the background; backups older than the retention are deleted automatically.",
     "runNow": "Run backup now",
     "manageOnly": "Only an Administrator can run, verify, download or delete backups.",
-    "op": { "running": "Backup running…", "succeeded": "Backup completed", "failed": "Backup failed", "cancelled": "Backup cancelled" },
-    "step": { "database": "Database copied", "config": "Configuration copied", "k8s_manifests": "Kubernetes manifests exported" },
+    "op": {
+      "running": "Backup running…",
+      "succeeded": "Backup completed",
+      "failed": "Backup failed",
+      "cancelled": "Backup cancelled"
+    },
+    "step": {
+      "database": "Database copied",
+      "config": "Configuration copied",
+      "k8s_manifests": "Kubernetes manifests exported"
+    },
     "history": "History",
     "none": "No backup present.",
     "file": "File",
     "trigger": "Origin",
-    "triggers": { "manual": "manual", "scheduled": "scheduled", "external": "external" },
-    "status": { "success": "succeeded", "failed": "failed", "running": "running", "deleted": "deleted" },
+    "triggers": {
+      "manual": "manual",
+      "scheduled": "scheduled",
+      "external": "external"
+    },
+    "status": {
+      "success": "succeeded",
+      "failed": "failed",
+      "running": "running",
+      "deleted": "deleted"
+    },
     "copySha": "Copy SHA-256",
     "includes": "Content",
-    "inc": { "database": "database", "config": "configuration", "k8s_manifests": "K8s manifests" },
+    "inc": {
+      "database": "database",
+      "config": "configuration",
+      "k8s_manifests": "K8s manifests"
+    },
     "verified": "Verification",
     "verifyOk": "intact",
     "verifyFail": "invalid",
@@ -141,7 +172,7 @@
     "deleteTitle": "Delete the backup?",
     "deleteCons": "The archive and its checksum are permanently deleted from disk.",
     "restoreTitle": "Restore",
-    "restoreExplain": "Restore replaces the PKM database and is run from the server shell with the service stopped, to avoid concurrent writes. The script verifies the archive before proceeding and keeps a copy of the current database.",
+    "restoreExplain": "Restore replaces the Scarlet database and is run from the server shell with the service stopped, to avoid concurrent writes. The script verifies the archive before proceeding and keeps a copy of the current database.",
     "restoreStep1": "Stop the service:",
     "restoreStep2": "Restore the chosen file:",
     "restoreStep3": "Start the service:",
@@ -164,12 +195,16 @@
     "schedulable": "active",
     "pods": "Pods",
     "drainTitle": "Drain node {{node}}",
-    "drainExplain": "Drain puts the node in maintenance and moves its Pods to other nodes through the Eviction API: PodDisruptionBudgets are respected (if an eviction would violate them, PKM retries while possible or until the timeout). DaemonSet Pods stay on the node.",
+    "drainExplain": "Drain puts the node in maintenance and moves its Pods to other nodes through the Eviction API: PodDisruptionBudgets are respected (if an eviction would violate them, Scarlet retries while possible or until the timeout). DaemonSet Pods stay on the node.",
     "planTitle": "Drain plan",
     "owner": "Managed by",
     "planAction": "Action",
     "reason": "Reason",
-    "action": { "evict": "move", "skip": "skip", "blocked": "blocked" },
+    "action": {
+      "evict": "move",
+      "skip": "skip",
+      "blocked": "blocked"
+    },
     "reasons": {
       "daemonset": "DaemonSet Pod: it must run on every node, it stays.",
       "mirror_pod": "Static Pod managed directly by the kubelet.",
@@ -189,7 +224,12 @@
     "drainProgress": "Drain of {{node}}",
     "cancel": "Stop",
     "cancelRequested": "Stop requested",
-    "opStatus": { "running": "running", "succeeded": "completed", "failed": "failed", "cancelled": "stopped" },
+    "opStatus": {
+      "running": "running",
+      "succeeded": "completed",
+      "failed": "failed",
+      "cancelled": "stopped"
+    },
     "step": {
       "cordoned": "Node {{node}} in maintenance (cordon)",
       "evicted": "Pod {{pod}} moved",
@@ -203,13 +243,28 @@
     "timedOut": "Timeout reached: some Pods were not moved (often because of a PodDisruptionBudget).",
     "cancelled": "Drain stopped by the user.",
     "afterDrain": "The node stays in maintenance: when the work is done use Uncordon.",
-    "appTitle": "PKM application maintenance",
-    "appExplain": "Safe operations on the PKM database and cache. They do not touch the cluster.",
+    "appTitle": "Scarlet application maintenance",
+    "appExplain": "Safe operations on the Scarlet database and cache. They do not touch the cluster.",
     "done": "Operation completed",
     "app": {
-      "housekeeping": { "title": "Clean up expired data", "text": "Deletes expired sessions, audit entries beyond retention and notifications resolved more than 30 days ago.", "button": "Run clean-up", "cons": "Deleted data cannot be recovered (except from a backup)." },
-      "cache": { "title": "Clear cache", "text": "Forces data to be re-read from Kubernetes on the next request.", "button": "Clear cache", "cons": "Next pages may load slightly slower." },
-      "db": { "title": "Optimize database", "text": "Checks the database integrity (PRAGMA integrity_check) and compacts it (VACUUM).", "button": "Check and optimize", "cons": "Writes are briefly suspended during the operation." }
+      "housekeeping": {
+        "title": "Clean up expired data",
+        "text": "Deletes expired sessions, audit entries beyond retention and notifications resolved more than 30 days ago.",
+        "button": "Run clean-up",
+        "cons": "Deleted data cannot be recovered (except from a backup)."
+      },
+      "cache": {
+        "title": "Clear cache",
+        "text": "Forces data to be re-read from Kubernetes on the next request.",
+        "button": "Clear cache",
+        "cons": "Next pages may load slightly slower."
+      },
+      "db": {
+        "title": "Optimize database",
+        "text": "Checks the database integrity (PRAGMA integrity_check) and compacts it (VACUUM).",
+        "button": "Check and optimize",
+        "cons": "Writes are briefly suspended during the operation."
+      }
     }
   }
 }

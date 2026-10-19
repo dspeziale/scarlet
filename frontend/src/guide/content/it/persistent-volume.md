@@ -23,7 +23,7 @@ I PV sono risorse **di cluster**, non appartengono a nessun namespace. Di solito
 - **Fasi** (`status.phase`): `Available` (libero), `Bound` (legato a un PVC), `Released` (il PVC è stato cancellato ma il PV con `Retain` non è ancora riutilizzabile), `Failed` (recupero automatico fallito).
 - `spec.claimRef` indica il PVC a cui è legato.
 
-In PKM: [Storage → Persistent Volumes](app:/k8s/persistentvolumes); la pagina [Monitoraggio → Storage](app:/monitoring/storage) riepiloga capacità e stati.
+In Scarlet: [Storage → Persistent Volumes](app:/k8s/persistentvolumes); la pagina [Monitoraggio → Storage](app:/monitoring/storage) riepiloga capacità e stati.
 
 ## Esempio
 
@@ -62,11 +62,11 @@ kubectl describe pv nfs-reports
 kubectl get pv -o custom-columns=NAME:.metadata.name,RECLAIM:.spec.persistentVolumeReclaimPolicy,STATUS:.status.phase,CLAIM:.spec.claimRef.name
 ```
 
-In PKM controlla fase, reclaim policy e PVC collegato nella pagina di dettaglio (scheda Relazioni).
+In Scarlet controlla fase, reclaim policy e PVC collegato nella pagina di dettaglio (scheda Relazioni).
 
 ## Come risolvere
 
 1. Per i dati importanti imposta `Retain` sui PV esistenti (si può cambiare anche dopo la creazione): `kubectl patch pv <nome> -p '{"spec":{"persistentVolumeReclaimPolicy":"Retain"}}'`.
 2. Per riutilizzare un PV `Released`, dopo aver salvato o ripulito i dati, un amministratore rimuove `spec.claimRef` dalla scheda YAML.
 3. Per gli errori di montaggio controlla il driver CSI ([DaemonSet](guide:daemonset)) e la raggiungibilità dello storage dal nodo.
-4. Ricorda che i dati dei PV **non** sono inclusi nei backup di PKM: vedi [Backup](guide:backup).
+4. Ricorda che i dati dei PV **non** sono inclusi nei backup di Scarlet: vedi [Backup](guide:backup).

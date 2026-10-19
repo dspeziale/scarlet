@@ -1,5 +1,5 @@
 [Unit]
-Description=Podman Kubernetes Manager - scheduled backup
+Description=Scarlet - scheduled backup
 Documentation=file:///opt/pkm/current/docs/BACKUP.md
 After=network-online.target
 

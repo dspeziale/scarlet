@@ -20,20 +20,20 @@ The difference from Kubernetes is one of scale and responsibility:
 | Automatic restart | With `--restart` or a systemd unit | Always, through controllers |
 | Replicas, rolling updates, Services | No (not natively) | Yes |
 
-In PKM the **Container** section (Container, Immagini, Registry) is about Podman; every other section is about Kubernetes.
+In Scarlet the **Container** section (Container, Immagini, Registry) is about Podman; every other section is about Kubernetes.
 
 ## Technical details
 
-**Daemonless.** Podman has no central always-on daemon like Docker: each command starts the container directly through `conmon` and an OCI runtime (`crun` or `runc`). To let external programs such as PKM talk to Podman, there is an optional **API service**, activated via systemd.
+**Daemonless.** Podman has no central always-on daemon like Docker: each command starts the container directly through `conmon` and an OCI runtime (`crun` or `runc`). To let external programs such as Scarlet talk to Podman, there is an optional **API service**, activated via systemd.
 
 **Rootful and rootless.**
 
 - **Rootful**: containers are managed by root. Storage lives in `/var/lib/containers/storage`, the API socket is `/run/podman/podman.sock`, activated by the system `podman.socket`.
 - **Rootless**: containers belong to a regular user, isolated through user namespaces. Storage in `~/.local/share/containers/storage`, socket at `/run/user/<uid>/podman/podman.sock`, activated with `systemctl --user enable --now podman.socket` (you need `loginctl enable-linger <user>` for it to stay active without an open session). Each user sees only their own containers.
 
-**The API socket.** PKM uses the **libpod REST API** exposed on the socket. The socket is activated by systemd (`podman.socket`), which starts `podman.service` on the first request.
+**The API socket.** Scarlet uses the **libpod REST API** exposed on the socket. The socket is activated by systemd (`podman.socket`), which starts `podman.service` on the first request.
 
-> **Security warning:** anyone who can write to the rootful socket can start privileged containers and therefore effectively gain root privileges on the host. The PKM installer adds a drop-in with `SocketGroup=pkm` and `SocketMode=0660` to give the `pkm` group access: this gives PKM **root-equivalent** access. Protect the host, access to PKM and the Administrator role accordingly. If managing a single user's containers is enough, prefer the rootless socket.
+> **Security warning:** anyone who can write to the rootful socket can start privileged containers and therefore effectively gain root privileges on the host. The Scarlet installer adds a drop-in with `SocketGroup=pkm` and `SocketMode=0660` to give the `pkm` group access: this gives Scarlet **root-equivalent** access. Protect the host, access to Scarlet and the Administrator role accordingly. If managing a single user's containers is enough, prefer the rootless socket.
 
 ## Example
 
@@ -45,7 +45,7 @@ ls -l /run/podman/podman.sock
 curl --unix-socket /run/podman/podman.sock http://d/v4.0.0/libpod/_ping
 ```
 
-Commands equivalent to the PKM pages:
+Commands equivalent to the Scarlet pages:
 
 ```bash
 podman ps -a                 # Container
@@ -56,7 +56,7 @@ podman restart web
 
 ## What can go wrong
 
-- **Socket inactive or missing**: PKM shows Podman as Unhealthy on the [Health](app:/monitoring/health) page.
+- **Socket inactive or missing**: Scarlet shows Podman as Unhealthy on the [Health](app:/monitoring/health) page.
 - **Permission denied on the socket**: the `pkm` user is not in the right group or the drop-in was not applied (missing `systemctl daemon-reload`).
 - **Rootless socket gone**: the user does not have linger enabled and has logged out.
 - **Rootful and rootless containers mixed up**: a container created by a user does not appear on root's socket, and vice versa.

@@ -23,7 +23,7 @@ La sintassi dell'orario è quella classica del cron di Linux, quindi chi conosce
 - `spec.successfulJobsHistoryLimit` (default 3) e `spec.failedJobsHistoryLimit` (default 1): quanti Job conclusi conservare.
 - `spec.jobTemplate`: il modello del Job, con tutti i campi visti nella voce [Job](guide:job).
 
-Lo stato mostra `lastScheduleTime`, `lastSuccessfulTime` e i Job attivi. In PKM: [Applicazioni → CronJobs](app:/k8s/cronjobs).
+Lo stato mostra `lastScheduleTime`, `lastSuccessfulTime` e i Job attivi. In Scarlet: [Applicazioni → CronJobs](app:/k8s/cronjobs).
 
 ## Esempio
 
@@ -62,7 +62,7 @@ spec:
 
 ## Come verificare
 
-In PKM apri il CronJob: controlla pianificazione, fuso orario, stato di sospensione, ultima esecuzione e Job recenti nella scheda Relazioni. La scheda Eventi riporta errori di pianificazione.
+In Scarlet apri il CronJob: controlla pianificazione, fuso orario, stato di sospensione, ultima esecuzione e Job recenti nella scheda Relazioni. La scheda Eventi riporta errori di pianificazione.
 
 ```bash
 kubectl -n shop get cronjob cleanup-sessions

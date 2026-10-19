@@ -17,7 +17,7 @@ In daily practice **you almost never create a ReplicaSet by hand**: a [Deploymen
 
 - `spec.replicas`, `spec.selector` and `spec.template` have the same meaning as in the Deployment.
 - The ReplicaSet controller "adopts" any Pod that matches the selector and has no owner yet. This is why two workloads with overlapping selectors fight over Pods: avoid it.
-- Each created Pod has a `metadata.ownerReferences` entry pointing to the ReplicaSet, which in turn points to the Deployment. PKM uses these relationships in the **Relazioni** tab of the detail page.
+- Each created Pod has a `metadata.ownerReferences` entry pointing to the ReplicaSet, which in turn points to the Deployment. Scarlet uses these relationships in the **Relazioni** tab of the detail page.
 - The ReplicaSet name is `<deployment>-<pod-template-hash>`; the `pod-template-hash` label is added to Pods to tell versions apart.
 - The `deployment.kubernetes.io/revision` annotation holds the revision number used by [rollback](guide:rollback).
 - Editing the template of a ReplicaSet managed by a Deployment is pointless: the Deployment reverts it to the declared state. A ReplicaSet does not update existing Pods when its template changes: it applies only to new ones.
@@ -45,7 +45,7 @@ kubectl -n shop rollout history deployment/web
 
 ## How to verify
 
-In PKM open the Deployment, **Relazioni** tab, and select the ReplicaSet: you see desired/current/ready replicas and its events. Look for `FailedCreate` events.
+In Scarlet open the Deployment, **Relazioni** tab, and select the ReplicaSet: you see desired/current/ready replicas and its events. Look for `FailedCreate` events.
 
 ```bash
 kubectl -n shop describe rs web-7d9c6b8f5c

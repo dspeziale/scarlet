@@ -49,12 +49,13 @@ export default function Login() {
         {info.data?.mode === 'demo' && <div className="demo-banner">{t('common:demoBanner')}</div>}
         <div className="card-body" style={{ padding: 28 }}>
           <div className="row between" style={{ marginBottom: 18 }}>
-            <h1 style={{ margin: 0 }}>{info.data?.appName ?? 'Podman Kubernetes Manager'}</h1>
+            <h1 style={{ margin: 0 }}>{info.data?.appName ?? 'Scarlet'}</h1>
             <select className="input sm" aria-label={t('common:language')} value={i18n.language} onChange={(e) => setLanguage(e.target.value as 'it' | 'en')}>
               <option value="it">IT</option>
               <option value="en">EN</option>
             </select>
           </div>
+          <p className="small muted" style={{ marginTop: -10 }}>{t('common:appExpansion')}</p>
           <p className="muted">{t('subtitle')}</p>
           {error && <Alert tone="err">{error}</Alert>}
           <form onSubmit={(e) => void submit(e)} noValidate>
@@ -71,11 +72,14 @@ export default function Login() {
           <p className="small muted" style={{ marginTop: 16 }}>
             {t('forgotten')}
           </p>
-          {info.data && (
-            <p className="small muted" style={{ margin: 0 }}>
-              v{info.data.version} · API {info.data.apiVersion} · {info.data.mode.toUpperCase()}
-            </p>
-          )}
+          <div className="row between small muted" style={{ marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
+            <span>{t('common:copyright', { year: new Date().getFullYear() })}</span>
+            {info.data && (
+              <span title={`API ${info.data.apiVersion} · ${info.data.mode.toUpperCase()}`}>
+                {info.data.appName} v{info.data.version}
+              </span>
+            )}
+          </div>
         </div>
       </main>
     </div>

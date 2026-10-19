@@ -69,7 +69,7 @@ spec:
 
 ## How to verify
 
-In PKM open the Pod: the Panoramica tab lists mounted volumes, the Eventi tab shows `FailedMount` with the reason, the Relazioni tab links PVCs, ConfigMaps and Secrets.
+In Scarlet open the Pod: the Panoramica tab lists mounted volumes, the Eventi tab shows `FailedMount` with the reason, the Relazioni tab links PVCs, ConfigMaps and Secrets.
 
 ```bash
 kubectl -n shop describe pod web | sed -n '/Volumes:/,/QoS/p'

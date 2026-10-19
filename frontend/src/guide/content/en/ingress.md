@@ -23,7 +23,7 @@ Note: an Ingress is only a **configuration**. To work, it needs an **Ingress Con
 - Advanced features (redirects, timeouts, max body size, rewrites) are configured with **controller-specific annotations**, for example `nginx.ingress.kubernetes.io/proxy-body-size`.
 - Ingress handles only HTTP/HTTPS. For generic TCP/UDP use a [Service](guide:service) of type LoadBalancer or NodePort.
 
-In PKM: [Networking → Ingress](app:/k8s/ingresses).
+In Scarlet: [Networking → Ingress](app:/k8s/ingresses).
 
 ## Example
 
@@ -64,7 +64,7 @@ spec:
 
 ## How to verify
 
-In PKM open the Ingress: the Relazioni tab shows linked Services and Secrets, the Eventi tab any errors reported by the controller.
+In Scarlet open the Ingress: the Relazioni tab shows linked Services and Secrets, the Eventi tab any errors reported by the controller.
 
 ```bash
 kubectl -n shop get ingress shop

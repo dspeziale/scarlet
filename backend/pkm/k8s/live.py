@@ -11,10 +11,12 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import ssl
 import threading
 import time
 from collections.abc import Iterator
+from pathlib import Path
 from typing import Any
 from urllib.parse import quote, urlencode, urlparse
 
@@ -68,7 +70,7 @@ def map_api_error(status: int, body_text: str, reason: str | None = None) -> App
     if status == 401:
         return K8sAuthFailed("Kubernetes rejected the credentials", details=msg, params=params)
     if status == 403:
-        return K8sForbidden("the Kubernetes account used by PKM is not allowed to do this", details=msg,
+        return K8sForbidden("the Kubernetes account used by Scarlet is not allowed to do this", details=msg,
                             params=params)  # fmt: skip
     if status == 404:
         return K8sNotFound(msg, details=msg, params=params)
@@ -205,11 +207,12 @@ class LiveKubernetes(KubernetesProvider):
             path = self.cfg.kubeconfig
             if not path:
                 raise K8sNotConfigured("no kubeconfig file configured", params={"reason": "no_kubeconfig"})
+            _check_kubeconfig_file(path)
             try:
                 contexts, active = config.list_kube_config_contexts(config_file=path)
             except (OSError, ConfigException) as exc:
                 raise K8sNotConfigured(
-                    "the kubeconfig file cannot be read", details=str(exc), params={"path": path}
+                    "the kubeconfig file is not valid", details=str(exc), params={"reason": "invalid_file", "path": path}
                 ) from exc
             names = [c["name"] for c in contexts or []]
             if self.cfg.context and self.cfg.context not in names:
@@ -479,6 +482,22 @@ class LiveKubernetes(KubernetesProvider):
                 self._api.clear()
             except Exception:  # noqa: S110
                 pass
+
+
+def _check_kubeconfig_file(path: str) -> None:
+    """Explain precisely why a kubeconfig cannot be used (the client library only says "No configuration found")."""
+    p = Path(path)
+    if not p.is_absolute():
+        raise K8sNotConfigured(f"the kubeconfig path must be absolute: {path}", params={"reason": "path_not_absolute", "path": path})
+    if not p.exists():
+        raise K8sNotConfigured(f"kubeconfig file not found on the server: {path}", params={"reason": "file_not_found", "path": path})
+    if not p.is_file():
+        raise K8sNotConfigured(f"the kubeconfig path is not a file: {path}", params={"reason": "not_a_file", "path": path})
+    if not os.access(p, os.R_OK):
+        raise K8sNotConfigured(f"the service user cannot read the kubeconfig: {path}",
+                               params={"reason": "not_readable", "path": path})  # fmt: skip
+    if p.stat().st_size == 0:
+        raise K8sNotConfigured(f"the kubeconfig file is empty: {path}", params={"reason": "empty_file", "path": path})
 
 
 def _safe_server(server: str | None) -> str | None:

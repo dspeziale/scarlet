@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Podman Kubernetes Manager - uninstall.
+# Scarlet - uninstall.
 #
 #   sudo ./uninstall.sh            remove the application, KEEP configuration, data, backups and logs
 #   sudo ./uninstall.sh --purge    also delete /etc/pkm, /var/lib/pkm (database AND backups), /var/log/pkm and the pkm user
@@ -27,10 +27,10 @@ require_root
 
 if [[ "$YES" != yes ]]; then
   if [[ "$PURGE" == yes ]]; then
-    warn "--purge deletes the PKM database, ALL backups in $PKM_DATA/backups, the configuration and the logs."
+    warn "--purge deletes the Scarlet database, ALL backups in $PKM_DATA/backups, the configuration and the logs."
     read -r -p "Type 'purge' to confirm: " a; [[ "$a" == purge ]] || die "aborted"
   else
-    read -r -p "Remove Podman Kubernetes Manager (configuration and data are kept)? [y/N] " a; [[ "$a" =~ ^[YySs] ]] || die "aborted"
+    read -r -p "Remove Scarlet (configuration and data are kept)? [y/N] " a; [[ "$a" =~ ^[YySs] ]] || die "aborted"
   fi
 fi
 

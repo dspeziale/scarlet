@@ -20,9 +20,9 @@ Si usa per i "servizi di sistema" che devono stare su tutte le macchine: raccolt
 - I nodi con **taint** (es. i control plane con `node-role.kubernetes.io/control-plane:NoSchedule`) sono esclusi a meno che il Pod abbia una `toleration` corrispondente. Il controller aggiunge automaticamente alcune tolerations (ad esempio per `node.kubernetes.io/not-ready` e `unreachable` con effetto NoExecute, e `unschedulable`).
 - I Pod del DaemonSet vengono schedulati dallo scheduler standard tramite node affinity verso il nodo specifico.
 - `updateStrategy`: `RollingUpdate` (default, `maxUnavailable: 1`) oppure `OnDelete`.
-- Durante il **drain** di un nodo i Pod dei DaemonSet vengono **saltati**: tanto verrebbero ricreati subito sullo stesso nodo. Il drain di PKM in [Operazioni → Manutenzione](app:/operations/maintenance) fa esattamente questo.
+- Durante il **drain** di un nodo i Pod dei DaemonSet vengono **saltati**: tanto verrebbero ricreati subito sullo stesso nodo. Il drain di Scarlet in [Operazioni → Manutenzione](app:/operations/maintenance) fa esattamente questo.
 
-In PKM: [Applicazioni → DaemonSets](app:/k8s/daemonsets).
+In Scarlet: [Applicazioni → DaemonSets](app:/k8s/daemonsets).
 
 ## Esempio
 
@@ -61,7 +61,7 @@ spec:
 
 ## Come verificare
 
-In PKM apri il DaemonSet e confronta pianificati/pronti; nella scheda Relazioni vedi su quali nodi gira ogni Pod.
+In Scarlet apri il DaemonSet e confronta pianificati/pronti; nella scheda Relazioni vedi su quali nodi gira ogni Pod.
 
 ```bash
 kubectl -n monitoring get daemonset node-exporter

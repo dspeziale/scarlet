@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Shared helpers for the PKM installation scripts (install, upgrade, uninstall, backup, restore).
+# Shared helpers for the Scarlet installation scripts (install, upgrade, uninstall, backup, restore).
 # shellcheck disable=SC2034
 
 set -o errexit -o nounset -o pipefail
@@ -106,7 +106,7 @@ ensure_user() {
   fi
   if ! id -u "$PKM_USER" >/dev/null 2>&1; then
     useradd --system --gid "$PKM_GROUP" --home-dir "$PKM_DATA" --no-create-home --shell /sbin/nologin \
-      --comment "Podman Kubernetes Manager" "$PKM_USER"
+      --comment "Scarlet" "$PKM_USER"
     ok "system user '$PKM_USER' created"
   fi
 }

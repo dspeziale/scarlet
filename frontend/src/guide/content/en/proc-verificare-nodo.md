@@ -18,7 +18,7 @@ related: node, node-notready, proc-manutenzione-nodo, monitoring, scheduling, pe
 
 - Any role can view nodes; cordon, drain and uncordon require at least **Operator**.
 - Real-time CPU and memory require metrics-server installed in the cluster.
-- Actions on the node operating system (restarting kubelet, checking disks) require SSH access to the node: PKM does not run commands on nodes.
+- Actions on the node operating system (restarting kubelet, checking disks) require SSH access to the node: Scarlet does not run commands on nodes.
 
 ## Procedure
 

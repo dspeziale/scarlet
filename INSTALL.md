@@ -68,7 +68,7 @@ L'installazione è idempotente: rieseguita mantiene configurazione e dati.
 Installation completed.
 
 Application:
-  Podman Kubernetes Manager 1.0.0
+  Scarlet 1.0.0
 
 URL:
   https://server.example.com:8443
@@ -109,7 +109,7 @@ sudo /opt/pkm/current/scripts/make-kubeconfig.sh -o /etc/pkm/kubeconfig   # dove
 
 `pkm-rbac.yaml` crea il namespace `pkm-system`, il ServiceAccount `pkm`, il Secret `pkm-token` (token long-lived) e due ClusterRole:
 
-- `pkm-operator` (collegato di default): lettura di tutto ciò che PKM mostra + le scritture offerte (workload, Service,
+- `pkm-operator` (collegato di default): lettura di tutto ciò che Scarlet mostra + le scritture offerte (workload, Service,
   Ingress, ConfigMap, Secret, PVC, PDB, HPA, namespace/PV create/patch/delete, `nodes` patch per cordon, `pods/eviction` per drain).
 - `pkm-readonly`: sola lettura (modificare `roleRef.name` nel ClusterRoleBinding). I pulsanti di scrittura falliscono con "Permessi Kubernetes insufficienti".
 

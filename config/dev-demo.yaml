@@ -1,5 +1,5 @@
 # Development configuration: DEMO mode with simulated data, plain HTTP on localhost.
-# Usage (from the repository root):  PKM_CONFIG=config/dev-demo.yaml backend/.venv/Scripts/pkm-server
+# Usage (from the repository root):  backend/.venv/Scripts/pkm-server --config config/dev-demo.yaml
 mode: demo
 environment: development
 server:

@@ -1,5 +1,5 @@
 [Unit]
-Description=Podman Kubernetes Manager - daily backup
+Description=Scarlet - daily backup
 
 [Timer]
 OnCalendar=*-*-* 02:30:00

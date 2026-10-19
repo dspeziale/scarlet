@@ -22,7 +22,7 @@ Quando "un'applicazione non raggiunge l'altra", il problema sta quasi sempre in 
 - **NetworkPolicy**: se in un namespace esiste una policy che seleziona un Pod, quel Pod accetta solo il traffico esplicitamente consentito. Funzionano solo se il CNI le supporta.
 - **Firewall del nodo**: su Oracle Linux `firewalld` può bloccare le porte di kubelet (10250), NodePort o il traffico del CNI (VXLAN 4789/UDP, BGP 179/TCP a seconda del plugin).
 
-In PKM: [Networking → Endpoints](app:/k8s/endpoints) mostra quali Pod ricevono traffico per ogni Service.
+In Scarlet: [Networking → Endpoints](app:/k8s/endpoints) mostra quali Pod ricevono traffico per ogni Service.
 
 ## Esempio
 
@@ -47,7 +47,7 @@ wget -qO- http://web:80/healthz
 
 ## Come verificare
 
-1. In PKM controlla gli [Endpoints](app:/k8s/endpoints) del Service interessato.
+1. In Scarlet controlla gli [Endpoints](app:/k8s/endpoints) del Service interessato.
 2. Verifica lo stato dei Pod di CoreDNS e del CNI in `kube-system` dalla pagina [Pod](app:/k8s/pods).
 3. Cerca eventi di rete in [Cluster → Eventi](app:/cluster/events).
 

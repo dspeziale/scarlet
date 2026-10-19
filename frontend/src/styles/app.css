@@ -208,8 +208,8 @@ pre,
 .app {
   display: grid;
   grid-template-columns: var(--sidebar-w) 1fr;
-  grid-template-rows: auto var(--topbar-h) 1fr;
-  grid-template-areas: "banner banner" "sidebar topbar" "sidebar main";
+  grid-template-rows: auto var(--topbar-h) 1fr auto;
+  grid-template-areas: "banner banner" "sidebar topbar" "sidebar main" "sidebar footer";
   height: 100vh;
 }
 .app.compact {
@@ -435,7 +435,7 @@ kbd {
   .app,
   .app.compact {
     grid-template-columns: 1fr;
-    grid-template-areas: "banner" "topbar" "main";
+    grid-template-areas: "banner" "topbar" "main" "footer";
   }
   .sidebar {
     position: fixed;
@@ -1555,4 +1555,17 @@ details.tech pre {
 .bar-item .row {
   font-size: 12.5px;
   margin-bottom: 3px;
+}
+
+.app-footer {
+  grid-area: footer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 6px 24px;
+  font-size: 12px;
+  color: var(--text-3);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
 }

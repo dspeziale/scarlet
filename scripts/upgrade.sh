@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Podman Kubernetes Manager - upgrade to the release this script belongs to.
+# Scarlet - upgrade to the release this script belongs to.
 #
 #   sudo ./upgrade.sh [--yes] [--keep N]
 #
@@ -26,7 +26,7 @@ done
 require_root
 ROOT="$(cd "$DIR" && { [[ -f VERSION ]] && pwd || (cd .. && pwd); })"
 NEW="$(release_version "$ROOT")"
-[[ -L "$PKM_CURRENT" ]] || die "PKM is not installed (no $PKM_CURRENT): use install.sh"
+[[ -L "$PKM_CURRENT" ]] || die "Scarlet is not installed (no $PKM_CURRENT): use install.sh"
 OLD_DIR="$(readlink -f "$PKM_CURRENT")"
 OLD="$(basename "$OLD_DIR")"
 [[ "$OLD" != "$NEW" ]] || die "version $NEW is already installed"
@@ -84,7 +84,7 @@ cat <<EOF
 
 ${C_BLD}Upgrade completed.${C_OFF}
 
-Application:  Podman Kubernetes Manager $NEW (previous: $OLD, kept in $PKM_RELEASES)
+Application:  Scarlet $NEW (previous: $OLD, kept in $PKM_RELEASES)
 URL:          $(service_url)
 Service:      pkm.service
 Status:       $(systemctl is-active pkm.service)

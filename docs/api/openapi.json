@@ -1,8 +1,8 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Podman Kubernetes Manager API",
-    "description": "REST API of Podman Kubernetes Manager. All endpoints except /system/info, /setup/* and /auth/login require a session cookie; state-changing requests also need the X-CSRF-Token header.",
+    "title": "Scarlet API",
+    "description": "REST API of Scarlet. All endpoints except /system/info, /setup/* and /auth/login require a session cookie; state-changing requests also need the X-CSRF-Token header.",
     "version": "1.0.0"
   },
   "paths": {

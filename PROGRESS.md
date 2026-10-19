@@ -1,4 +1,4 @@
-# PROGRESS — Podman Kubernetes Manager
+# PROGRESS — Scarlet
 
 Ultimo aggiornamento: 2026-10-19
 

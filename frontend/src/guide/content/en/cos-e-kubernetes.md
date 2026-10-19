@@ -24,7 +24,7 @@ Everything in Kubernetes is an **API object** described in YAML or JSON with fou
 
 The main objects you will use: [Pod](guide:pod), [Deployment](guide:deployment), [StatefulSet](guide:statefulset), [DaemonSet](guide:daemonset), [Job](guide:job), [Service](guide:service), [Ingress](guide:ingress), [ConfigMap](guide:configmap), [Secret](guide:secret), [PersistentVolumeClaim](guide:persistent-volume-claim). Objects are grouped into [namespaces](guide:namespace).
 
-Access is controlled by **RBAC**: Role/ClusterRole define what can be done, RoleBinding/ClusterRoleBinding define who is granted it. PKM connects with a kubeconfig, ideally for a dedicated ServiceAccount, and can only do what that ServiceAccount is authorized to do.
+Access is controlled by **RBAC**: Role/ClusterRole define what can be done, RoleBinding/ClusterRoleBinding define who is granted it. Scarlet connects with a kubeconfig, ideally for a dedicated ServiceAccount, and can only do what that ServiceAccount is authorized to do.
 
 ## Example
 
@@ -63,14 +63,14 @@ kubectl get pods -n demo -l app=web -o wide
 
 ## What can go wrong
 
-- **API server unreachable**: PKM and `kubectl` can neither read nor change anything. Applications already running usually keep running, but nothing gets reconciled.
+- **API server unreachable**: Scarlet and `kubectl` can neither read nor change anything. Applications already running usually keep running, but nothing gets reconciled.
 - **Insufficient RBAC permissions**: operations rejected with a `Forbidden` error.
 - **Impossible desired state**: for example resource requests larger than node capacity; pods stay [Pending](guide:pending).
 - **Nodes not ready**: see [Node NotReady](guide:node-notready).
 
 ## How to verify
 
-- In PKM open [Cluster → Panoramica](app:/cluster): version, number of nodes, component status.
+- In Scarlet open [Cluster → Panoramica](app:/cluster): version, number of nodes, component status.
 - Check the [Health](app:/monitoring/health) page: the Kubernetes entry must be Healthy.
 - From a shell:
 
@@ -83,5 +83,5 @@ kubectl get --raw='/readyz?verbose'
 ## How to fix
 
 - If the connection fails, check the kubeconfig in [Impostazioni → Kubernetes](app:/settings/kubernetes) and follow [Connecting Kubernetes](guide:proc-collegare-kubernetes).
-- If you get `Forbidden`, the ServiceAccount used by PKM lacks permissions: a cluster administrator must update the ClusterRole.
+- If you get `Forbidden`, the ServiceAccount used by Scarlet lacks permissions: a cluster administrator must update the ClusterRole.
 - For problems with individual resources, start from the [Operations Center](app:/operations-center) and follow the method described in [Troubleshooting](guide:troubleshooting).

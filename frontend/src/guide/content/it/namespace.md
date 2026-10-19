@@ -11,7 +11,7 @@ related: cluster, pod, resource-request, resource-limit, networking, secret
 
 Un namespace è come una cartella dentro il cluster. Serve a tenere separate le risorse di applicazioni, team o ambienti diversi: ad esempio `produzione`, `collaudo`, `monitoring`. Due Deployment possono avere lo stesso nome se stanno in namespace diversi.
 
-In PKM quasi tutte le liste hanno un filtro per namespace: impostarlo correttamente è il primo passo per non confondersi (e per non agire sulla risorsa sbagliata).
+In Scarlet quasi tutte le liste hanno un filtro per namespace: impostarlo correttamente è il primo passo per non confondersi (e per non agire sulla risorsa sbagliata).
 
 ## Dettagli tecnici
 

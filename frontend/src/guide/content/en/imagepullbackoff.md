@@ -63,7 +63,7 @@ spec:
 2. Open the pod and read the **Eventi** tab: the `Failed to pull image` message gives the exact reason.
 3. In the **YAML** tab check `image` and `imagePullSecrets`.
 4. Check that the Secret exists in [Configurazione → Secrets](app:/k8s/secrets) in the correct namespace.
-5. In the problem card press **Verifica registry** (Check registry): it opens the [Image onboarding](app:/operations/onboarding) wizard with the image prefilled, which checks from the PKM server the name format, registry reachability, authentication (you can enter credentials used once and never stored), tag existence and linux/amd64 availability. Note: the check runs from the PKM server, not from the nodes.
+5. In the problem card press **Verifica registry** (Check registry): it opens the [Image onboarding](app:/operations/onboarding) wizard with the image prefilled, which checks from the Scarlet server the name format, registry reachability, authentication (you can enter credentials used once and never stored), tag existence and linux/amd64 availability. Note: the check runs from the Scarlet server, not from the nodes.
 6. From a shell on the node (admin alternative): `sudo crictl pull registry.example.com/shop/web:1.4.2` to reproduce the problem.
 
 ## How to fix

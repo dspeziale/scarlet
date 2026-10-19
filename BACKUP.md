@@ -10,7 +10,7 @@ Archivio `/var/lib/pkm/backups/pkm-backup-<AAAAMMGG>T<hhmmss>Z[-scheduled].tar.g
 | `pkm.db` | copia consistente a caldo (SQLite backup API) del database: utenti, sessioni, audit log, impostazioni modificate dalla UI, notifiche, cronologia backup |
 | `config/config.yaml`, `config/pkm.env`, `config/kubeconfig`, `config/tls/pkm.crt`, `config/tls/pkm.key` | file della directory di configurazione presenti in `/etc/pkm` (**contengono segreti: token Prometheus, token del ServiceAccount, chiave privata TLS**: proteggere l'archivio, che è creato con permessi 0600) |
 | `k8s/<namespace>/<tipo>/<nome>.yaml` | solo con *export dei manifest* (`backup.include_manifests: true`, checkbox nella UI o `--include-manifests`): YAML ripuliti (senza `status`, uid, resourceVersion, managedFields, ownerReferences, clusterIP, volumeName) di Namespace, Deployment, StatefulSet, DaemonSet, CronJob, Service, Ingress, ConfigMap, PersistentVolumeClaim, PodDisruptionBudget, HorizontalPodAutoscaler. Esclusi `kube-system`, `kube-public`, `kube-node-lease` |
-| `manifest.json` | formato, versione PKM, data, hostname, versione schema DB, contenuti, SHA-256 di ogni file, errori dell'export |
+| `manifest.json` | formato, versione Scarlet, data, hostname, versione schema DB, contenuti, SHA-256 di ogni file, errori dell'export |
 
 ## Cosa NON viene salvato
 
@@ -23,7 +23,7 @@ L'export dei manifest serve a ricostruire o confrontare la configurazione delle 
 
 - `pkm-backup.timer`: ogni giorno alle 02:30 con ritardo casuale fino a 15 minuti, `Persistent=true` (se il server era
   spento esegue al successivo avvio). Esegue `pkm-admin backup --scheduled` come utente `pkm`.
-- Retention: dopo ogni backup restano solo gli ultimi `backup.retention_count` (default 14) archivi creati da PKM.
+- Retention: dopo ogni backup restano solo gli ultimi `backup.retention_count` (default 14) archivi creati da Scarlet.
   Archivi copiati a mano nella directory sono elencati come *external* e non vengono cancellati.
 
 ```bash
@@ -66,12 +66,12 @@ Gli archivi contengono hash delle password, audit, la chiave privata TLS, il tok
 
 ## Prova periodica del ripristino
 
-Almeno trimestralmente: copiare un archivio su un server di prova con PKM installato, `restore.sh --with-config`,
+Almeno trimestralmente: copiare un archivio su un server di prova con Scarlet installato, `restore.sh --with-config`,
 verificare login, utenti, audit e impostazioni, registrare l'esito.
 
 ## Disaster recovery (nuovo server)
 
-1. Installare la stessa versione (o successiva) di PKM: `sudo ./install.sh --non-interactive`.
+1. Installare la stessa versione (o successiva) di Scarlet: `sudo ./install.sh --non-interactive`.
 2. Copiare l'archivio e ripristinare: `sudo /opt/pkm/current/scripts/restore.sh <archivio> --with-config --yes`.
 3. Certificato/chiave TLS e `/etc/pkm/kubeconfig` sono nell'archivio e vengono ripristinati da `--with-config`
    (se il token del kubeconfig è stato revocato, rigenerarlo con `make-kubeconfig.sh`); l'accesso al socket Podman

@@ -1,4 +1,4 @@
-"""Health checks of PKM and its dependencies. States: healthy | degraded | unhealthy."""
+"""Health checks of Scarlet and its dependencies. States: healthy | degraded | unhealthy."""
 
 from __future__ import annotations
 

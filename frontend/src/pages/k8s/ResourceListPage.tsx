@@ -14,6 +14,8 @@ import { useResourceOps } from '@/components/ResourceOps';
 import { KIND_GUIDE } from '@/guide';
 import { resourceLink } from '@/utils/links';
 import { columnsFor } from './columns';
+import { templateFor } from '../operations/templates';
+import { Plus } from 'lucide-react';
 
 const WORKLOADS = new Set(['deployments', 'statefulsets', 'daemonsets']);
 const CLUSTER_SCOPED = new Set(['nodes', 'namespaces', 'persistentvolumes', 'storageclasses']);
@@ -94,6 +96,16 @@ export default function ResourceListPage() {
                 <Rocket size={16} /> {t('nav:deploy')}
               </Link>
             )}
+            {(() => {
+              const tpl = templateFor(kind);
+              if (!tpl || !(tpl.adminOnly ? can('resources.apply') : can('workloads.deploy'))) return null;
+              const q = new URLSearchParams({ template: kind, ...(namespace && tpl.namespaced ? { namespace } : {}) });
+              return (
+                <Link className="btn primary" to={`/operations/yaml?${q.toString()}`}>
+                  <Plus size={16} /> {t('list.create', { kind: tpl.kind })}
+                </Link>
+              );
+            })()}
             <button type="button" className="btn" onClick={() => void list.refetch()} disabled={list.isFetching}>
               <RefreshCw size={16} /> {t('common:refresh')}
             </button>

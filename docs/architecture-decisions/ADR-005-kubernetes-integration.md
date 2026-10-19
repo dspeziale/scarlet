@@ -5,7 +5,7 @@
 
 ## Contesto
 
-PKM deve leggere e modificare un insieme noto di risorse su versioni diverse di Kubernetes, con timeout espliciti ed errori comprensibili.
+Scarlet deve leggere e modificare un insieme noto di risorse su versioni diverse di Kubernetes, con timeout espliciti ed errori comprensibili.
 
 ## Decisione
 

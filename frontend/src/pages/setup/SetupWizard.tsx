@@ -36,7 +36,7 @@ interface ConnInfo {
   endpoint?: string | null;
   rootless?: boolean;
   permissions?: Record<string, string>;
-  error?: { code: string; message: string; details?: string | null };
+  error?: { code: string; message: string; details?: string | null; params?: Record<string, unknown> };
   demo?: boolean;
 }
 
@@ -45,7 +45,7 @@ interface PromInfo {
   skipped?: boolean;
   targets?: number;
   latencyMs?: number;
-  error?: { code: string; message: string; details?: string | null };
+  error?: { code: string; message: string; details?: string | null; params?: Record<string, unknown> };
 }
 
 const STATUS_ICON: Record<string, ReactNode> = {
@@ -56,13 +56,18 @@ const STATUS_ICON: Record<string, ReactNode> = {
 };
 
 function ConnResult({ result, kind }: { result: ConnInfo | null; kind: 'k8s' | 'podman' }) {
-  const { t } = useTranslation('setup');
+  const { t, i18n } = useTranslation('setup');
   if (!result) return null;
+  const reason = result.error?.params?.reason as string | undefined;
   if (result.skipped) return <Alert tone="info">{t('test.skipped')}</Alert>;
   if (!result.connected) {
     return (
       <Alert tone="err" title={t('test.failed')}>
-        <p>{result.error?.message}</p>
+        {reason && i18n.exists(`setup:reason.${reason}`) ? (
+          <p>{t(`reason.${reason}`, { path: String(result.error?.params?.path ?? '') })}</p>
+        ) : (
+          <p>{result.error?.message}</p>
+        )}
         {result.error?.details && <p className="small mono">{result.error.details}</p>}
         <p className="small">{t(`test.${kind}Hint`)}</p>
       </Alert>

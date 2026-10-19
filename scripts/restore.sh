@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Podman Kubernetes Manager - restore a backup archive.
+# Scarlet - restore a backup archive.
 #
 #   sudo ./restore.sh /var/lib/pkm/backups/pkm-backup-<UTC>.tar.gz [--with-config] [--yes]
 #
@@ -8,7 +8,7 @@
 # 3. keeps the current database as pkm.db.pre-restore-<UTC> and restores the one in the archive
 #    (--with-config also restores config.yaml, pkm.env, kubeconfig and tls/, keeping .pre-restore copies)
 # 4. starts the service and waits until it is ready
-# Kubernetes and Podman are not touched: the archive only contains PKM's own state.
+# Kubernetes and Podman are not touched: the archive only contains Scarlet's own state.
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
@@ -30,7 +30,7 @@ require_root
 [[ -n "$FILE" ]] || die "usage: restore.sh <backup.tar.gz> [--with-config] [--yes]"
 [[ -r "$FILE" ]] || die "file not readable: $FILE"
 BIN="$PKM_CURRENT/venv/bin/pkm-admin"
-[[ -x "$BIN" ]] || die "PKM is not installed"
+[[ -x "$BIN" ]] || die "Scarlet is not installed"
 
 log "verifying $FILE"
 PKM_CONFIG="$PKM_CONFIG_FILE" "$BIN" verify-backup "$FILE" || die "verification failed: nothing was changed"

@@ -1,7 +1,7 @@
 """Image onboarding: inspect a container image directly on its registry (OCI Distribution / Registry v2 API).
 
 Used by the "Onboarding immagine" wizard before deploying: verifies that the
-reference exists, that the registry is reachable from the PKM host and whether
+reference exists, that the registry is reachable from the Scarlet host and whether
 credentials are required, then reads the image configuration (exposed ports,
 user, env, entrypoint, architectures) to pre-fill the deploy wizard and to
 highlight risks. Credentials typed in the wizard are used for this request only
@@ -75,7 +75,7 @@ class RegistryInspector:
             result["risks"].append({"level": "medium", "code": "latest_tag"})
         auth = (username, password) if username and password else None
         # HTTPS only, also for redirects (blob downloads are often redirected to object storage):
-        # the inspector must not become a way to make the PKM host call internal plain-HTTP services.
+        # the inspector must not become a way to make the Scarlet host call internal plain-HTTP services.
         base = f"https://{host}/v2/{repo}"
 
         def https_only(request: httpx.Request) -> None:

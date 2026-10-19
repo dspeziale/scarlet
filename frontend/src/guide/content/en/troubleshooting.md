@@ -11,7 +11,7 @@ related: crashloopbackoff, imagepullbackoff, oomkilled, pending, node-notready, 
 
 When something breaks, the temptation is to restart everything right away. The problem often disappears for a few minutes and then comes back, and in the meantime the evidence is gone. Effective troubleshooting follows a method: **Understand → Diagnose → Decide → Act → Verify**. First you collect facts (status, events, logs), then you form a hypothesis, choose the lowest-risk action, perform it and check that the problem is really solved.
 
-PKM is built around this method: the [Operations Center](app:/operations-center) automatically detects the most common problems, every resource has a **Diagnostica** tab, and actions (restart, rollback, scale) are one click away, but only after you understand what is happening.
+Scarlet is built around this method: the [Operations Center](app:/operations-center) automatically detects the most common problems, every resource has a **Diagnostica** tab, and actions (restart, rollback, scale) are one click away, but only after you understand what is happening.
 
 ## Technical details
 
@@ -32,11 +32,11 @@ There are three main sources of information:
 - **Events**: short messages produced by controllers and the kubelet. By default they last about one hour, so read them early.
 - **Logs**: the process output. For a restarting container, the useful logs are often those of the **previous** instance (`--previous`).
 
-The Operations Center assigns a severity (CRITICAL, ERROR, WARNING, INFO), shows the affected resource, the risk and suggested actions. CPU and memory metrics require metrics-server: if it is not installed, PKM shows "Metriche avanzate non configurate" and never invents values.
+The Operations Center assigns a severity (CRITICAL, ERROR, WARNING, INFO), shows the affected resource, the risk and suggested actions. CPU and memory metrics require metrics-server: if it is not installed, Scarlet shows "Metriche avanzate non configurate" and never invents values.
 
 ## Example
 
-Shell equivalent of the path PKM follows in the Diagnostica tab:
+Shell equivalent of the path Scarlet follows in the Diagnostica tab:
 
 ```bash
 kubectl get pods -n shop -o wide

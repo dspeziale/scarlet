@@ -230,7 +230,7 @@ export default function Maintenance() {
           spec={{
             title: t(`maint.app.${appConfirm}.title`),
             operation: t(`maint.app.${appConfirm}.button`),
-            resource: 'PKM',
+            resource: 'Scarlet',
             consequences: [t(`maint.app.${appConfirm}.cons`)],
             risk: 'low',
           }}

@@ -24,7 +24,7 @@ The PVC lives in a namespace, like the application that uses it. The disk surviv
 - **Protection**: a PVC in use by a Pod has the `kubernetes.io/pvc-protection` finalizer and stays `Terminating` while the Pod exists.
 - With `ReadWriteOnce` two Pods on different nodes cannot mount it: the second stays in `ContainerCreating` with a `Multi-Attach error`.
 
-In PKM: [Storage → Persistent Volume Claims](app:/k8s/persistentvolumeclaims). The [Centro Operativo](app:/operations-center) flags Pending PVCs.
+In Scarlet: [Storage → Persistent Volume Claims](app:/k8s/persistentvolumeclaims). The [Centro Operativo](app:/operations-center) flags Pending PVCs.
 
 ## Example
 
@@ -52,7 +52,7 @@ spec:
 
 ## How to verify
 
-In PKM open the PVC: phase, bound PV, Storage Class, capacity and, in the Eventi tab, the provisioner messages (e.g. `ProvisioningFailed`).
+In Scarlet open the PVC: phase, bound PV, Storage Class, capacity and, in the Eventi tab, the provisioner messages (e.g. `ProvisioningFailed`).
 
 ```bash
 kubectl -n shop get pvc web-uploads

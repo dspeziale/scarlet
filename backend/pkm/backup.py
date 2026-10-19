@@ -1,6 +1,6 @@
-"""PKM backup: what it is and what it is NOT.
+"""Scarlet backup: what it is and what it is NOT.
 
-A PKM backup archive (pkm-backup-<UTC timestamp>.tar.gz) contains:
+A Scarlet backup archive (pkm-backup-<UTC timestamp>.tar.gz) contains:
   - pkm.db            consistent copy of the application database (users, audit log,
                       settings, notifications, backup history), made with the SQLite backup API
   - config/           files of the configuration directory when readable: config.yaml, pkm.env,

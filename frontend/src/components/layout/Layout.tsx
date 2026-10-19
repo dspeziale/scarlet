@@ -84,7 +84,7 @@ export function Layout() {
       <aside className="sidebar" aria-label={t('common:mainNavigation')}>
         <div className="brand">
           <Logo />
-          <span className="brand-name ellipsis">{status.data?.appName ?? 'Podman Kubernetes Manager'}</span>
+          <span className="brand-name ellipsis" title={t('common:appExpansion')}>{status.data?.appName ?? 'Scarlet'}</span>
         </div>
         <nav>
           <ul className="nav">
@@ -170,7 +170,7 @@ export function Layout() {
         ) : null}
         {status.data && (
           <span className="version-info" title={t('common:versionsTitle')}>
-            K8s {k8s?.version ?? '—'} · Podman {status.data.podman.version ?? '—'} · PKM {status.data.version} · API {status.data.apiVersion}
+            K8s {k8s?.version ?? '—'} · Podman {status.data.podman.version ?? '—'} · Scarlet {status.data.version} · API {status.data.apiVersion}
           </span>
         )}
         <button type="button" className="btn ghost icon icon-btn-badge" onClick={() => setDrawer(true)} aria-label={t('common:notificationsOpen', { count: openCount })}>
@@ -208,6 +208,12 @@ export function Layout() {
       <main className="main" id="main" tabIndex={-1}>
         <Outlet />
       </main>
+      <footer className="app-footer">
+        <span>{t('common:copyright', { year: new Date().getFullYear() })}</span>
+        <span title={status.data ? `API ${status.data.apiVersion}` : undefined}>
+          {status.data?.appName ?? 'Scarlet'} v{status.data?.version ?? '…'}
+        </span>
+      </footer>
       {drawer && <NotificationDrawer onClose={() => setDrawer(false)} />}
       {search && <GlobalSearch onClose={() => setSearch(false)} />}
       {mobileOpen && <div className="mobile-scrim" onClick={() => setMobileOpen(false)} aria-hidden="true" />}

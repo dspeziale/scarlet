@@ -120,7 +120,7 @@ class RateLimitConfig(BaseModel):
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="PKM_", env_nested_delimiter="__", extra="ignore")
 
-    app_name: str = "Podman Kubernetes Manager"
+    app_name: str = "Scarlet"
     mode: Literal["live", "demo"] = "live"
     environment: Literal["production", "development"] = "production"
     server: ServerConfig = Field(default_factory=ServerConfig)

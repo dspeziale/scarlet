@@ -11,7 +11,7 @@ related: pod, cos-e-podman, imagepullbackoff, crashloopbackoff, oomkilled, resou
 
 Un container è un programma che gira isolato dal resto del sistema, con i suoi file, le sue librerie e la sua configurazione, tutto preso da un'**immagine**. L'immagine è il "pacchetto" (ad esempio `nginx:1.27`); il container è quel pacchetto in esecuzione.
 
-In PKM i container compaiono in due posti:
+In Scarlet i container compaiono in due posti:
 
 - dentro i **pod** Kubernetes (scheda Panoramica del pod, con lo stato di ogni container);
 - nella sezione **Container** per gli host Podman ([Container](app:/podman/containers), [Immagini](app:/podman/images), [Registry](app:/podman/registries)), dove un Operator può avviare, fermare e riavviare i container.

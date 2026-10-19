@@ -1,17 +1,17 @@
 ---
-title: Introduction to Podman Kubernetes Manager
-summary: What PKM is, how to tell LIVE mode from DEMO mode, and how to use this guide.
+title: Introduction to Scarlet
+summary: What Scarlet is, how to tell LIVE mode from DEMO mode, and how to use this guide.
 category: intro
 order: 10
-keywords: introduction, pkm, live, demo, guide, method, operations center
+keywords: introduction, scarlet, pkm, live, demo, guide, method, operations center
 related: cos-e-kubernetes, cos-e-podman, troubleshooting, proc-installare, faq
 ---
 
-## What PKM is
+## What Scarlet is
 
-**Podman Kubernetes Manager** (PKM) is a web operations console that lets you manage a **Kubernetes** cluster and one or more **Podman** hosts from a single place. It is built for the people who keep applications running day to day: checking status, understanding why something is broken, acting safely, and leaving a record of what was done.
+**Scarlet** (*Secure Cluster Administration, Runtime & Lifecycle Engineering Tool*) is a web operations console that lets you manage a **Kubernetes** cluster and one or more **Podman** hosts from a single place. It is built for the people who keep applications running day to day: checking status, understanding why something is broken, acting safely, and leaving a record of what was done.
 
-PKM does not replace `kubectl` or `podman`; it complements them. Everything you do in the interface goes through the official APIs (the Kubernetes API server and Podman's libpod REST API), with the permissions of the role assigned to your user. Every relevant operation is recorded in the [Audit Log](app:/security/audit).
+Scarlet does not replace `kubectl` or `podman`; it complements them. Everything you do in the interface goes through the official APIs (the Kubernetes API server and Podman's libpod REST API), with the permissions of the role assigned to your user. Every relevant operation is recorded in the [Audit Log](app:/security/audit).
 
 The main areas of the left sidebar are:
 
@@ -25,7 +25,7 @@ Every resource has a detail page with the tabs **Panoramica** (overview), **Rela
 
 ## LIVE and DEMO modes
 
-PKM can run in two modes, set in `/etc/pkm/config.yaml`:
+Scarlet can run in two modes, set in `/etc/pkm/config.yaml`:
 
 | Mode | How to recognize it | Data shown |
 |---|---|---|
@@ -34,7 +34,7 @@ PKM can run in two modes, set in `/etc/pkm/config.yaml`:
 
 DEMO mode (`mode: demo`, accepted only with `environment: development`) is for training and trying out the interface. **Never use it in production**: actions have no effect on real systems and the data represent nothing real. Before any intervention, always look at the badge at the top: if you do not see "LIVE" with the expected context, stop.
 
-> PKM never invents data. If metrics-server or Prometheus are not configured, metrics pages show "Metriche avanzate non configurate" (advanced metrics not configured) instead of fake values.
+> Scarlet never invents data. If metrics-server or Prometheus are not configured, metrics pages show "Metriche avanzate non configurate" (advanced metrics not configured) instead of fake values.
 
 ## How to use this guide
 

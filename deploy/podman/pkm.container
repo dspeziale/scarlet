@@ -1,4 +1,4 @@
-# Podman Quadlet unit: run PKM as a container managed by systemd (Podman >= 4.4, Oracle Linux 9).
+# Podman Quadlet unit: run Scarlet as a container managed by systemd (Podman >= 4.4, Oracle Linux 9).
 #
 #   install -m 0644 deploy/podman/pkm.container /etc/containers/systemd/pkm.container
 #   systemctl daemon-reload && systemctl start pkm-container.service
@@ -10,7 +10,7 @@
 # (e.g. chgrp 10001 + mode 0640).
 
 [Unit]
-Description=Podman Kubernetes Manager (container)
+Description=Scarlet (container)
 After=network-online.target
 Wants=network-online.target
 

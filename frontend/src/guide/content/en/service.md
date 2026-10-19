@@ -26,7 +26,7 @@ Other applications in the cluster talk to the Service, not to individual Pods. T
 - Traffic to the ClusterIP is handled by kube-proxy (iptables/IPVS) or by the network plugin (e.g. Cilium eBPF).
 - `sessionAffinity: ClientIP` keeps the same client on the same Pod.
 
-In PKM: [Networking → Services](app:/k8s/services) and [Networking → Endpoints](app:/k8s/endpoints) to see the Pods actually attached.
+In Scarlet: [Networking → Services](app:/k8s/services) and [Networking → Endpoints](app:/k8s/endpoints) to see the Pods actually attached.
 
 ## Example
 
@@ -57,7 +57,7 @@ spec:
 
 ## How to verify
 
-In PKM open the Service and look at the Relazioni tab (selected Pods) and the [Endpoints](app:/k8s/endpoints) page: if the address list is empty, the problem is the selector or readiness.
+In Scarlet open the Service and look at the Relazioni tab (selected Pods) and the [Endpoints](app:/k8s/endpoints) page: if the address list is empty, the problem is the selector or readiness.
 
 ```bash
 kubectl -n shop get svc web -o wide

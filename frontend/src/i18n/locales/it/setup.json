@@ -26,7 +26,7 @@
     "text": "La configurazione iniziale è già stata completata. Accedi con il tuo account."
   },
   "welcome": {
-    "text": "Questa procedura guidata configura Podman Kubernetes Manager in pochi minuti. Puoi tornare ai passi precedenti in qualsiasi momento.",
+    "text": "Questa procedura guidata configura Scarlet in pochi minuti. Puoi tornare ai passi precedenti in qualsiasi momento.",
     "points": [
       "verifica del server e del token di installazione",
       "collegamento a Kubernetes e a Podman (entrambi opzionali)",
@@ -56,19 +56,47 @@
       "mode": "Modalità"
     },
     "detail": {
-      "os": { "ok": "{{name}}: supportato.", "warn": "{{name}}: non è Oracle Linux 9; l'applicazione può funzionare ma non è la piattaforma di riferimento.", "fail": "{{name}}" },
-      "arch": { "ok": "{{arch}}", "warn": "{{arch}}: l'architettura di riferimento è x86_64.", "fail": "{{arch}}" },
-      "python": { "ok": "Python {{version}}", "warn": "Python {{version}}", "fail": "Python {{version}}: serve la versione 3.11 o successiva." },
-      "data_dir": { "ok": "{{path}} è scrivibile.", "warn": "{{path}}", "fail": "{{path}} non è scrivibile dall'utente del servizio." },
-      "disk_space": { "ok": "{{freeBytes}} liberi.", "warn": "Solo {{freeBytes}} liberi: i backup potrebbero esaurire lo spazio.", "fail": "{{freeBytes}} liberi." },
-      "tls": { "ok": "HTTPS attivo (TLS diretto o reverse proxy).", "warn": "HTTPS non attivo: in produzione configura un certificato (passo TLS).", "fail": "" },
-      "mode": { "ok": "Modalità LIVE: dati reali.", "warn": "Modalità DEMO: dati simulati, non usare in produzione.", "fail": "" }
+      "os": {
+        "ok": "{{name}}: supportato.",
+        "warn": "{{name}}: non è Oracle Linux 9; l'applicazione può funzionare ma non è la piattaforma di riferimento.",
+        "fail": "{{name}}"
+      },
+      "arch": {
+        "ok": "{{arch}}",
+        "warn": "{{arch}}: l'architettura di riferimento è x86_64.",
+        "fail": "{{arch}}"
+      },
+      "python": {
+        "ok": "Python {{version}}",
+        "warn": "Python {{version}}",
+        "fail": "Python {{version}}: serve la versione 3.11 o successiva."
+      },
+      "data_dir": {
+        "ok": "{{path}} è scrivibile.",
+        "warn": "{{path}}",
+        "fail": "{{path}} non è scrivibile dall'utente del servizio."
+      },
+      "disk_space": {
+        "ok": "{{freeBytes}} liberi.",
+        "warn": "Solo {{freeBytes}} liberi: i backup potrebbero esaurire lo spazio.",
+        "fail": "{{freeBytes}} liberi."
+      },
+      "tls": {
+        "ok": "HTTPS attivo (TLS diretto o reverse proxy).",
+        "warn": "HTTPS non attivo: in produzione configura un certificato (passo TLS).",
+        "fail": ""
+      },
+      "mode": {
+        "ok": "Modalità LIVE: dati reali.",
+        "warn": "Modalità DEMO: dati simulati, non usare in produzione.",
+        "fail": ""
+      }
     }
   },
   "k8s": {
-    "text": "PKM legge e gestisce il cluster con le credenziali di un kubeconfig presente sul server. Consigliato: un ServiceAccount dedicato \"pkm\" (deploy/kubernetes/pkm-rbac.yaml) con un kubeconfig in /etc/pkm/kubeconfig leggibile dall'utente pkm.",
+    "text": "Scarlet legge e gestisce il cluster con le credenziali di un kubeconfig presente sul server. Consigliato: un ServiceAccount dedicato \"pkm\" (deploy/kubernetes/pkm-rbac.yaml) con un kubeconfig in /etc/pkm/kubeconfig leggibile dall'utente pkm.",
     "enable": "Collega Kubernetes",
-    "inCluster": "PKM gira come Pod nel cluster (usa il service account del Pod)",
+    "inCluster": "Scarlet gira come Pod nel cluster (usa il service account del Pod)",
     "kubeconfig": "Percorso del kubeconfig",
     "kubeconfigHint": "Percorso sul server (non sul tuo PC).",
     "context": "Contesto",
@@ -76,7 +104,7 @@
     "optional": "Puoi saltare questo passo e configurare Kubernetes più tardi da Impostazioni → Kubernetes."
   },
   "podman": {
-    "text": "PKM gestisce i container Podman di questo host tramite il socket dell'API di Podman. Per i container di sistema abilita il socket con: sudo systemctl enable --now podman.socket",
+    "text": "Scarlet gestisce i container Podman di questo host tramite il socket dell'API di Podman. Per i container di sistema abilita il socket con: sudo systemctl enable --now podman.socket",
     "enable": "Collega Podman",
     "url": "Indirizzo del socket",
     "urlHint": "unix:///run/podman/podman.sock (rootful) oppure unix:///run/user/<uid>/podman/podman.sock (rootless).",
@@ -95,14 +123,14 @@
     "errRepeat": "Le password non coincidono."
   },
   "monitoring": {
-    "text": "L'uso attuale di CPU e memoria arriva da metrics-server, se installato nel cluster. Prometheus è opzionale e aggiunge storico, traffico di rete e occupazione dei volumi. Senza Prometheus PKM non inventa metriche: mostra \"Metriche avanzate non configurate\".",
+    "text": "L'uso attuale di CPU e memoria arriva da metrics-server, se installato nel cluster. Prometheus è opzionale e aggiunge storico, traffico di rete e occupazione dei volumi. Senza Prometheus Scarlet non inventa metriche: mostra \"Metriche avanzate non configurate\".",
     "url": "URL di Prometheus (opzionale)",
-    "urlHint": "Deve essere raggiungibile dal server PKM. Lascia vuoto se non usi Prometheus."
+    "urlHint": "Deve essere raggiungibile dal server Scarlet. Lascia vuoto se non usi Prometheus."
   },
   "backup": {
     "text": "Ogni notte il timer pkm-backup.timer crea un archivio con:",
     "contents": [
-      "il database di PKM (utenti, audit log, impostazioni, notifiche)",
+      "il database di Scarlet (utenti, audit log, impostazioni, notifiche)",
       "i file di configurazione (config.yaml, pkm.env)",
       "opzionalmente l'esportazione YAML delle risorse applicative Kubernetes (senza Secret)"
     ],
@@ -118,7 +146,7 @@
     "offText": "La connessione non è cifrata: non usare questa configurazione in produzione.",
     "text": "L'installer genera un certificato autofirmato in /etc/pkm/tls. Per sostituirlo con il certificato aziendale copia i file e riavvia il servizio:",
     "commands": "sudo cp server.crt /etc/pkm/tls/pkm.crt\nsudo cp server.key /etc/pkm/tls/pkm.key\nsudo chown root:pkm /etc/pkm/tls/pkm.*\nsudo chmod 0640 /etc/pkm/tls/pkm.key\nsudo systemctl restart pkm",
-    "proxy": "In alternativa puoi pubblicare PKM dietro un reverse proxy HTTPS (vedi INSTALL.md)."
+    "proxy": "In alternativa puoi pubblicare Scarlet dietro un reverse proxy HTTPS (vedi INSTALL.md)."
   },
   "summary": {
     "text": "Controlla le scelte. Le impostazioni di Kubernetes, Podman, Prometheus e backup potranno essere cambiate in seguito da Impostazioni.",
@@ -158,5 +186,14 @@
     "allowed": "permessa",
     "k8sHint": "Controlla che il file esista e sia leggibile dall'utente pkm, che il server sia raggiungibile (firewall, porta 6443) e che il certificato e il token siano validi.",
     "podmanHint": "Controlla che podman.socket sia attivo (systemctl status podman.socket) e che il gruppo pkm possa accedere al socket."
+  },
+  "reason": {
+    "no_kubeconfig": "Non è indicato nessun kubeconfig: inserisci il percorso del file sul server oppure salta questo passo.",
+    "path_not_absolute": "Il percorso \"{{path}}\" non è assoluto: indica il percorso completo sul server, ad esempio /etc/pkm/kubeconfig.",
+    "file_not_found": "Il file \"{{path}}\" non esiste sul server. Copialo sul server (es. in /etc/pkm/kubeconfig) oppure generalo con scripts/make-kubeconfig.sh.",
+    "not_a_file": "\"{{path}}\" non è un file.",
+    "not_readable": "L'utente pkm non può leggere \"{{path}}\". Imposta i permessi: sudo chown root:pkm {{path}} && sudo chmod 0640 {{path}}",
+    "empty_file": "Il file \"{{path}}\" è vuoto.",
+    "invalid_file": "Il file \"{{path}}\" non è un kubeconfig valido (vedi il dettaglio sotto)."
   }
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Podman Kubernetes Manager - installer for Oracle Linux 9 (x86_64, systemd).
+# Scarlet - installer for Oracle Linux 9 (x86_64, systemd).
 #
 #   sudo ./install.sh [options]
 #
@@ -65,7 +65,7 @@ ask_yes_no() {
 require_root
 ROOT="$(cd "$DIR" && { [[ -f VERSION ]] && pwd || (cd .. && pwd); })"
 VERSION="$(release_version "$ROOT")"
-log "Podman Kubernetes Manager $VERSION - installation"
+log "Scarlet $VERSION - installation"
 
 # ------------------------------------------------------------------ checks
 check_os "$FORCE"
@@ -142,7 +142,7 @@ if [[ -n "$CERT" && "$CERT" != null && ! -f "$CERT" ]]; then
   [[ "${FQDN%%.*}" != "$FQDN" ]] && SAN="$SAN,DNS:${FQDN%%.*}"
   for ip in $(host_ipv4s); do SAN="$SAN,IP:$ip"; done
   openssl req -x509 -newkey rsa:3072 -sha256 -days 825 -nodes -keyout "$KEY" -out "$CERT" \
-    -subj "/CN=$FQDN/O=Podman Kubernetes Manager" -addext "subjectAltName=$SAN" \
+    -subj "/CN=$FQDN/O=Scarlet" -addext "subjectAltName=$SAN" \
     -addext "extendedKeyUsage=serverAuth" >/dev/null 2>&1 || die "certificate generation failed"
   chown root:"$PKM_GROUP" "$KEY" "$CERT"
   chmod 0640 "$KEY"
@@ -206,7 +206,7 @@ cat <<EOF
 ${C_BLD}Installation completed.${C_OFF}
 
 Application:
-  Podman Kubernetes Manager $VERSION
+  Scarlet $VERSION
 
 URL:
   $URL
@@ -229,7 +229,7 @@ if [[ -n "$SETUP_TOKEN" ]]; then
   (regenerate it with: sudo pkm-admin setup-token)
 EOF
 fi
-if [[ "$TLS" == yes ]] && openssl x509 -in "$CERT" -noout -issuer 2>/dev/null | grep -q "Podman Kubernetes Manager"; then
+if [[ "$TLS" == yes ]] && openssl x509 -in "$CERT" -noout -issuer 2>/dev/null | grep -q "Scarlet"; then
   echo
   warn "the certificate is self-signed: the browser will show a warning. Replace $CERT and $KEY with a certificate of your CA and run: systemctl restart pkm"
 fi

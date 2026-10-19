@@ -41,20 +41,20 @@ sudo pkm-admin check-config
 | Codice / messaggio UI | Causa | Soluzione |
 |---|---|---|
 | `k8s_not_configured` — Kubernetes non configurato | kubeconfig assente, non leggibile, contesto inesistente o integrazione disattivata | Impostazioni → Kubernetes; `ls -l /etc/pkm/kubeconfig` (0640 root:pkm); contesti con `kubectl --kubeconfig /etc/pkm/kubeconfig config get-contexts` |
-| `k8s_unavailable` — Impossibile ottenere lo stato del cluster | API server spento, rete/firewall, DNS, certificato TLS non valido | `curl -k https://<api>:6443/version` dal server PKM; controllare firewall e `server:` nel kubeconfig |
+| `k8s_unavailable` — Impossibile ottenere lo stato del cluster | API server spento, rete/firewall, DNS, certificato TLS non valido | `curl -k https://<api>:6443/version` dal server Scarlet; controllare firewall e `server:` nel kubeconfig |
 | `k8s_timeout` — Kubernetes non risponde in tempo | API server lento o sovraccarico | stato del control plane; aumentare `kubernetes.request_timeout` solo se necessario |
 | `k8s_auth_failed` — Credenziali rifiutate (401) | token scaduto/revocato, certificato client scaduto, plugin exec fallito | rigenerare con `make-kubeconfig.sh`; verificare il Secret `pkm-system/pkm-token` |
 | `k8s_forbidden` — Permessi Kubernetes insufficienti (403) | il ClusterRole non concede l'operazione | `kubectl auth can-i <verbo> <risorsa> --as=system:serviceaccount:pkm-system:pkm`; riapplicare `pkm-rbac.yaml` (o usare `pkm-operator`) |
 | `k8s_not_found` | la risorsa non esiste più (es. Pod ricreato) | aggiornare l'elenco |
 | `k8s_conflict` | risorsa già esistente o campi gestiti da un altro strumento | verificare il diff; un Administrator può forzare l'apply |
 | `k8s_invalid` | manifest rifiutato dall'API server | leggere i campi elencati (`causes`) |
-| `k8s_unsupported` | tipo o apiVersion non serviti dal cluster (es. CronJob su Kubernetes < 1.21) o non gestiti da PKM | aggiornare il cluster o usare l'apiVersion indicata |
+| `k8s_unsupported` | tipo o apiVersion non serviti dal cluster (es. CronJob su Kubernetes < 1.21) o non gestiti da Scarlet | aggiornare il cluster o usare l'apiVersion indicata |
 | Banner "Dati parziali" | il ServiceAccount non può leggere alcuni tipi | ampliare il ClusterRole o accettare la vista parziale |
 
 ## Metriche
 
 - **"Metriche avanzate non configurate"** su CPU/Memoria: metrics-server non installato o non raggiungibile
-  (`kubectl top nodes` deve funzionare con le credenziali di PKM; servono `get/list` su `metrics.k8s.io`).
+  (`kubectl top nodes` deve funzionare con le credenziali di Scarlet; servono `get/list` su `metrics.k8s.io`).
 - Storico, rete e occupazione volumi richiedono Prometheus: Impostazioni → Kubernetes → Prometheus URL; il token va in
   `PKM_MONITORING__PROMETHEUS_TOKEN`. Errore `metrics_unavailable` con "not reachable": URL/porta/certificato
   (disattivare `prometheus_verify_tls` solo per CA interne non installate).

@@ -11,7 +11,7 @@ related: configmap, volume, ingress, imagepullbackoff, createcontainerconfigerro
 
 A **Secret** works like a [ConfigMap](guide:configmap), but is meant for **confidential** information: database passwords, API keys, TLS certificates, credentials to pull images from a private registry.
 
-In PKM Secret values are **hidden by default**. Only a user with the **Administrator** role can reveal them, and every reveal is recorded in the [Audit Log](app:/security/audit). The Viewer role never sees the values.
+In Scarlet Secret values are **hidden by default**. Only a user with the **Administrator** role can reveal them, and every reveal is recorded in the [Audit Log](app:/security/audit). The Viewer role never sees the values.
 
 ## Technical details
 
@@ -25,7 +25,7 @@ In PKM Secret values are **hidden by default**. Only a user with the **Administr
 - Usage in a Pod: `env[].valueFrom.secretKeyRef`, `envFrom[].secretRef` or a `secret` volume (mounted on tmpfs, so not written to the node disk).
 - Same update rules as ConfigMaps: variables require a restart, volumes update (except with `subPath`). 1 MiB limit; supports `immutable: true`.
 
-In PKM: [Configurazione → Secrets](app:/k8s/secrets).
+In Scarlet: [Configurazione → Secrets](app:/k8s/secrets).
 
 ## Example
 
@@ -59,7 +59,7 @@ kubectl -n shop create secret docker-registry regcred \
 
 ## How to verify
 
-In PKM open the Secret: you see type, keys and value sizes without revealing them; the Relazioni tab shows the Pods using it.
+In Scarlet open the Secret: you see type, keys and value sizes without revealing them; the Relazioni tab shows the Pods using it.
 
 ```bash
 kubectl -n shop get secret db-credentials
@@ -71,6 +71,6 @@ kubectl auth can-i get secrets -n shop --as=system:serviceaccount:shop:default
 
 1. Create the missing Secret or fix the name and key in the workload.
 2. After rotating credentials restart the workload from [Operazioni → Restart](app:/operations/restart).
-3. Restrict with RBAC who can read Secrets and, in PKM, give the Administrator role only to people who really need to reveal values.
+3. Restrict with RBAC who can read Secrets and, in Scarlet, give the Administrator role only to people who really need to reveal values.
 4. If a Secret has been exposed, treat the credential as compromised: change it at the source, then update the Secret.
 5. Do not include real values in manifests stored in Git; use dedicated tools (Sealed Secrets, External Secrets) if needed.

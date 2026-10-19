@@ -14,7 +14,7 @@ Usa questa procedura quando un Pod non è nello stato atteso: resta in `Pending`
 ## Prerequisiti
 
 - Utente con ruolo **Operator** o **Administrator** (il ruolo Viewer può vedere stato ed eventi, ma per i log serve almeno Operator).
-- PKM in modalità LIVE e collegato al cluster (badge verde "LIVE" in alto).
+- Scarlet in modalità LIVE e collegato al cluster (badge verde "LIVE" in alto).
 - Conoscere il namespace dell'applicazione.
 
 ## Procedura

@@ -24,7 +24,7 @@ You do not create Pods by hand: the Deployment creates them through an intermedi
 
 Status is in `status`: `replicas`, `updatedReplicas`, `readyReplicas`, `availableReplicas` and the `Available` and `Progressing` conditions. A Pod counts as "ready" only when its [readiness probe](guide:readiness-probe) succeeds.
 
-In PKM the list is under [Applicazioni → Deployments](app:/k8s/deployments); the detail page shows ready/desired replicas, linked ReplicaSets (Relazioni tab), events and YAML.
+In Scarlet the list is under [Applicazioni → Deployments](app:/k8s/deployments); the detail page shows ready/desired replicas, linked ReplicaSets (Relazioni tab), events and YAML.
 
 ## Example
 
@@ -71,7 +71,7 @@ spec:
 
 ## How to verify
 
-In PKM: open the Deployment, check ready/desired replicas and the Eventi tab; the [Operazioni → Rollout](app:/operations/rollout) page shows the status of the update in progress.
+In Scarlet: open the Deployment, check ready/desired replicas and the Eventi tab; the [Operazioni → Rollout](app:/operations/rollout) page shows the status of the update in progress.
 
 From a shell (admin alternative):
 

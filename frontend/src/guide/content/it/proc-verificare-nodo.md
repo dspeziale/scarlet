@@ -18,7 +18,7 @@ related: node, node-notready, proc-manutenzione-nodo, monitoring, scheduling, pe
 
 - Qualsiasi ruolo può consultare i nodi; per cordon, drain e uncordon serve almeno **Operator**.
 - Per CPU e memoria in tempo reale serve metrics-server installato nel cluster.
-- Per azioni sul sistema operativo del nodo (riavvio di kubelet, controllo disco) serve accesso SSH al nodo: PKM non esegue comandi sui nodi.
+- Per azioni sul sistema operativo del nodo (riavvio di kubelet, controllo disco) serve accesso SSH al nodo: Scarlet non esegue comandi sui nodi.
 
 ## Procedura
 

@@ -1,4 +1,4 @@
-# Podman Kubernetes Manager - container image (Podman deployment mode).
+# Scarlet - container image (Podman deployment mode).
 #
 #   podman build -f deploy/podman/Containerfile -t localhost/pkm:1.0.0 .
 #
@@ -25,7 +25,7 @@ RUN python3.12 -m venv /opt/pkm/venv \
 
 # --- 3. runtime ------------------------------------------------------------------------
 FROM container-registry.oracle.com/os/oraclelinux:9-slim
-LABEL org.opencontainers.image.title="Podman Kubernetes Manager" \
+LABEL org.opencontainers.image.title="Scarlet" \
       org.opencontainers.image.description="Operations console for Kubernetes and Podman" \
       org.opencontainers.image.version="1.0.0"
 RUN microdnf -y install python3.12 shadow-utils && microdnf clean all \

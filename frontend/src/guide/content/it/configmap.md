@@ -20,12 +20,12 @@ Le ConfigMap sono pensate per dati **non riservati**. Password, token e chiavi v
   - `env[].valueFrom.configMapKeyRef`: una singola chiave come variabile.
   - `envFrom[].configMapRef`: tutte le chiavi come variabili.
   - volume `configMap`: ogni chiave diventa un file nella cartella di mount.
-- **Aggiornamenti**: le variabili d'ambiente vengono lette **solo all'avvio** del container; per applicare una modifica bisogna riavviare i Pod (in PKM: [Operazioni → Restart](app:/operations/restart), equivalente a `kubectl rollout restart`). I file montati da volume si aggiornano da soli dopo qualche decina di secondi, ma non se montati con `subPath`, e l'applicazione deve rileggerli.
+- **Aggiornamenti**: le variabili d'ambiente vengono lette **solo all'avvio** del container; per applicare una modifica bisogna riavviare i Pod (in Scarlet: [Operazioni → Restart](app:/operations/restart), equivalente a `kubectl rollout restart`). I file montati da volume si aggiornano da soli dopo qualche decina di secondi, ma non se montati con `subPath`, e l'applicazione deve rileggerli.
 - `optional: true` permette al Pod di partire anche se la ConfigMap o la chiave non esistono.
 - `immutable: true`: impedisce modifiche e riduce il carico sull'API server; per cambiare valori si crea una nuova ConfigMap con un nome diverso.
 - È un oggetto di namespace: un Pod può usare solo ConfigMap del proprio namespace.
 
-In PKM: [Configurazione → ConfigMaps](app:/k8s/configmaps). La scheda Relazioni mostra quali Pod e workload la usano.
+In Scarlet: [Configurazione → ConfigMaps](app:/k8s/configmaps). La scheda Relazioni mostra quali Pod e workload la usano.
 
 ## Esempio
 
@@ -57,7 +57,7 @@ data:
 
 ## Come verificare
 
-In PKM apri la ConfigMap per vedere chiavi e valori e, nella scheda Relazioni, i Pod che la utilizzano.
+In Scarlet apri la ConfigMap per vedere chiavi e valori e, nella scheda Relazioni, i Pod che la utilizzano.
 
 ```bash
 kubectl -n shop get configmap web-config -o yaml

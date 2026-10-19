@@ -227,7 +227,7 @@
     },
     "KubernetesUnreachable": {
       "title": "Kubernetes unreachable",
-      "simple": "PKM cannot talk to the Kubernetes API server.",
+      "simple": "Scarlet cannot talk to the Kubernetes API server.",
       "risk": "Cluster monitoring and operations are unavailable.",
       "causes": [
         "API server down",
@@ -237,7 +237,7 @@
     },
     "PodmanUnreachable": {
       "title": "Podman unreachable",
-      "simple": "PKM cannot talk to the Podman API.",
+      "simple": "Scarlet cannot talk to the Podman API.",
       "risk": "Podman container management is unavailable.",
       "causes": [
         "podman.socket not active",
@@ -519,7 +519,7 @@
   "centerSubtitle": "Automatically detected problems, most severe first. Each card explains what is happening, the risk and what to do.",
   "noIssues": "No problems detected. The cluster is healthy.",
   "onlyActive": "Hide the ones already handled",
-  "partialData": "Partial data: some resources cannot be read with the permissions of the PKM Kubernetes account ({{kinds}}).",
+  "partialData": "Partial data: some resources cannot be read with the permissions of the Scarlet Kubernetes account ({{kinds}}).",
   "counts": "{{critical}} critical · {{error}} errors · {{warning}} warnings",
   "replicasAvailable": "replicas available",
   "markHandled": "Mark as handled"

@@ -1,10 +1,10 @@
-# Podman Kubernetes Manager - configuration file
+# Scarlet - configuration file
 # Installed as /etc/pkm/config.yaml (owner root:pkm, mode 0640).
 # Every key can be overridden by an environment variable PKM_<SECTION>__<KEY>
 # (e.g. PKM_SERVER__PORT=8443), normally placed in /etc/pkm/pkm.env.
 # Keys marked [UI] can also be changed later from Impostazioni (stored in the database).
 
-app_name: "Podman Kubernetes Manager"
+app_name: "Scarlet"
 
 # live = real cluster. demo = simulated data, only allowed with environment: development.
 mode: live
@@ -15,14 +15,14 @@ server:
   port: 8443
   tls_cert: /etc/pkm/tls/pkm.crt   # PEM certificate (chain); comment both lines to serve plain HTTP
   tls_key: /etc/pkm/tls/pkm.key    # PEM private key, readable only by root:pkm (0640)
-  trusted_proxies: []           # e.g. ["127.0.0.1"] when nginx/haproxy terminates TLS in front of PKM
+  trusted_proxies: []           # e.g. ["127.0.0.1"] when nginx/haproxy terminates TLS in front of Scarlet
   graceful_shutdown_seconds: 20
 
 kubernetes:                     # [UI]
   enabled: true
   kubeconfig: /etc/pkm/kubeconfig   # kubeconfig of the dedicated "pkm" ServiceAccount
   context: null                 # null = current-context of the kubeconfig
-  in_cluster: false             # true only when PKM itself runs inside the cluster
+  in_cluster: false             # true only when Scarlet itself runs inside the cluster
   connect_timeout: 5
   request_timeout: 20
   cache_ttl_seconds: 3          # short cache of list calls; 0 disables it

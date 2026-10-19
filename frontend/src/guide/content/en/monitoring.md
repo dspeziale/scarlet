@@ -1,6 +1,6 @@
 ---
 title: Monitoring
-summary: Where metrics, events, logs and health status come from in PKM, and how to read them without being misled.
+summary: Where metrics, events, logs and health status come from in Scarlet, and how to read them without being misled.
 category: concepts
 order: 70
 keywords: monitoring, metrics, metrics-server, prometheus, health, events, logs, cpu, memory
@@ -9,18 +9,18 @@ related: resource-request, resource-limit, node, proc-visualizzare-log, troubles
 
 ## In simple terms
 
-Monitoring means knowing at any moment whether applications and the cluster are healthy, and noticing problems before users do. In PKM you have four sources of information:
+Monitoring means knowing at any moment whether applications and the cluster are healthy, and noticing problems before users do. In Scarlet you have four sources of information:
 
 - **Metrics**: how much CPU, memory, disk and network pods and nodes use.
 - **Events**: what just happened in the cluster (pods created, failed pulls, impossible scheduling...).
 - **Logs**: what applications write.
-- **Health**: whether PKM itself and the systems it connects to are working.
+- **Health**: whether Scarlet itself and the systems it connects to are working.
 
 The [Operations Center](app:/operations-center) combines these sources and shows you problems that are already interpreted.
 
 ## Technical details
 
-**CPU/RAM metrics** for pods and nodes come from **metrics-server** (the `metrics.k8s.io` API). They are point-in-time values, sampled roughly every 15 seconds, with no history. **History and network metrics** come from **Prometheus**, if configured in [Impostazioni → Kubernetes](app:/settings/kubernetes). If neither is available, PKM shows "Metriche avanzate non configurate" (advanced metrics not configured): it **never estimates or invents values**.
+**CPU/RAM metrics** for pods and nodes come from **metrics-server** (the `metrics.k8s.io` API). They are point-in-time values, sampled roughly every 15 seconds, with no history. **History and network metrics** come from **Prometheus**, if configured in [Impostazioni → Kubernetes](app:/settings/kubernetes). If neither is available, Scarlet shows "Metriche avanzate non configurate" (advanced metrics not configured): it **never estimates or invents values**.
 
 How to read the numbers:
 
@@ -69,5 +69,5 @@ Quick reading of a pod:
 
 - Install or repair metrics-server (a cluster administrator task); check with `kubectl get apiservice v1beta1.metrics.k8s.io`.
 - Configure the Prometheus URL in the settings to get history and network metrics.
-- To avoid losing logs and events, use a centralized solution (e.g. the cluster's logging stack); PKM complements it, it does not replace it.
+- To avoid losing logs and events, use a centralized solution (e.g. the cluster's logging stack); Scarlet complements it, it does not replace it.
 - When a pod is steadily close to its limits, review requests and limits instead of waiting for the incident.

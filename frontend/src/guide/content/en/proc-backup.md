@@ -1,6 +1,6 @@
 ---
 title: Take a backup
-summary: How to save the PKM database and configuration, verify the backup and keep it safely.
+summary: How to save the Scarlet database and configuration, verify the backup and keep it safely.
 category: procedures
 order: 120
 keywords: backup, pkm-admin, backup.sh, pkm-backup.timer, sqlite, manifest export, verify-backup
@@ -9,7 +9,7 @@ related: backup, proc-restore, proc-installare, faq
 
 ## When you need it
 
-- Before upgrading PKM (`upgrade.sh` takes one anyway, but it is wise to have your own verified one).
+- Before upgrading Scarlet (`upgrade.sh` takes one anyway, but it is wise to have your own verified one).
 - Before major changes to users, roles or settings.
 - To check that the automatic nightly backup works.
 
@@ -17,15 +17,15 @@ First, be clear about **what** you are saving (details in [Backup](guide:backup)
 
 | Type | What it contains | Who does it |
 |---|---|---|
-| PKM application backup | SQLite DB `/var/lib/pkm/pkm.db` + PKM configuration | PKM |
-| Kubernetes manifests export | YAML of resources; **not** PV data, **not** etcd | PKM |
-| Cluster backup | etcd snapshot, Velero, volume backups | **not** PKM: cluster tools |
+| Scarlet application backup | SQLite DB `/var/lib/pkm/pkm.db` + Scarlet configuration | Scarlet |
+| Kubernetes manifests export | YAML of resources; **not** PV data, **not** etcd | Scarlet |
+| Cluster backup | etcd snapshot, Velero, volume backups | **not** Scarlet: cluster tools |
 
-This procedure is about the **PKM application backup**.
+This procedure is about the **Scarlet application backup**.
 
 ## Prerequisites
 
-- **Administrator** role in PKM, or `sudo` access to the server where PKM is installed.
+- **Administrator** role in Scarlet, or `sudo` access to the server where Scarlet is installed.
 - Enough free space in the data directory `/var/lib/pkm` (check the storage item in [Monitoring → Health](app:/monitoring/health)).
 - A destination outside the server to copy backups to (a backup that lives only on the same disk does not protect against a disk failure).
 
@@ -61,7 +61,7 @@ This procedure is about the **PKM application backup**.
 
 - The backup appears in [Operations → Backup](app:/operations/backup) and in `/var/lib/pkm/backups`.
 - `pkm-admin verify-backup` completes without errors.
-- A copy exists on a system other than the PKM server.
+- A copy exists on a system other than the Scarlet server.
 - `systemctl list-timers` shows the next run of `pkm-backup.timer`.
 - Periodically (for example every quarter) test a [restore](guide:proc-restore) in a test environment: a backup that has never been tested is not a reliable backup.
 
@@ -71,4 +71,4 @@ This procedure is about the **PKM application backup**.
 - **Permission denied**: run the commands with `sudo`; files are owned by the `pkm` system user.
 - **`verify-backup` fails**: the file is incomplete or altered. Do not use it; create a new backup and check the logs in `/var/log/pkm/pkm.log` or with `journalctl -u pkm`.
 - **The timer does not run**: enable it with `sudo systemctl enable --now pkm-backup.timer`.
-- **You need a cluster backup**: PKM does not do that. Use etcd snapshots or a tool such as Velero, managed by the cluster administrator.
+- **You need a cluster backup**: Scarlet does not do that. Use etcd snapshots or a tool such as Velero, managed by the cluster administrator.

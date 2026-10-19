@@ -15,12 +15,12 @@ related: cluster, node, monitoring, proc-verificare-nodo, troubleshooting, node-
 
 ## Prerequisites
 
-- PKM connected to the cluster (**LIVE** badge visible). If you see the **DEMO** banner, you are looking at sample data.
+- Scarlet connected to the cluster (**LIVE** badge visible). If you see the **DEMO** banner, you are looking at sample data.
 - At least the **Viewer** role.
 
 ## Procedure
 
-1. **Health of PKM and its integrations.** Open [Monitoraggio → Health](app:/monitoring/health). Backend, database, Kubernetes and Podman should be **Healthy**. If Kubernetes is Unhealthy, everything you see next may be incomplete: fix the connection first ([Connecting Kubernetes](guide:proc-collegare-kubernetes)).
+1. **Health of Scarlet and its integrations.** Open [Monitoraggio → Health](app:/monitoring/health). Backend, database, Kubernetes and Podman should be **Healthy**. If Kubernetes is Unhealthy, everything you see next may be incomplete: fix the connection first ([Connecting Kubernetes](guide:proc-collegare-kubernetes)).
 
 2. **Already detected problems.** Open the [Centro Operativo](app:/operations-center). Sort by severity: **CRITICAL** and **ERROR** first, then WARNING. For each entry read the affected resource, the risk and the suggested actions.
 
@@ -28,7 +28,7 @@ related: cluster, node, monitoring, proc-verificare-nodo, troubleshooting, node-
    - nodes marked **SchedulingDisabled** (a cordon forgotten after maintenance?);
    - pressure conditions: `MemoryPressure`, `DiskPressure`, `PIDPressure` must be `False`.
 
-4. **Resource usage.** In [Monitoraggio → CPU](app:/monitoring/cpu) and [Memoria](app:/monitoring/memory) look for nodes steadily above 80-90%. If "Metriche avanzate non configurate" appears, metrics-server is not available: PKM never invents values. In [Storage](app:/monitoring/storage) check free space.
+4. **Resource usage.** In [Monitoraggio → CPU](app:/monitoring/cpu) and [Memoria](app:/monitoring/memory) look for nodes steadily above 80-90%. If "Metriche avanzate non configurate" appears, metrics-server is not available: Scarlet never invents values. In [Storage](app:/monitoring/storage) check free space.
 
 5. **Workloads.** In [Applicazioni → Deployments](app:/k8s/deployments) compare desired and ready replicas (e.g. `3/3`). A persistent `2/3` indicates a problem. Do the same for StatefulSets and DaemonSets.
 

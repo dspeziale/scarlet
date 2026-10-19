@@ -24,7 +24,7 @@ Unlike a [Deployment](guide:deployment), a Job Pod that finishes correctly is **
 - `spec.completionMode: Indexed` gives each Pod an index (`JOB_COMPLETION_INDEX`) to split the work.
 - A Job's template is immutable: to change it you create a new Job.
 
-Status is in `status.succeeded`, `status.failed`, `status.active` and in the `Complete` or `Failed` conditions. In PKM: [Applicazioni → Jobs](app:/k8s/jobs).
+Status is in `status.succeeded`, `status.failed`, `status.active` and in the `Complete` or `Failed` conditions. In Scarlet: [Applicazioni → Jobs](app:/k8s/jobs).
 
 ## Example
 
@@ -63,7 +63,7 @@ spec:
 
 ## How to verify
 
-In PKM open the Job: you see successful/failed completions, the generated Pods (Relazioni tab) and the logs of the last attempt in the Pod's Log tab.
+In Scarlet open the Job: you see successful/failed completions, the generated Pods (Relazioni tab) and the logs of the last attempt in the Pod's Log tab.
 
 ```bash
 kubectl -n shop get job db-migrate-1-4-2
