@@ -1,0 +1,162 @@
+{
+  "title": "Initial setup",
+  "stepOf": "Step {{n}} of {{total}}",
+  "stepsLabel": "Setup steps",
+  "optional": "optional",
+  "goLogin": "Go to sign-in",
+  "steps": {
+    "welcome": "Welcome",
+    "system": "System check",
+    "kubernetes": "Kubernetes",
+    "podman": "Podman",
+    "auth": "Authentication",
+    "monitoring": "Monitoring",
+    "backup": "Backup",
+    "tls": "TLS",
+    "summary": "Summary",
+    "test": "Connection test",
+    "complete": "Completed"
+  },
+  "blocked": {
+    "system": "Enter and verify the setup token to continue.",
+    "auth": "Complete the administrator details to continue."
+  },
+  "already": {
+    "title": "Application already configured",
+    "text": "The initial setup has already been completed. Sign in with your account."
+  },
+  "welcome": {
+    "text": "This guided procedure configures Podman Kubernetes Manager in a few minutes. You can go back to previous steps at any time.",
+    "points": [
+      "server and setup token check",
+      "connection to Kubernetes and Podman (both optional)",
+      "creation of the first administrator",
+      "monitoring with Prometheus (optional) and backup retention",
+      "final connection test"
+    ],
+    "demo": "The application is in DEMO mode: Kubernetes and Podman are simulated and their settings are not saved."
+  },
+  "token": {
+    "text": "For security you need the one-time token shown at the end of the installation (install.sh). If you no longer have it, generate a new one on the server with:",
+    "label": "Setup token",
+    "verify": "Verify token",
+    "invalid": "Invalid token. Make sure you copied it entirely or generate a new one.",
+    "rateLimited": "Too many attempts. Retry in {{seconds}} seconds."
+  },
+  "system": {
+    "title": "System check",
+    "optionalNote": "Warnings do not block the installation: you can fix them later.",
+    "check": {
+      "os": "Operating system",
+      "arch": "Architecture",
+      "python": "Python",
+      "data_dir": "Data directory",
+      "disk_space": "Disk space",
+      "tls": "HTTPS",
+      "mode": "Mode"
+    },
+    "detail": {
+      "os": { "ok": "{{name}}: supported.", "warn": "{{name}}: not Oracle Linux 9; the application can work but it is not the reference platform.", "fail": "{{name}}" },
+      "arch": { "ok": "{{arch}}", "warn": "{{arch}}: the reference architecture is x86_64.", "fail": "{{arch}}" },
+      "python": { "ok": "Python {{version}}", "warn": "Python {{version}}", "fail": "Python {{version}}: version 3.11 or later is required." },
+      "data_dir": { "ok": "{{path}} is writable.", "warn": "{{path}}", "fail": "{{path}} is not writable by the service user." },
+      "disk_space": { "ok": "{{freeBytes}} free.", "warn": "Only {{freeBytes}} free: backups may run out of space.", "fail": "{{freeBytes}} free." },
+      "tls": { "ok": "HTTPS active (direct TLS or reverse proxy).", "warn": "HTTPS not active: in production configure a certificate (TLS step).", "fail": "" },
+      "mode": { "ok": "LIVE mode: real data.", "warn": "DEMO mode: simulated data, do not use in production.", "fail": "" }
+    }
+  },
+  "k8s": {
+    "text": "PKM reads and manages the cluster with the credentials of a kubeconfig on the server. Recommended: a dedicated \"pkm\" ServiceAccount (deploy/kubernetes/pkm-rbac.yaml) with a kubeconfig in /etc/pkm/kubeconfig readable by the pkm user.",
+    "enable": "Connect Kubernetes",
+    "inCluster": "PKM runs as a Pod in the cluster (uses the Pod service account)",
+    "kubeconfig": "kubeconfig path",
+    "kubeconfigHint": "Path on the server (not on your PC).",
+    "context": "Context",
+    "contextHint": "Empty = current context of the file.",
+    "optional": "You can skip this step and configure Kubernetes later from Settings → Kubernetes."
+  },
+  "podman": {
+    "text": "PKM manages the Podman containers of this host through the Podman API socket. For system containers enable the socket with: sudo systemctl enable --now podman.socket",
+    "enable": "Connect Podman",
+    "url": "Socket address",
+    "urlHint": "unix:///run/podman/podman.sock (rootful) or unix:///run/user/<uid>/podman/podman.sock (rootless).",
+    "rootWarning": "Whoever can use the rootful Podman socket effectively has root access to the host: the installer grants access only to the pkm group."
+  },
+  "auth": {
+    "text": "Create the first Administrator account. You can add other users with Operator or Viewer roles from Security → Users.",
+    "username": "Username",
+    "displayName": "Display name",
+    "email": "Email",
+    "password": "Password",
+    "repeat": "Repeat the password",
+    "note": "The password is stored only as an Argon2id hash: nobody, not even the server administrator, can read it.",
+    "errUsername": "Use letters, digits and . _ @ - (2 to 63 characters).",
+    "errPassword": "At least 12 characters.",
+    "errRepeat": "The passwords do not match."
+  },
+  "monitoring": {
+    "text": "Current CPU and memory usage comes from metrics-server, if installed in the cluster. Prometheus is optional and adds history, network traffic and volume usage. Without Prometheus PKM does not invent metrics: it shows \"Advanced metrics not configured\".",
+    "url": "Prometheus URL (optional)",
+    "urlHint": "It must be reachable from the PKM server. Leave empty if you do not use Prometheus."
+  },
+  "backup": {
+    "text": "Every night the pkm-backup.timer creates an archive with:",
+    "contents": [
+      "the PKM database (users, audit log, settings, notifications)",
+      "the configuration files (config.yaml, pkm.env)",
+      "optionally the YAML export of Kubernetes application resources (without Secrets)"
+    ],
+    "notCluster": "It is not a backup of the Kubernetes cluster: it does not include etcd or persistent volume data. That requires dedicated tools (etcd snapshots, Velero).",
+    "retention": "Backups to keep",
+    "retentionHint": "Older archives are deleted automatically. Directory: {{dir}}.",
+    "timer": "You can run a backup at any time from Operations → Backup or with: sudo pkm-admin backup"
+  },
+  "tls": {
+    "on": "HTTPS active",
+    "off": "HTTPS not active",
+    "cert": "Certificate in use: {{cert}}",
+    "offText": "The connection is not encrypted: do not use this configuration in production.",
+    "text": "The installer generates a self-signed certificate in /etc/pkm/tls. To replace it with your company certificate copy the files and restart the service:",
+    "commands": "sudo cp server.crt /etc/pkm/tls/pkm.crt\nsudo cp server.key /etc/pkm/tls/pkm.key\nsudo chown root:pkm /etc/pkm/tls/pkm.*\nsudo chmod 0640 /etc/pkm/tls/pkm.key\nsudo systemctl restart pkm",
+    "proxy": "Alternatively you can publish PKM behind an HTTPS reverse proxy (see INSTALL.md)."
+  },
+  "summary": {
+    "text": "Check your choices. Kubernetes, Podman, Prometheus and backup settings can be changed later from Settings.",
+    "admin": "Administrator",
+    "disabled": "not connected",
+    "notConfigured": "not configured",
+    "retention": "Backups kept",
+    "listen": "Server address",
+    "demoNote": "In DEMO mode Kubernetes and Podman settings are not saved."
+  },
+  "testStep": {
+    "text": "Check the configured connections one last time. Unreachable components do not block the installation.",
+    "runAll": "Run all tests",
+    "notRun": "Test not run yet.",
+    "nonBlocking": "You can complete the installation even if a test fails and fix it later."
+  },
+  "complete": {
+    "text": "Press the button to create the administrator and save the configuration. The setup token will be invalidated.",
+    "button": "Complete the installation",
+    "needToken": "Verify the setup token first (step 2).",
+    "needAdmin": "Complete the administrator details (step 5)."
+  },
+  "done": {
+    "title": "Installation completed",
+    "text": "The account {{user}} has been created. Sign in to start using the console."
+  },
+  "test": {
+    "run": "Test the connection",
+    "ok": "Connection successful",
+    "failed": "Connection failed",
+    "skipped": "Integration disabled: no test.",
+    "promSkipped": "Prometheus not configured.",
+    "k8sOk": "Kubernetes {{version}} · context {{context}} · {{server}}",
+    "podmanOk": "Podman {{version}} ({{mode}}) · {{endpoint}}",
+    "promOk": "Prometheus answers in {{ms}} ms, {{targets}} monitored targets.",
+    "canList": "Read {{kind}}",
+    "allowed": "allowed",
+    "k8sHint": "Check that the file exists and is readable by the pkm user, that the server is reachable (firewall, port 6443) and that certificate and token are valid.",
+    "podmanHint": "Check that podman.socket is active (systemctl status podman.socket) and that the pkm group can access the socket."
+  }
+}

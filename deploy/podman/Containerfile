@@ -1,0 +1,47 @@
+# Podman Kubernetes Manager - container image (Podman deployment mode).
+#
+#   podman build -f deploy/podman/Containerfile -t localhost/pkm:1.0.0 .
+#
+# Runs as an unprivileged user (uid 10001). State in /var/lib/pkm (volume), configuration
+# in /etc/pkm (mounted read-only). See INSTALL.md "Podman deployment".
+
+# --- 1. web UI -----------------------------------------------------------------------
+FROM docker.io/library/node:22-bookworm-slim AS ui
+WORKDIR /src/frontend
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY frontend/ ./
+RUN npm run build
+
+# --- 2. Python wheels -------------------------------------------------------------------
+FROM container-registry.oracle.com/os/oraclelinux:9-slim AS build
+RUN microdnf -y install python3.12 python3.12-pip && microdnf clean all
+WORKDIR /src
+COPY backend/ backend/
+COPY --from=ui /src/frontend/dist backend/pkm/static
+RUN python3.12 -m venv /opt/pkm/venv \
+ && /opt/pkm/venv/bin/pip install --no-cache-dir --upgrade pip \
+ && /opt/pkm/venv/bin/pip install --no-cache-dir ./backend
+
+# --- 3. runtime ------------------------------------------------------------------------
+FROM container-registry.oracle.com/os/oraclelinux:9-slim
+LABEL org.opencontainers.image.title="Podman Kubernetes Manager" \
+      org.opencontainers.image.description="Operations console for Kubernetes and Podman" \
+      org.opencontainers.image.version="1.0.0"
+RUN microdnf -y install python3.12 shadow-utils && microdnf clean all \
+ && groupadd --system --gid 10001 pkm \
+ && useradd --system --uid 10001 --gid pkm --home-dir /var/lib/pkm --shell /sbin/nologin pkm \
+ && install -d -m 0750 -o pkm -g pkm /var/lib/pkm /var/lib/pkm/backups /var/log/pkm \
+ && install -d -m 0755 /etc/pkm
+COPY --from=build /opt/pkm/venv /opt/pkm/venv
+COPY config/config.example.yaml /opt/pkm/config.example.yaml
+ENV PATH=/opt/pkm/venv/bin:$PATH \
+    PKM_CONFIG=/etc/pkm/config.yaml \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+USER 10001
+VOLUME ["/var/lib/pkm"]
+EXPOSE 8443
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD python3.12 -c "import ssl,urllib.request,os,sys; c=ssl._create_unverified_context(); s='https' if os.path.exists('/etc/pkm/tls/pkm.crt') else 'http'; urllib.request.urlopen(f'{s}://127.0.0.1:8443/readyz', context=c, timeout=4); sys.exit(0)"
+ENTRYPOINT ["pkm-server"]

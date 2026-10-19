@@ -1,0 +1,526 @@
+{
+  "problem": "Problema",
+  "whatHappens": "Cosa sta succedendo",
+  "risk": "Rischio",
+  "possibleCauses": "Cause possibili",
+  "checks": "Controlli eseguiti",
+  "likelyCause": "Causa più probabile",
+  "whatToDo": "Cosa puoi fare",
+  "application": "Applicazione",
+  "resource": "Risorsa",
+  "node": "Nodo",
+  "container": "Container",
+  "since": "Da",
+  "affectedPods": "Pod coinvolti",
+  "technicalMessage": "Messaggio di Kubernetes",
+  "acknowledgedBy": "Gestito da {{user}}",
+  "checkStatus": {
+    "ok": "OK",
+    "fail": "Problema",
+    "warn": "Attenzione",
+    "unknown": "Non verificabile"
+  },
+  "reason": {
+    "CrashLoopBackOff": {
+      "title": "CrashLoopBackOff",
+      "simple": "Il container si avvia e si chiude subito con un errore; Kubernetes continua a riavviarlo aspettando sempre più tempo tra un tentativo e l'altro.",
+      "risk": "Le copie colpite non servono richieste. Se tutte le repliche sono in questo stato l'applicazione non è disponibile.",
+      "causes": [
+        "Errore dell'applicazione all'avvio (configurazione, dipendenza non raggiungibile come un database)",
+        "Comando o entrypoint errato",
+        "Variabili d'ambiente o file di configurazione mancanti",
+        "Liveness probe troppo aggressiva che uccide il container",
+        "Memoria insufficiente (OOMKilled)"
+      ]
+    },
+    "HighRestarts": {
+      "title": "Riavvii frequenti",
+      "simple": "Il container è in esecuzione ma si è riavviato molte volte di recente.",
+      "risk": "Ogni riavvio interrompe le richieste in corso; il problema può peggiorare in CrashLoopBackOff.",
+      "causes": [
+        "Errori intermittenti dell'applicazione",
+        "Liveness probe che fallisce sotto carico",
+        "Picchi di memoria"
+      ]
+    },
+    "ImagePullBackOff": {
+      "title": "ImagePullBackOff",
+      "simple": "Kubernetes non riesce a scaricare l'immagine del container, quindi il container non può partire.",
+      "risk": "Le nuove copie dell'applicazione non partono. Se riguarda tutte le repliche l'applicazione non è disponibile.",
+      "causes": [
+        "Nome dell'immagine errato",
+        "Tag inesistente",
+        "Registry irraggiungibile dai nodi",
+        "Credenziali mancanti o errate (imagePullSecrets)",
+        "Problema di rete o DNS"
+      ]
+    },
+    "OOMKilled": {
+      "title": "OOMKilled (memoria esaurita)",
+      "simple": "Il container ha usato più memoria del limite consentito ed è stato terminato dal sistema.",
+      "risk": "Il container viene riavviato: le richieste in corso vanno perse e il problema tende a ripetersi sotto carico.",
+      "causes": [
+        "Limite di memoria troppo basso per il carico reale",
+        "Perdita di memoria (memory leak) nell'applicazione",
+        "Picco di traffico o elaborazioni pesanti",
+        "Configurazione della JVM/runtime non adatta al limite"
+      ]
+    },
+    "Pending": {
+      "title": "Pending (in attesa di un nodo)",
+      "simple": "Il Pod non è ancora stato assegnato a nessun nodo: Kubernetes non trova un posto dove eseguirlo.",
+      "risk": "Le repliche mancanti non partono: capacità ridotta o applicazione non disponibile.",
+      "causes": [
+        "Risorse insufficienti (CPU o memoria richieste superiori a quelle libere)",
+        "Taint sui nodi non tollerati dal Pod",
+        "nodeSelector/affinity che non corrispondono a nessun nodo",
+        "Volume (PVC) non ancora disponibile",
+        "Quote del namespace superate"
+      ]
+    },
+    "CreateContainerConfigError": {
+      "title": "Errore di configurazione del container",
+      "simple": "Il container non può essere creato perché manca un elemento di configurazione a cui fa riferimento.",
+      "risk": "Il container non parte finché la configurazione non viene corretta.",
+      "causes": [
+        "ConfigMap inesistente",
+        "Secret inesistente",
+        "Chiave mancante dentro un ConfigMap o Secret"
+      ]
+    },
+    "CreateContainerError": {
+      "title": "Errore nella creazione del container",
+      "simple": "Il runtime non riesce a creare il container.",
+      "risk": "Il container non parte.",
+      "causes": [
+        "Volume non montabile",
+        "Configurazione di sicurezza non permessa",
+        "Problema del runtime sul nodo"
+      ]
+    },
+    "RunContainerError": {
+      "title": "Errore all'avvio del container",
+      "simple": "Il container è stato creato ma il runtime non riesce ad avviarlo.",
+      "risk": "Il container non parte.",
+      "causes": [
+        "Comando inesistente nell'immagine",
+        "Permessi insufficienti",
+        "Problema del runtime sul nodo"
+      ]
+    },
+    "PodFailed": {
+      "title": "Pod terminato con errore (Failed)",
+      "simple": "Tutti i container del Pod sono terminati e almeno uno è terminato con errore; il Pod non verrà riavviato.",
+      "risk": "Il lavoro svolto dal Pod non è stato completato.",
+      "causes": [
+        "Errore dell'applicazione",
+        "Pod espulso dal nodo (Evicted) per mancanza di risorse",
+        "Deadline superata"
+      ]
+    },
+    "PodUnknown": {
+      "title": "Stato del Pod sconosciuto",
+      "simple": "Kubernetes non riceve più notizie dal nodo che esegue il Pod, quindi non sa se il Pod funziona.",
+      "risk": "Il Pod potrebbe non servire richieste; i controller lo ricreeranno altrove dopo un timeout.",
+      "causes": [
+        "Nodo spento o irraggiungibile",
+        "Kubelet fermo",
+        "Problema di rete tra nodo e control plane"
+      ]
+    },
+    "WorkloadUnavailable": {
+      "title": "Applicazione non disponibile",
+      "simple": "Nessuna replica dell'applicazione è pronta ({{available}}/{{desired}}).",
+      "risk": "Il servizio potrebbe non essere disponibile per gli utenti.",
+      "causes": [
+        "Tutti i Pod in errore (vedi i problemi dei Pod collegati)",
+        "Immagine non scaricabile",
+        "Risorse insufficienti nel cluster",
+        "Probe di readiness che non passano"
+      ]
+    },
+    "WorkloadDegraded": {
+      "title": "Applicazione degradata",
+      "simple": "Solo una parte delle repliche è pronta ({{available}}/{{desired}}).",
+      "risk": "Capacità ridotta: in caso di carico o di guasto di un'altra replica il servizio può degradare ulteriormente.",
+      "causes": [
+        "Alcuni Pod in errore",
+        "Aggiornamento in corso",
+        "Nodo non disponibile"
+      ]
+    },
+    "RolloutStuck": {
+      "title": "Aggiornamento bloccato",
+      "simple": "L'aggiornamento progressivo non è riuscito a completarsi entro il tempo previsto (progressDeadlineSeconds).",
+      "risk": "Convivono versioni diverse; le nuove repliche non diventano pronte.",
+      "causes": [
+        "Nuova versione che non si avvia",
+        "Immagine non scaricabile",
+        "Risorse insufficienti"
+      ]
+    },
+    "DeploymentPaused": {
+      "title": "Rollout in pausa",
+      "simple": "Gli aggiornamenti di questo Deployment sono in pausa: le modifiche al template non vengono applicate.",
+      "risk": "Nessun rischio immediato, ma le modifiche restano in sospeso.",
+      "causes": [
+        "Pausa manuale per eseguire più modifiche insieme"
+      ]
+    },
+    "JobFailed": {
+      "title": "Job fallito",
+      "simple": "Il Job ha superato il numero massimo di tentativi senza completare il lavoro.",
+      "risk": "L'attività pianificata (es. backup, elaborazione) non è stata eseguita.",
+      "causes": [
+        "Errore dell'applicazione",
+        "Timeout (activeDeadlineSeconds)",
+        "Dipendenze non raggiungibili"
+      ]
+    },
+    "NodeNotReady": {
+      "title": "Nodo non pronto (NotReady)",
+      "simple": "Il nodo non comunica correttamente con il cluster: Kubernetes non lo usa per nuovi Pod e, dopo qualche minuto, sposta altrove i Pod che eseguiva.",
+      "risk": "I Pod sul nodo potrebbero non funzionare; la capacità del cluster è ridotta.",
+      "causes": [
+        "Nodo spento o riavviato",
+        "Kubelet o runtime dei container fermi",
+        "Problema di rete",
+        "Disco pieno o memoria esaurita sul nodo"
+      ]
+    },
+    "NodePressure": {
+      "title": "Nodo sotto pressione",
+      "simple": "Il nodo segnala una condizione di sofferenza ({{condition}}).",
+      "risk": "Kubernetes può espellere Pod dal nodo per recuperare risorse.",
+      "causes": [
+        "Disco quasi pieno",
+        "Memoria quasi esaurita",
+        "Troppi processi"
+      ]
+    },
+    "NodeCordoned": {
+      "title": "Nodo in manutenzione (cordon)",
+      "simple": "Il nodo è marcato come non schedulabile: non riceve nuovi Pod.",
+      "risk": "Capacità ridotta finché il nodo non viene rimesso in servizio (uncordon).",
+      "causes": [
+        "Manutenzione in corso"
+      ]
+    },
+    "PVCPending": {
+      "title": "Volume in attesa (PVC Pending)",
+      "simple": "La richiesta di spazio disco non è ancora stata soddisfatta: nessun volume è collegato.",
+      "risk": "I Pod che usano questo volume non possono partire.",
+      "causes": [
+        "StorageClass inesistente",
+        "Provisioner di storage non funzionante",
+        "Nessun PersistentVolume compatibile (dimensione, access mode)",
+        "Volume in attesa del primo Pod (WaitForFirstConsumer)"
+      ]
+    },
+    "PVCLost": {
+      "title": "Volume perso",
+      "simple": "Il PersistentVolume collegato non esiste più.",
+      "risk": "Possibile perdita di dati.",
+      "causes": [
+        "Volume eliminato manualmente"
+      ]
+    },
+    "KubernetesUnreachable": {
+      "title": "Kubernetes non raggiungibile",
+      "simple": "PKM non riesce a comunicare con l'API server di Kubernetes.",
+      "risk": "Monitoraggio e operazioni sul cluster non sono disponibili.",
+      "causes": [
+        "API server spento",
+        "Rete o firewall",
+        "Credenziali scadute"
+      ]
+    },
+    "PodmanUnreachable": {
+      "title": "Podman non raggiungibile",
+      "simple": "PKM non riesce a comunicare con l'API di Podman.",
+      "risk": "La gestione dei container Podman non è disponibile.",
+      "causes": [
+        "podman.socket non attivo",
+        "Permessi del socket"
+      ]
+    }
+  },
+  "check": {
+    "image_format": {
+      "label": "Nome immagine",
+      "ok": "Il nome {{image}} è sintatticamente corretto.",
+      "fail": "Il nome dell'immagine non è valido.",
+      "warn": "",
+      "unknown": ""
+    },
+    "image_tag": {
+      "label": "Tag",
+      "ok": "Tag fisso: {{tag}}.",
+      "warn": "Il tag \"{{tag}}\" è mobile: versioni diverse possono finire su nodi diversi.",
+      "fail": "",
+      "unknown": ""
+    },
+    "tag_exists": {
+      "label": "Esistenza dell'immagine/tag",
+      "ok": "Nessun errore \"not found\" negli eventi.",
+      "fail": "Il registry risponde che l'immagine o il tag {{tag}} non esiste.",
+      "warn": "",
+      "unknown": "Nessun evento disponibile per verificarlo."
+    },
+    "registry_reachable": {
+      "label": "Registry",
+      "ok": "Il registry {{registry}} risponde.",
+      "fail": "Il registry {{registry}} non è raggiungibile (rete, DNS, TLS o timeout).",
+      "warn": "",
+      "unknown": "Nessun evento disponibile per verificarlo."
+    },
+    "registry_auth": {
+      "label": "Autenticazione",
+      "ok": "Nessun errore di autenticazione.",
+      "fail": "Il registry rifiuta l'accesso: credenziali mancanti o errate.",
+      "warn": "Registry privato ({{registry}}) senza imagePullSecrets configurati sul Pod.",
+      "unknown": "Non verificabile dagli eventi."
+    },
+    "platform_amd64": {
+      "label": "Architettura linux/amd64",
+      "ok": "L'immagine è disponibile per linux/amd64.",
+      "fail": "L'immagine non è disponibile per linux/amd64 (disponibili: {{platforms}}).",
+      "warn": "",
+      "unknown": ""
+    },
+    "manifest_readable": {
+      "label": "Manifest dell'immagine",
+      "ok": "",
+      "fail": "Impossibile leggere il manifest: {{error}}",
+      "warn": "",
+      "unknown": ""
+    },
+    "exit_code": {
+      "label": "Codice di uscita",
+      "ok": "",
+      "fail": "L'ultima esecuzione è terminata con codice {{exitCode}}.",
+      "warn": "",
+      "unknown": "Nessuna terminazione precedente registrata."
+    },
+    "liveness_probe": {
+      "label": "Liveness probe",
+      "ok": "Nessun fallimento della liveness probe negli eventi.",
+      "fail": "La liveness probe fallisce: Kubernetes uccide il container perché lo considera bloccato.",
+      "warn": "",
+      "unknown": ""
+    },
+    "memory_limit": {
+      "label": "Memoria",
+      "ok": "Nessuna terminazione per memoria esaurita.",
+      "fail": "L'ultima terminazione è dovuta a memoria esaurita (OOMKilled).",
+      "warn": "",
+      "unknown": ""
+    },
+    "memory_limit_set": {
+      "label": "Limite di memoria",
+      "ok": "Limite impostato: {{limit}}.",
+      "warn": "Nessun limite di memoria impostato: il container può essere terminato quando il nodo esaurisce la memoria.",
+      "fail": "",
+      "unknown": ""
+    },
+    "memory_usage": {
+      "label": "Uso di memoria attuale",
+      "ok": "Uso attuale lontano dal limite.",
+      "warn": "Uso attuale oltre l'80% del limite.",
+      "fail": "",
+      "unknown": "metrics-server non disponibile: uso non misurabile."
+    },
+    "schedulable_nodes": {
+      "label": "Nodi disponibili",
+      "ok": "{{count}} nodi pronti e schedulabili.",
+      "fail": "Nessun nodo pronto e schedulabile.",
+      "warn": "",
+      "unknown": ""
+    },
+    "cpu_capacity": {
+      "label": "Capacità CPU",
+      "ok": "La CPU richiesta è compatibile con i nodi.",
+      "fail": "CPU insufficiente: richiesti {{requested}} core, il nodo più grande ne offre {{maxNode}}, oppure i nodi sono già pieni.",
+      "warn": "",
+      "unknown": ""
+    },
+    "memory_capacity": {
+      "label": "Capacità memoria",
+      "ok": "La memoria richiesta è compatibile con i nodi.",
+      "fail": "Memoria insufficiente: la richiesta del Pod supera la memoria libera o quella del nodo più grande.",
+      "warn": "",
+      "unknown": ""
+    },
+    "taints": {
+      "label": "Taint dei nodi",
+      "ok": "Nessun problema di taint.",
+      "warn": "Alcuni nodi hanno taint che il Pod non tollera (es. control-plane o nodo irraggiungibile).",
+      "fail": "",
+      "unknown": ""
+    },
+    "node_selector": {
+      "label": "Selettori di nodo / affinity",
+      "ok": "Nessun vincolo di posizionamento bloccante.",
+      "fail": "Nessun nodo corrisponde a nodeSelector/affinity del Pod.",
+      "warn": "",
+      "unknown": ""
+    },
+    "volumes_bound": {
+      "label": "Volumi",
+      "ok": "I volumi richiesti sono disponibili.",
+      "fail": "Volumi non ancora collegati: {{claims}}.",
+      "warn": "",
+      "unknown": ""
+    },
+    "quota": {
+      "label": "Quote del namespace",
+      "fail": "Le quote del namespace sono state superate.",
+      "ok": "",
+      "warn": "",
+      "unknown": ""
+    },
+    "configmaps_exist": {
+      "label": "ConfigMap referenziati",
+      "ok": "Tutti i ConfigMap esistono.",
+      "fail": "ConfigMap mancanti: {{missing}}.",
+      "warn": "",
+      "unknown": ""
+    },
+    "secrets_exist": {
+      "label": "Secret referenziati",
+      "ok": "Tutti i Secret esistono.",
+      "fail": "Secret mancanti: {{missing}}.",
+      "warn": "",
+      "unknown": ""
+    },
+    "keys_exist": {
+      "label": "Chiavi",
+      "ok": "Nessuna chiave mancante segnalata.",
+      "fail": "Una chiave richiesta non esiste nel ConfigMap/Secret.",
+      "warn": "",
+      "unknown": ""
+    },
+    "node_ready": {
+      "label": "Stato del nodo",
+      "ok": "Il nodo {{node}} è pronto.",
+      "fail": "Il nodo {{node}} non è pronto.",
+      "warn": "",
+      "unknown": ""
+    },
+    "kubelet_heartbeat": {
+      "label": "Heartbeat del kubelet",
+      "ok": "Il kubelet comunica regolarmente.",
+      "fail": "Nessun segnale dal kubelet da {{ageSeconds}} secondi.",
+      "warn": "",
+      "unknown": ""
+    },
+    "node_pressure": {
+      "label": "Condizioni del nodo",
+      "ok": "Nessuna condizione di pressione.",
+      "fail": "Condizioni attive: {{conditions}}.",
+      "warn": "",
+      "unknown": ""
+    },
+    "storage_class_exists": {
+      "label": "StorageClass",
+      "ok": "La StorageClass {{storageClass}} esiste.",
+      "fail": "La StorageClass \"{{storageClass}}\" non esiste nel cluster.",
+      "warn": "",
+      "unknown": ""
+    },
+    "waiting_first_consumer": {
+      "label": "Binding",
+      "warn": "La StorageClass crea il volume solo quando un Pod lo usa (WaitForFirstConsumer): è normale finché nessun Pod lo monta.",
+      "ok": "",
+      "fail": "",
+      "unknown": ""
+    },
+    "provisioning": {
+      "label": "Provisioning",
+      "ok": "Nessun errore di provisioning.",
+      "fail": "Il provisioning del volume è fallito (vedi eventi).",
+      "warn": "",
+      "unknown": "Nessun evento disponibile."
+    },
+    "local_present": {
+      "label": "Immagine presente in locale",
+      "ok": "L'immagine {{image}} è presente nello storage Podman di questo host.",
+      "fail": "",
+      "warn": "",
+      "unknown": ""
+    },
+    "archive_checksum": {
+      "label": "Checksum dell'archivio",
+      "ok": "Il checksum SHA-256 corrisponde al file .sha256.",
+      "fail": "Il checksum NON corrisponde: l'archivio è stato modificato o è corrotto.",
+      "warn": "",
+      "unknown": "File .sha256 non presente: impossibile verificare."
+    },
+    "manifest": {
+      "label": "Manifest del backup",
+      "ok": "Manifest letto (versione {{version}}).",
+      "fail": "",
+      "warn": "",
+      "unknown": ""
+    },
+    "file_checksums": {
+      "label": "Checksum dei file",
+      "ok": "Tutti i file contenuti sono integri.",
+      "fail": "File alterati o mancanti: {{bad}}.",
+      "warn": "",
+      "unknown": ""
+    },
+    "database_integrity": {
+      "label": "Integrità del database",
+      "ok": "Database integro ({{users}} utenti).",
+      "fail": "Database corrotto: {{result}}.",
+      "warn": "",
+      "unknown": ""
+    },
+    "archive_readable": {
+      "label": "Leggibilità dell'archivio",
+      "ok": "",
+      "fail": "Archivio non leggibile: {{error}}",
+      "warn": "",
+      "unknown": ""
+    }
+  },
+  "exitMeaning": {
+    "completed": "0: il processo è terminato senza errori (ma un servizio non dovrebbe terminare)",
+    "app_error": "1: errore generico dell'applicazione: leggi i log",
+    "misuse": "2: uso errato del comando o degli argomenti",
+    "not_executable": "126: il comando non è eseguibile (permessi)",
+    "command_not_found": "127: comando non trovato nell'immagine",
+    "invalid_exit": "128: codice di uscita non valido",
+    "abort": "134: il processo si è interrotto (abort)",
+    "killed": "137: terminato con SIGKILL (spesso memoria esaurita)",
+    "segfault": "139: errore di segmentazione",
+    "terminated": "143: terminato con SIGTERM (arresto richiesto)",
+    "other": "codice non standard: leggi i log"
+  },
+  "action": {
+    "view_resource": "Visualizza problema",
+    "view_logs": "Visualizza log",
+    "view_previous_logs": "Log dell'esecuzione precedente",
+    "view_events": "Visualizza eventi",
+    "view_yaml": "Visualizza YAML",
+    "view_config": "Visualizza configurazione",
+    "view_pods": "Visualizza Pod",
+    "view_metrics": "Visualizza metriche",
+    "check_registry": "Verifica registry",
+    "restart": "Riavvia",
+    "rollback": "Rollback",
+    "resume": "Riprendi rollout",
+    "cordon": "Metti in manutenzione",
+    "uncordon": "Rimetti in servizio",
+    "guide": "Come risolvere"
+  },
+  "centerTitle": "Centro Operativo",
+  "centerSubtitle": "Problemi rilevati automaticamente, dal più grave. Ogni scheda spiega cosa succede, il rischio e cosa fare.",
+  "noIssues": "Nessun problema rilevato. Il cluster è in salute.",
+  "onlyActive": "Nascondi quelli già gestiti",
+  "partialData": "Dati parziali: alcune risorse non sono leggibili con i permessi dell'account Kubernetes di PKM ({{kinds}}).",
+  "counts": "{{critical}} critici · {{error}} errori · {{warning}} avvisi",
+  "replicasAvailable": "repliche disponibili",
+  "markHandled": "Segna come gestito"
+}

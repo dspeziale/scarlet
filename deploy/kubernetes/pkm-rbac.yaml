@@ -1,0 +1,147 @@
+# Kubernetes identity for Podman Kubernetes Manager (PKM).
+#
+# kubectl apply -f pkm-rbac.yaml
+# then generate a kubeconfig for the ServiceAccount with scripts/make-kubeconfig.sh
+#
+# Two ClusterRoles are provided:
+#   pkm-operator  (bound by default)  read everything PKM shows + the write operations it offers
+#   pkm-readonly  (alternative)       read only: PKM then works as a monitoring console and the
+#                                     write buttons fail with "Permessi Kubernetes insufficienti"
+# PKM never needs: nodes/proxy, pods/exec, pods/attach, clusterroles, RBAC objects, etcd access.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: pkm-system
+  labels:
+    app.kubernetes.io/name: pkm
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pkm
+  namespace: pkm-system
+  labels:
+    app.kubernetes.io/name: pkm
+---
+# Long-lived token for the ServiceAccount (Kubernetes >= 1.24 does not create it automatically).
+apiVersion: v1
+kind: Secret
+metadata:
+  name: pkm-token
+  namespace: pkm-system
+  annotations:
+    kubernetes.io/service-account.name: pkm
+type: kubernetes.io/service-account-token
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: pkm-readonly
+  labels:
+    app.kubernetes.io/name: pkm
+rules:
+  - apiGroups: [""]
+    resources: [nodes, namespaces, events, pods, pods/log, services, endpoints, persistentvolumes,
+                persistentvolumeclaims, configmaps, secrets]
+    verbs: [get, list, watch]
+  - apiGroups: [apps]
+    resources: [deployments, replicasets, statefulsets, daemonsets]
+    verbs: [get, list, watch]
+  - apiGroups: [batch]
+    resources: [jobs, cronjobs]
+    verbs: [get, list, watch]
+  - apiGroups: [networking.k8s.io]
+    resources: [ingresses]
+    verbs: [get, list, watch]
+  - apiGroups: [storage.k8s.io]
+    resources: [storageclasses]
+    verbs: [get, list, watch]
+  - apiGroups: [policy]
+    resources: [poddisruptionbudgets]
+    verbs: [get, list, watch]
+  - apiGroups: [autoscaling]
+    resources: [horizontalpodautoscalers]
+    verbs: [get, list, watch]
+  - apiGroups: [metrics.k8s.io]
+    resources: [nodes, pods]
+    verbs: [get, list]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: pkm-operator
+  labels:
+    app.kubernetes.io/name: pkm
+aggregationRule: null
+rules:
+  # everything pkm-readonly can do
+  - apiGroups: [""]
+    resources: [nodes, namespaces, events, pods, pods/log, services, endpoints, persistentvolumes,
+                persistentvolumeclaims, configmaps, secrets]
+    verbs: [get, list, watch]
+  - apiGroups: [apps]
+    resources: [deployments, replicasets, statefulsets, daemonsets]
+    verbs: [get, list, watch]
+  - apiGroups: [batch]
+    resources: [jobs, cronjobs]
+    verbs: [get, list, watch]
+  - apiGroups: [networking.k8s.io]
+    resources: [ingresses]
+    verbs: [get, list, watch]
+  - apiGroups: [storage.k8s.io]
+    resources: [storageclasses]
+    verbs: [get, list, watch]
+  - apiGroups: [policy]
+    resources: [poddisruptionbudgets]
+    verbs: [get, list, watch]
+  - apiGroups: [autoscaling]
+    resources: [horizontalpodautoscalers]
+    verbs: [get, list, watch]
+  - apiGroups: [metrics.k8s.io]
+    resources: [nodes, pods]
+    verbs: [get, list]
+  # write operations offered by PKM (deploy wizard, YAML apply, scale, restart, rollout, delete)
+  - apiGroups: [apps]
+    resources: [deployments, statefulsets, daemonsets, replicasets]
+    verbs: [create, update, patch, delete]
+  - apiGroups: [batch]
+    resources: [jobs, cronjobs]
+    verbs: [create, update, patch, delete]
+  - apiGroups: [""]
+    resources: [services, configmaps, secrets, persistentvolumeclaims, pods]
+    verbs: [create, update, patch, delete]
+  - apiGroups: [""]
+    resources: [namespaces, persistentvolumes]
+    verbs: [create, patch, delete]
+  - apiGroups: [networking.k8s.io]
+    resources: [ingresses]
+    verbs: [create, update, patch, delete]
+  - apiGroups: [policy]
+    resources: [poddisruptionbudgets]
+    verbs: [create, update, patch, delete]
+  - apiGroups: [autoscaling]
+    resources: [horizontalpodautoscalers]
+    verbs: [create, update, patch, delete]
+  # node maintenance: cordon/uncordon (patch spec.unschedulable) and drain (Eviction API)
+  - apiGroups: [""]
+    resources: [nodes]
+    verbs: [patch]
+  - apiGroups: [""]
+    resources: [pods/eviction]
+    verbs: [create]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: pkm
+  labels:
+    app.kubernetes.io/name: pkm
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: pkm-operator   # change to pkm-readonly for a read-only console
+subjects:
+  - kind: ServiceAccount
+    name: pkm
+    namespace: pkm-system

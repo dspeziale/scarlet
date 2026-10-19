@@ -1,0 +1,313 @@
+{
+  "kinds": {
+    "Pod": {
+      "title": "Pod",
+      "simple": "The smallest unit Kubernetes runs: one or more containers running together on the same node, sharing network and volumes.",
+      "technical": "It has a lifecycle (Pending → Running → Succeeded/Failed), its own IP, health probes and requested/limited resources. Usually created by a controller (Deployment, StatefulSet, Job) that recreates it if lost."
+    },
+    "Deployment": {
+      "title": "Deployment",
+      "simple": "Manages one or more copies of your application and lets you update them progressively.",
+      "technical": "Creates a ReplicaSet for each template version; the rolling update moves replicas from the old to the new ReplicaSet respecting maxSurge/maxUnavailable and readiness probes. Keeps revisions for rollback."
+    },
+    "ReplicaSet": {
+      "title": "ReplicaSet",
+      "simple": "Keeps an exact number of identical Pod copies running. Usually managed by a Deployment.",
+      "technical": "Each Deployment revision corresponds to a ReplicaSet with a different pod-template-hash."
+    },
+    "StatefulSet": {
+      "title": "StatefulSet",
+      "simple": "Like a Deployment, but for applications with data (databases, queues): each copy has a stable name and its own disk.",
+      "technical": "Numbered Pods (name-0, name-1…), ordered start and update, volumeClaimTemplates for a dedicated PVC per replica, headless Service for stable DNS."
+    },
+    "DaemonSet": {
+      "title": "DaemonSet",
+      "simple": "Runs one copy of a Pod on every node (or a group of nodes): typical for monitoring, log and network agents.",
+      "technical": "The number of Pods follows the number of eligible nodes (nodeSelector, tolerations); updates roll node by node."
+    },
+    "Job": {
+      "title": "Job",
+      "simple": "Runs a task to completion (e.g. a migration) and then stops.",
+      "technical": "completions/parallelism define how many runs are needed; backoffLimit the retries; activeDeadlineSeconds the maximum time."
+    },
+    "CronJob": {
+      "title": "CronJob",
+      "simple": "Creates a Job on a schedule, like Linux cron (e.g. a nightly backup).",
+      "technical": "Cron-format schedule, concurrencyPolicy (Allow/Forbid/Replace), history of successful/failed Jobs, suspend to pause it."
+    },
+    "Service": {
+      "title": "Service",
+      "simple": "Gives a stable name and address to a group of Pods and spreads traffic across the ready copies.",
+      "technical": "The selector finds the Pods; only Ready ones enter the Endpoints. Types: ClusterIP (internal), NodePort (port on every node), LoadBalancer (external IP), headless (DNS of single Pods)."
+    },
+    "Ingress": {
+      "title": "Ingress",
+      "simple": "Makes a web application reachable from outside through a host name and path (e.g. https://shop.example.com/).",
+      "technical": "Host/path rules to Services; requires an Ingress Controller (e.g. nginx); TLS through a kubernetes.io/tls Secret."
+    },
+    "Endpoints": {
+      "title": "Endpoints",
+      "simple": "The list of addresses of the ready Pods a Service sends traffic to.",
+      "technical": "Updated automatically by the controller based on the Service selector and Pod readiness."
+    },
+    "PersistentVolume": {
+      "title": "PersistentVolume",
+      "simple": "A disk made available to the cluster, which outlives Pods.",
+      "technical": "Created manually or dynamically by a StorageClass; has capacity, access mode and reclaimPolicy (Delete/Retain)."
+    },
+    "PersistentVolumeClaim": {
+      "title": "PersistentVolumeClaim",
+      "simple": "An application's request for disk space: Kubernetes binds it to a suitable volume.",
+      "technical": "Specifies size, access mode and StorageClass; goes from Pending to Bound when a PV is bound."
+    },
+    "StorageClass": {
+      "title": "StorageClass",
+      "simple": "A kind of storage available in the cluster, which creates disks automatically when needed.",
+      "technical": "Defines the provisioner, parameters, reclaimPolicy and volumeBindingMode (Immediate or WaitForFirstConsumer)."
+    },
+    "ConfigMap": {
+      "title": "ConfigMap",
+      "simple": "Non-secret configuration (files or variables) kept outside the container image.",
+      "technical": "Mounted as files or exposed as environment variables; mounted file changes propagate, variable changes need a restart."
+    },
+    "Secret": {
+      "title": "Secret",
+      "simple": "Confidential data (passwords, tokens, certificates) used by applications.",
+      "technical": "Base64-encoded values (not encrypted by default in the API); access must be restricted with RBAC. In PKM values are hidden and viewing them is audited."
+    },
+    "Node": {
+      "title": "Node",
+      "simple": "A machine (physical or virtual) of the cluster that runs Pods.",
+      "technical": "The kubelet reports status (Ready, memory/disk/PID pressure), capacity and allocatable resources; taints restrict which Pods can run there."
+    },
+    "Namespace": {
+      "title": "Namespace",
+      "simple": "A logical folder separating applications and environments (e.g. production, staging) in the same cluster.",
+      "technical": "Scope for names, quotas, RBAC and network policies. Deleting a namespace deletes all its content."
+    },
+    "Event": {
+      "title": "Event",
+      "simple": "A Kubernetes message about something that happened to a resource (start, error, restart…).",
+      "technical": "Events have a type (Normal/Warning), reason, count and expire after about one hour."
+    },
+    "PodDisruptionBudget": {
+      "title": "PodDisruptionBudget",
+      "simple": "Guarantees that a minimum number of application copies stays up during maintenance.",
+      "technical": "minAvailable or maxUnavailable; honoured by the Eviction API (drain), not by failures."
+    },
+    "HorizontalPodAutoscaler": {
+      "title": "HorizontalPodAutoscaler",
+      "simple": "Automatically increases or decreases replicas based on load.",
+      "technical": "Uses metrics (CPU, memory, custom) and scales the target between minReplicas and maxReplicas."
+    }
+  },
+  "col": {
+    "ready": "Ready",
+    "restarts": "Restarts",
+    "node": "Node",
+    "images": "Images",
+    "upToDate": "Up-to-date",
+    "available": "Available",
+    "desired": "Desired",
+    "revision": "Revision",
+    "completions": "Completions",
+    "duration": "Duration",
+    "schedule": "Schedule",
+    "suspended": "Suspended",
+    "active": "Active",
+    "lastSchedule": "Last run",
+    "type": "Type",
+    "clusterIP": "Cluster IP",
+    "external": "External",
+    "ports": "Ports",
+    "class": "Class",
+    "hosts": "Hosts",
+    "addresses": "Addresses",
+    "tls": "TLS",
+    "notReady": "Not ready",
+    "capacity": "Capacity",
+    "accessModes": "Access",
+    "reclaim": "Reclaim",
+    "claim": "Claim",
+    "storageClass": "StorageClass",
+    "volume": "Volume",
+    "provisioner": "Provisioner",
+    "bindingMode": "Binding",
+    "expansion": "Expandable",
+    "default": "Default",
+    "keys": "Keys",
+    "roles": "Roles",
+    "cpu": "CPU",
+    "memory": "Memory",
+    "pods": "Pods",
+    "version": "Version",
+    "internalIP": "Internal IP",
+    "reason": "Reason",
+    "object": "Object",
+    "message": "Message",
+    "count": "Count",
+    "lastSeen": "Last seen",
+    "target": "Target",
+    "min": "Min",
+    "max": "Max",
+    "current": "Current",
+    "disruptions": "Allowed disruptions",
+    "status": "Status",
+    "owner": "Managed by",
+    "ip": "IP",
+    "qos": "QoS"
+  },
+  "tabs": {
+    "overview": "Overview",
+    "relations": "Relations",
+    "pods": "Pods",
+    "events": "Events",
+    "logs": "Logs",
+    "metrics": "Metrics",
+    "yaml": "YAML",
+    "diagnostics": "Diagnostics"
+  },
+  "list": {
+    "count": "{{count}} resources",
+    "filterHealth": "Status",
+    "onlyProblems": "Only with problems",
+    "nodeFilter": "Node: {{node}}",
+    "clearFilter": "Clear filter",
+    "notNamespaced": "Cluster-level resource (does not belong to a namespace)."
+  },
+  "detail": {
+    "whatIsIt": "What it is",
+    "technical": "Technical details",
+    "properties": "Properties",
+    "containers": "Containers",
+    "conditions": "Conditions",
+    "labels": "Labels",
+    "annotations": "Annotations",
+    "noEvents": "No recent events for this resource (events expire after about one hour).",
+    "noDiagnostics": "No problems detected on this resource.",
+    "noLogs": "Logs are available for Pods: open one of the Pods in the Pods tab.",
+    "logsPermission": "Your role does not allow reading logs.",
+    "metricsUnavailable": "Advanced metrics not configured: metrics-server is not installed in the cluster, so current CPU and memory usage cannot be measured. Requests and limits are still shown in the overview.",
+    "usage": "Usage",
+    "request": "Request",
+    "limit": "Limit",
+    "noLimit": "no limit",
+    "probes": "Probes",
+    "readiness": "Readiness",
+    "liveness": "Liveness",
+    "startup": "Startup",
+    "state": "State",
+    "lastTermination": "Last termination",
+    "exitCode": "code {{code}}",
+    "replicasSentence": "This application has {{desired}} desired replicas and {{ready}} ready.",
+    "haSentence": "If a Pod is lost, Kubernetes automatically creates another one.",
+    "singleReplica": "With a single replica, a failure or a restart makes the application temporarily unavailable.",
+    "strategy": "Update strategy",
+    "paused": "Rollout paused",
+    "selector": "Selector",
+    "serviceTypeHelp": {
+      "ClusterIP": "Reachable only from inside the cluster, with DNS name {{name}}.{{ns}}.svc.",
+      "NodePort": "Also reachable from outside on a port of every node.",
+      "LoadBalancer": "Exposed outside through a load balancer address.",
+      "ExternalName": "DNS alias to an external service.",
+      "Headless": "Headless: no virtual IP, DNS returns the addresses of the single Pods."
+    },
+    "endpointsReady": "{{ready}} ready Pods receive traffic, {{notReady}} not ready.",
+    "noEndpoints": "No Pod matches the selector: the Service forwards traffic to nobody.",
+    "rules": "Rules",
+    "taints": "Taints",
+    "nodeInfo": "System",
+    "allocatable": "Allocatable",
+    "pressures": "Pressure",
+    "unschedulable": "Unschedulable (cordoned)",
+    "secretHidden": "Values are hidden. Only an administrator can view them and the access is recorded in the audit log.",
+    "reveal": "Show values",
+    "revealed": "Values visible: the access was recorded.",
+    "hide": "Hide",
+    "decoded": "decoded",
+    "binary": "(binary data)",
+    "keysCount": "{{count}} keys",
+    "schedule": "Schedule",
+    "nextRunHint": "Cron format: minute hour day month weekday.",
+    "pvcStatusHelp": {
+      "Bound": "The volume is bound and usable.",
+      "Pending": "Waiting for a suitable volume.",
+      "Lost": "The bound volume no longer exists."
+    },
+    "jobStatus": "{{succeeded}} completions, {{active}} active, {{failed}} failed.",
+    "ownerLink": "Managed by",
+    "openRollout": "Rollout and history",
+    "logsTitle": "Container logs"
+  },
+  "yaml": {
+    "simple": "Simple",
+    "yaml": "YAML",
+    "json": "JSON",
+    "edit": "Edit",
+    "validate": "Validate",
+    "diff": "Differences",
+    "apply": "Apply",
+    "cancelEdit": "Discard changes",
+    "valid": "Valid configuration (checked with a server dry-run).",
+    "validLocal": "Valid YAML syntax. Server verification needs write permissions.",
+    "invalid": "The configuration contains errors.",
+    "noChanges": "No changes compared to the current version.",
+    "applied": "Configuration applied",
+    "applyTitle": "Apply the new configuration?",
+    "applyConsequences": "Kubernetes will update the resource; for workloads a progressive Pod update may start.",
+    "managedFieldsHidden": "managedFields and Secret values are omitted from the view.",
+    "notEditable": "This resource cannot be edited from PKM.",
+    "syntaxError": "Syntax error at line {{line}}: {{message}}",
+    "current": "Current",
+    "proposed": "Proposed"
+  },
+  "relations": {
+    "title": "How this resource is connected",
+    "help": "The diagram shows what manages this resource, what it manages and what it uses. Click an item to open it.",
+    "empty": "No relations found.",
+    "missing": "not found",
+    "edge": {
+      "owns": "manages",
+      "selects": "sends traffic to",
+      "routes": "routes to",
+      "mounts": "mounts",
+      "uses": "uses",
+      "runs_on": "runs on",
+      "binds": "bound to",
+      "provisions": "provides"
+    },
+    "columns": {
+      "entry": "Access",
+      "controller": "Application",
+      "workload": "Revision (ReplicaSet) / Job",
+      "pods": "Pods",
+      "infra": "Used resources"
+    }
+  },
+  "action": {
+    "scale": "Scale",
+    "restart": "Restart",
+    "pause": "Pause",
+    "resume": "Resume",
+    "delete": "Delete",
+    "rollout": "Rollout",
+    "cordon": "Cordon",
+    "uncordon": "Uncordon",
+    "drain": "Drain…",
+    "suspend": "Suspend",
+    "unsuspend": "Re-enable",
+    "trigger": "Run now",
+    "logs": "Logs",
+    "edit": "Edit YAML"
+  },
+  "overview": {
+    "title": "Cluster overview",
+    "connection": "Connection",
+    "context": "Context",
+    "server": "API server",
+    "version": "Kubernetes version",
+    "platform": "Platform",
+    "kindsTitle": "Resources",
+    "notConnected": "Kubernetes is not connected."
+  }
+}

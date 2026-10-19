@@ -1,0 +1,313 @@
+{
+  "kinds": {
+    "Pod": {
+      "title": "Pod",
+      "simple": "La più piccola unità eseguita da Kubernetes: uno o più container che girano insieme sullo stesso nodo e condividono rete e volumi.",
+      "technical": "Ha un ciclo di vita (Pending → Running → Succeeded/Failed), un IP proprio, probe di salute e risorse richieste/limitate. Di solito è creato da un controller (Deployment, StatefulSet, Job) che lo ricrea se si perde."
+    },
+    "Deployment": {
+      "title": "Deployment",
+      "simple": "Gestisce una o più copie della tua applicazione e permette di aggiornarle progressivamente.",
+      "technical": "Crea un ReplicaSet per ogni versione del template; il rolling update sposta le repliche dal vecchio al nuovo ReplicaSet rispettando maxSurge/maxUnavailable e le readiness probe. Conserva le revisioni per il rollback."
+    },
+    "ReplicaSet": {
+      "title": "ReplicaSet",
+      "simple": "Mantiene in esecuzione un numero preciso di copie identiche di un Pod. Di solito è gestito da un Deployment.",
+      "technical": "Ogni revisione di un Deployment corrisponde a un ReplicaSet con un pod-template-hash diverso."
+    },
+    "StatefulSet": {
+      "title": "StatefulSet",
+      "simple": "Come un Deployment, ma per applicazioni con dati (database, code): ogni copia ha un nome stabile e il proprio disco.",
+      "technical": "Pod numerati (nome-0, nome-1…), avvio e aggiornamento ordinati, volumeClaimTemplates per un PVC dedicato per replica, Service headless per il DNS stabile."
+    },
+    "DaemonSet": {
+      "title": "DaemonSet",
+      "simple": "Esegue una copia di un Pod su ogni nodo (o su un gruppo di nodi): tipico per agenti di monitoraggio, log e rete.",
+      "technical": "Il numero di Pod segue il numero di nodi idonei (nodeSelector, tolerations); l'aggiornamento è rolling nodo per nodo."
+    },
+    "Job": {
+      "title": "Job",
+      "simple": "Esegue un'attività fino al completamento (es. una migrazione) e poi si ferma.",
+      "technical": "completions/parallelism definiscono quante esecuzioni servono; backoffLimit i tentativi; activeDeadlineSeconds il tempo massimo."
+    },
+    "CronJob": {
+      "title": "CronJob",
+      "simple": "Crea un Job a orari stabiliti, come il cron di Linux (es. backup notturno).",
+      "technical": "schedule in formato cron, concurrencyPolicy (Allow/Forbid/Replace), cronologia dei Job riusciti/falliti, suspend per sospendere."
+    },
+    "Service": {
+      "title": "Service",
+      "simple": "Dà un nome e un indirizzo stabile a un gruppo di Pod e distribuisce il traffico tra le copie pronte.",
+      "technical": "Il selector individua i Pod; solo quelli Ready entrano negli Endpoints. Tipi: ClusterIP (interno), NodePort (porta su ogni nodo), LoadBalancer (IP esterno), headless (DNS dei singoli Pod)."
+    },
+    "Ingress": {
+      "title": "Ingress",
+      "simple": "Rende raggiungibile dall'esterno un'applicazione web tramite un nome host e un percorso (es. https://shop.example.com/).",
+      "technical": "Regole host/path verso Service; richiede un Ingress Controller (es. nginx); TLS tramite Secret di tipo kubernetes.io/tls."
+    },
+    "Endpoints": {
+      "title": "Endpoints",
+      "simple": "L'elenco degli indirizzi dei Pod pronti a cui un Service invia il traffico.",
+      "technical": "Aggiornato automaticamente dal controller in base al selector del Service e alla readiness dei Pod."
+    },
+    "PersistentVolume": {
+      "title": "PersistentVolume",
+      "simple": "Un disco reso disponibile al cluster, che sopravvive ai Pod.",
+      "technical": "Creato manualmente o dinamicamente da una StorageClass; ha capacità, access mode e reclaimPolicy (Delete/Retain)."
+    },
+    "PersistentVolumeClaim": {
+      "title": "PersistentVolumeClaim",
+      "simple": "La richiesta di spazio disco fatta da un'applicazione: Kubernetes la collega a un volume adatto.",
+      "technical": "Specifica dimensione, access mode e StorageClass; passa da Pending a Bound quando un PV viene associato."
+    },
+    "StorageClass": {
+      "title": "StorageClass",
+      "simple": "Un tipo di storage disponibile nel cluster, che crea i dischi automaticamente quando servono.",
+      "technical": "Definisce il provisioner, i parametri, reclaimPolicy e volumeBindingMode (Immediate o WaitForFirstConsumer)."
+    },
+    "ConfigMap": {
+      "title": "ConfigMap",
+      "simple": "Configurazione non segreta (file o variabili) separata dall'immagine del container.",
+      "technical": "Montata come file o esposta come variabili d'ambiente; le modifiche ai file montati si propagano, quelle alle variabili richiedono il riavvio."
+    },
+    "Secret": {
+      "title": "Secret",
+      "simple": "Dati riservati (password, token, certificati) usati dalle applicazioni.",
+      "technical": "Valori codificati in base64 (non cifrati di default nell'API); l'accesso va limitato con RBAC. In PKM i valori sono nascosti e la visualizzazione è registrata."
+    },
+    "Node": {
+      "title": "Node",
+      "simple": "Una macchina (fisica o virtuale) del cluster che esegue i Pod.",
+      "technical": "Il kubelet riporta lo stato (Ready, pressioni di memoria/disco/PID), capacità e risorse allocabili; i taint limitano quali Pod possono girarci."
+    },
+    "Namespace": {
+      "title": "Namespace",
+      "simple": "Una cartella logica che separa applicazioni e ambienti (es. production, staging) nello stesso cluster.",
+      "technical": "Ambito per nomi, quote, RBAC e policy di rete. Eliminare un namespace elimina tutto il suo contenuto."
+    },
+    "Event": {
+      "title": "Evento",
+      "simple": "Un messaggio di Kubernetes su qualcosa che è successo a una risorsa (avvio, errore, riavvio…).",
+      "technical": "Gli eventi hanno tipo (Normal/Warning), reason, conteggio e scadono dopo un'ora circa."
+    },
+    "PodDisruptionBudget": {
+      "title": "PodDisruptionBudget",
+      "simple": "Garantisce che durante la manutenzione resti attivo un numero minimo di copie dell'applicazione.",
+      "technical": "minAvailable o maxUnavailable; rispettato dall'Eviction API (drain), non dai guasti."
+    },
+    "HorizontalPodAutoscaler": {
+      "title": "HorizontalPodAutoscaler",
+      "simple": "Aumenta o riduce automaticamente le repliche in base al carico.",
+      "technical": "Usa metriche (CPU, memoria, custom) e scala il target tra minReplicas e maxReplicas."
+    }
+  },
+  "col": {
+    "ready": "Pronti",
+    "restarts": "Restart",
+    "node": "Nodo",
+    "images": "Immagini",
+    "upToDate": "Aggiornati",
+    "available": "Disponibili",
+    "desired": "Desiderati",
+    "revision": "Revisione",
+    "completions": "Completamenti",
+    "duration": "Durata",
+    "schedule": "Schedule",
+    "suspended": "Sospeso",
+    "active": "Attivi",
+    "lastSchedule": "Ultima esecuzione",
+    "type": "Tipo",
+    "clusterIP": "Cluster IP",
+    "external": "Esterno",
+    "ports": "Porte",
+    "class": "Classe",
+    "hosts": "Host",
+    "addresses": "Indirizzi",
+    "tls": "TLS",
+    "notReady": "Non pronti",
+    "capacity": "Capacità",
+    "accessModes": "Accesso",
+    "reclaim": "Reclaim",
+    "claim": "Claim",
+    "storageClass": "StorageClass",
+    "volume": "Volume",
+    "provisioner": "Provisioner",
+    "bindingMode": "Binding",
+    "expansion": "Espandibile",
+    "default": "Predefinita",
+    "keys": "Chiavi",
+    "roles": "Ruoli",
+    "cpu": "CPU",
+    "memory": "Memoria",
+    "pods": "Pod",
+    "version": "Versione",
+    "internalIP": "IP interno",
+    "reason": "Motivo",
+    "object": "Oggetto",
+    "message": "Messaggio",
+    "count": "Volte",
+    "lastSeen": "Ultimo",
+    "target": "Target",
+    "min": "Min",
+    "max": "Max",
+    "current": "Attuali",
+    "disruptions": "Interruzioni ammesse",
+    "status": "Stato",
+    "owner": "Gestito da",
+    "ip": "IP",
+    "qos": "QoS"
+  },
+  "tabs": {
+    "overview": "Panoramica",
+    "relations": "Relazioni",
+    "pods": "Pod",
+    "events": "Eventi",
+    "logs": "Log",
+    "metrics": "Metriche",
+    "yaml": "YAML",
+    "diagnostics": "Diagnostica"
+  },
+  "list": {
+    "count": "{{count}} risorse",
+    "filterHealth": "Stato",
+    "onlyProblems": "Solo con problemi",
+    "nodeFilter": "Nodo: {{node}}",
+    "clearFilter": "Rimuovi filtro",
+    "notNamespaced": "Risorsa a livello di cluster (non appartiene a un namespace)."
+  },
+  "detail": {
+    "whatIsIt": "Cos'è",
+    "technical": "Dettagli tecnici",
+    "properties": "Proprietà",
+    "containers": "Container",
+    "conditions": "Condizioni",
+    "labels": "Label",
+    "annotations": "Annotazioni",
+    "noEvents": "Nessun evento recente per questa risorsa (gli eventi scadono dopo circa un'ora).",
+    "noDiagnostics": "Nessun problema rilevato su questa risorsa.",
+    "noLogs": "I log sono disponibili per i Pod: apri uno dei Pod nella scheda Pod.",
+    "logsPermission": "Il tuo ruolo non permette di leggere i log.",
+    "metricsUnavailable": "Metriche avanzate non configurate: metrics-server non è installato nel cluster, quindi l'uso attuale di CPU e memoria non è misurabile. Richieste e limiti restano visibili nella panoramica.",
+    "usage": "Uso",
+    "request": "Richiesta",
+    "limit": "Limite",
+    "noLimit": "nessun limite",
+    "probes": "Probe",
+    "readiness": "Readiness",
+    "liveness": "Liveness",
+    "startup": "Startup",
+    "state": "Stato",
+    "lastTermination": "Ultima terminazione",
+    "exitCode": "codice {{code}}",
+    "replicasSentence": "Questa applicazione ha {{desired}} repliche desiderate e {{ready}} pronte.",
+    "haSentence": "Se un Pod viene perso, Kubernetes ne crea automaticamente un altro.",
+    "singleReplica": "Con una sola replica, un guasto o un riavvio rende l'applicazione momentaneamente non disponibile.",
+    "strategy": "Strategia di aggiornamento",
+    "paused": "Rollout in pausa",
+    "selector": "Selettore",
+    "serviceTypeHelp": {
+      "ClusterIP": "Raggiungibile solo dall'interno del cluster, con nome DNS {{name}}.{{ns}}.svc.",
+      "NodePort": "Raggiungibile anche dall'esterno su una porta di ogni nodo.",
+      "LoadBalancer": "Esposto all'esterno tramite un indirizzo del bilanciatore.",
+      "ExternalName": "Alias DNS verso un servizio esterno.",
+      "Headless": "Headless: niente IP virtuale, il DNS restituisce gli indirizzi dei singoli Pod."
+    },
+    "endpointsReady": "{{ready}} Pod pronti ricevono traffico, {{notReady}} non pronti.",
+    "noEndpoints": "Nessun Pod corrisponde al selettore: il Service non inoltra traffico a nessuno.",
+    "rules": "Regole",
+    "taints": "Taint",
+    "nodeInfo": "Sistema",
+    "allocatable": "Allocabili",
+    "pressures": "Pressioni",
+    "unschedulable": "Non schedulabile (cordon)",
+    "secretHidden": "I valori sono nascosti. Solo un amministratore può visualizzarli e l'accesso viene registrato nell'audit log.",
+    "reveal": "Mostra i valori",
+    "revealed": "Valori visibili: l'accesso è stato registrato.",
+    "hide": "Nascondi",
+    "decoded": "decodificato",
+    "binary": "(dati binari)",
+    "keysCount": "{{count}} chiavi",
+    "schedule": "Pianificazione",
+    "nextRunHint": "Formato cron: minuto ora giorno mese giorno-settimana.",
+    "pvcStatusHelp": {
+      "Bound": "Il volume è collegato ed è utilizzabile.",
+      "Pending": "In attesa di un volume adatto.",
+      "Lost": "Il volume collegato non esiste più."
+    },
+    "jobStatus": "{{succeeded}} completamenti, {{active}} attivi, {{failed}} falliti.",
+    "ownerLink": "Gestito da",
+    "openRollout": "Rollout e cronologia",
+    "logsTitle": "Log del container"
+  },
+  "yaml": {
+    "simple": "Semplice",
+    "yaml": "YAML",
+    "json": "JSON",
+    "edit": "Modifica",
+    "validate": "Valida",
+    "diff": "Differenze",
+    "apply": "Applica",
+    "cancelEdit": "Annulla modifiche",
+    "valid": "Configurazione valida (verificata con dry-run sul server).",
+    "validLocal": "Sintassi YAML valida. La verifica sul server richiede permessi di scrittura.",
+    "invalid": "La configurazione contiene errori.",
+    "noChanges": "Nessuna modifica rispetto alla versione attuale.",
+    "applied": "Configurazione applicata",
+    "applyTitle": "Applicare la nuova configurazione?",
+    "applyConsequences": "Kubernetes aggiornerà la risorsa; per i workload può partire un aggiornamento progressivo dei Pod.",
+    "managedFieldsHidden": "managedFields e i valori dei Secret sono omessi nella visualizzazione.",
+    "notEditable": "Questa risorsa non è modificabile da PKM.",
+    "syntaxError": "Errore di sintassi alla riga {{line}}: {{message}}",
+    "current": "Attuale",
+    "proposed": "Proposta"
+  },
+  "relations": {
+    "title": "Come è collegata questa risorsa",
+    "help": "Il diagramma mostra da chi è gestita questa risorsa, cosa gestisce e cosa usa. Clicca un elemento per aprirlo.",
+    "empty": "Nessuna relazione trovata.",
+    "missing": "non trovato",
+    "edge": {
+      "owns": "gestisce",
+      "selects": "invia traffico a",
+      "routes": "instrada verso",
+      "mounts": "monta",
+      "uses": "usa",
+      "runs_on": "gira su",
+      "binds": "collegato a",
+      "provisions": "fornisce"
+    },
+    "columns": {
+      "entry": "Accesso",
+      "controller": "Applicazione",
+      "workload": "Versione (ReplicaSet) / Job",
+      "pods": "Pod",
+      "infra": "Risorse usate"
+    }
+  },
+  "action": {
+    "scale": "Scala",
+    "restart": "Riavvia",
+    "pause": "Pausa",
+    "resume": "Riprendi",
+    "delete": "Elimina",
+    "rollout": "Rollout",
+    "cordon": "Cordon",
+    "uncordon": "Uncordon",
+    "drain": "Drain…",
+    "suspend": "Sospendi",
+    "unsuspend": "Riattiva",
+    "trigger": "Esegui ora",
+    "logs": "Log",
+    "edit": "Modifica YAML"
+  },
+  "overview": {
+    "title": "Panoramica del cluster",
+    "connection": "Connessione",
+    "context": "Contesto",
+    "server": "API server",
+    "version": "Versione Kubernetes",
+    "platform": "Piattaforma",
+    "kindsTitle": "Risorse presenti",
+    "notConnected": "Kubernetes non è connesso."
+  }
+}

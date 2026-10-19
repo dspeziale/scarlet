@@ -1,0 +1,128 @@
+{
+  "title": {
+    "system": "System settings",
+    "kubernetes": "Kubernetes settings",
+    "podman": "Podman settings",
+    "logging": "Logging settings",
+    "backup": "Backup settings",
+    "auth": "Authentication settings"
+  },
+  "subtitle": {
+    "system": "Installation information. These values are changed in the configuration file /etc/pkm/config.yaml.",
+    "kubernetes": "Connection to the Kubernetes cluster and metric sources.",
+    "podman": "Connection to the Podman API on this host.",
+    "logging": "Service log verbosity and log viewer limits.",
+    "backup": "Retention of PKM backups and of the audit log.",
+    "auth": "Session duration, lockout after failed attempts and password rules."
+  },
+  "group": {
+    "kubernetes": "Kubernetes connection",
+    "monitoring": "Monitoring / Prometheus",
+    "podman": "Podman connection",
+    "logging": "Service log",
+    "logs": "Log viewer",
+    "backup": "Backup",
+    "audit": "Audit log",
+    "auth": "Sessions and passwords"
+  },
+  "groupHelp": {
+    "kubernetes": "PKM uses a kubeconfig readable by the pkm service user (recommended: a dedicated ServiceAccount with minimal permissions).",
+    "monitoring": "metrics-server provides current CPU and memory usage; Prometheus (optional) provides history, network and volume usage.",
+    "podman": "Address of the Podman API socket. Warning: access to the rootful socket is equivalent to root access on the host.",
+    "logging": "The level is applied immediately, without restart.",
+    "logs": "Limits protecting the browser and the cluster when reading very large logs.",
+    "backup": "The scheduled backup is run by the system timer pkm-backup.timer.",
+    "audit": "Older entries are deleted automatically.",
+    "auth": "Changes apply to new sessions and new sign-ins."
+  },
+  "field": {
+    "kubernetes": {
+      "enabled": { "label": "Kubernetes integration enabled" },
+      "kubeconfig": { "label": "kubeconfig path", "hint": "Absolute path on the server, for example /etc/pkm/kubeconfig (mode 0640 root:pkm)." },
+      "context": { "label": "Context", "hint": "Empty = current context of the kubeconfig." },
+      "in_cluster": { "label": "PKM runs inside the cluster (Pod service account)", "hint": "Use only when PKM runs as a Pod in Kubernetes." },
+      "request_timeout": { "label": "Request timeout (seconds)" },
+      "cache_ttl_seconds": { "label": "Read cache (seconds)", "hint": "Avoids repeated requests to the API server; 0 disables the cache." }
+    },
+    "monitoring": {
+      "metrics_server": { "label": "Use metrics-server" },
+      "prometheus_url": { "label": "Prometheus URL", "hint": "For example http://prometheus.monitoring.svc:9090. Empty = Prometheus not used." },
+      "prometheus_timeout": { "label": "Prometheus timeout (seconds)" },
+      "prometheus_verify_tls": { "label": "Verify the Prometheus TLS certificate" },
+      "poll_interval_seconds": { "label": "Problem detection interval (seconds)", "hint": "How often PKM re-checks the cluster to update the Operations Center and notifications." }
+    },
+    "podman": {
+      "enabled": { "label": "Podman integration enabled" },
+      "url": { "label": "Podman API address", "hint": "unix:///run/podman/podman.sock (rootful) or unix:///run/user/<uid>/podman/podman.sock (rootless)." },
+      "timeout": { "label": "Timeout (seconds)" }
+    },
+    "logging": {
+      "level": { "label": "Log level", "hint": "DEBUG only for temporary troubleshooting: it produces a lot of output." }
+    },
+    "logs": {
+      "max_tail_lines": { "label": "Maximum lines per request" },
+      "stream_max_seconds": { "label": "Maximum live streaming duration (seconds)" },
+      "stream_max_lines": { "label": "Maximum lines per live stream" }
+    },
+    "backup": {
+      "retention_count": { "label": "Number of backups to keep" },
+      "include_manifests": { "label": "Include the Kubernetes manifests export", "hint": "YAML of application resources (no Secrets, no volume data). It is not a full cluster backup." }
+    },
+    "audit": {
+      "retention_days": { "label": "Audit log retention (days)" }
+    },
+    "auth": {
+      "session_idle_minutes": { "label": "Idle timeout (minutes)" },
+      "session_absolute_hours": { "label": "Maximum session duration (hours)" },
+      "login_max_attempts": { "label": "Failed attempts before lockout" },
+      "lockout_minutes": { "label": "Lockout duration (minutes)" },
+      "password_min_length": { "label": "Minimum password length" }
+    }
+  },
+  "source": { "file": "file", "ui": "interface" },
+  "sourceHelp": {
+    "file": "Value from the configuration file (or default/environment variable)",
+    "ui": "Value set from this interface: it overrides the file"
+  },
+  "save": "Save ({{count}} changes)",
+  "discard": "Discard changes",
+  "saved": "Settings saved and applied",
+  "resetFile": "Restore file values",
+  "resetTitle": "Restore the file values for \"{{section}}\"?",
+  "resetConsequence": "Changes made from the interface are removed and the configuration file values apply again.",
+  "resetDone": "File values restored",
+  "connected": "Connected",
+  "notConnected": "Not connected",
+  "k8sConnected": "Context {{context}} · Kubernetes {{version}} · {{server}}",
+  "podmanConnected": "Podman {{version}} · {{endpoint}}",
+  "logFileAt": "Service logs are in the journal (journalctl -u pkm) and in the file {{file}} (rotated).",
+  "logJournal": "Service logs are in the systemd journal: journalctl -u pkm.",
+  "backupDirAt": "Backup directory: {{dir}}.",
+  "system": {
+    "app": "Application",
+    "server": "Web server",
+    "mode": "Mode",
+    "environment": "Environment",
+    "version": "Version",
+    "apiVersion": "API version",
+    "configFile": "Configuration file",
+    "noConfigFile": "none",
+    "database": "Database",
+    "logFile": "Log file",
+    "journalOnly": "systemd journal only",
+    "backupDir": "Backup directory",
+    "bind": "Listen address",
+    "tls": "HTTPS",
+    "tlsOn": "TLS active",
+    "tlsProxy": "behind reverse proxy",
+    "tlsOff": "not active",
+    "certificate": "Certificate",
+    "proxies": "Trusted reverse proxies",
+    "cookieSecure": "HTTPS-only cookie",
+    "k8sVersion": "Kubernetes version",
+    "podmanVersion": "Podman version",
+    "tlsWarning": "Use HTTPS in production: credentials must not travel in clear text.",
+    "fileOnly": "Settings in the file",
+    "fileOnlyText": "Listen address and port, TLS certificates, database path, mode (live/demo) and trusted proxies are changed in /etc/pkm/config.yaml (or with PKM_* variables) and require a restart: sudo systemctl restart pkm. Check first with: sudo pkm-admin check-config."
+  }
+}

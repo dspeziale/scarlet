@@ -1,0 +1,55 @@
+[Unit]
+Description=Podman Kubernetes Manager (web console)
+Documentation=file:///opt/pkm/current/docs/OPERATIONS.md
+After=network-online.target
+Wants=network-online.target
+# Podman API socket is optional: start after it when present, do not require it.
+After=podman.socket
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=exec
+User=pkm
+Group=pkm
+Environment=PKM_CONFIG=/etc/pkm/config.yaml
+EnvironmentFile=-/etc/pkm/pkm.env
+ExecStart=/opt/pkm/current/venv/bin/pkm-server
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=60
+TimeoutStopSec=30
+KillSignal=SIGTERM
+KillMode=mixed
+UMask=0027
+LimitNOFILE=65536
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=pkm
+
+# Hardening: least privilege for a network-facing service.
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectSystem=strict
+ReadWritePaths=/var/lib/pkm /var/log/pkm
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+LockPersonality=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+
+[Install]
+WantedBy=multi-user.target

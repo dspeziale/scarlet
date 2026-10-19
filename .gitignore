@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+build/
+dist/
+
+# Frontend
+node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/test-results/
+frontend/playwright-report/
+
+# Built UI copied into the Python package
+backend/pkm/static/
+
+# Local runtime data / secrets
+*.db
+*.db-wal
+*.db-shm
+.env
+config.yaml
+!config/config.example.yaml
+*.pem
+*.key
+kubeconfig*
+!deploy/kubernetes/*.yaml
+/release/
+/var/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

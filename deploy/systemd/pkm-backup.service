@@ -1,0 +1,31 @@
+[Unit]
+Description=Podman Kubernetes Manager - scheduled backup
+Documentation=file:///opt/pkm/current/docs/BACKUP.md
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=pkm
+Group=pkm
+Environment=PKM_CONFIG=/etc/pkm/config.yaml
+EnvironmentFile=-/etc/pkm/pkm.env
+ExecStart=/opt/pkm/current/venv/bin/pkm-admin backup --scheduled
+UMask=0077
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=30min
+SyslogIdentifier=pkm-backup
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+ProtectSystem=strict
+ReadWritePaths=/var/lib/pkm /var/log/pkm
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+LockPersonality=yes
+SystemCallArchitectures=native

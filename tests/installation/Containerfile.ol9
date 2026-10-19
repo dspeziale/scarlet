@@ -1,0 +1,9 @@
+# Oracle Linux 9 test host with systemd as PID 1, used to test install/upgrade/backup/restore/uninstall.
+FROM container-registry.oracle.com/os/oraclelinux:9
+RUN dnf -y install systemd procps-ng openssl tar gzip curl sudo util-linux shadow-utils findutils \
+      python3.12 podman policycoreutils \
+ && dnf clean all \
+ && systemctl mask systemd-logind.service getty.target console-getty.service \
+ && systemctl set-default multi-user.target
+STOPSIGNAL SIGRTMIN+3
+CMD ["/sbin/init"]

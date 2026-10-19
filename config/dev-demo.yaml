@@ -1,0 +1,15 @@
+# Development configuration: DEMO mode with simulated data, plain HTTP on localhost.
+# Usage (from the repository root):  PKM_CONFIG=config/dev-demo.yaml backend/.venv/Scripts/pkm-server
+mode: demo
+environment: development
+server:
+  host: 127.0.0.1
+  port: 8080
+  static_dir: frontend/dist
+database:
+  path: var/dev/pkm.db
+backup:
+  directory: var/dev/backups
+logging:
+  level: INFO
+  json_format: false

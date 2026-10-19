@@ -1,0 +1,526 @@
+{
+  "problem": "Problem",
+  "whatHappens": "What is happening",
+  "risk": "Risk",
+  "possibleCauses": "Possible causes",
+  "checks": "Checks performed",
+  "likelyCause": "Most likely cause",
+  "whatToDo": "What you can do",
+  "application": "Application",
+  "resource": "Resource",
+  "node": "Node",
+  "container": "Container",
+  "since": "Since",
+  "affectedPods": "Affected pods",
+  "technicalMessage": "Kubernetes message",
+  "acknowledgedBy": "Handled by {{user}}",
+  "checkStatus": {
+    "ok": "OK",
+    "fail": "Problem",
+    "warn": "Warning",
+    "unknown": "Cannot verify"
+  },
+  "reason": {
+    "CrashLoopBackOff": {
+      "title": "CrashLoopBackOff",
+      "simple": "The container starts and exits right away with an error; Kubernetes keeps restarting it, waiting longer each time.",
+      "risk": "Affected copies serve no requests. If all replicas are in this state the application is down.",
+      "causes": [
+        "Application error at startup (configuration, unreachable dependency such as a database)",
+        "Wrong command or entrypoint",
+        "Missing environment variables or configuration files",
+        "Too aggressive liveness probe killing the container",
+        "Not enough memory (OOMKilled)"
+      ]
+    },
+    "HighRestarts": {
+      "title": "Frequent restarts",
+      "simple": "The container is running but restarted many times recently.",
+      "risk": "Every restart drops in-flight requests; it can degrade into CrashLoopBackOff.",
+      "causes": [
+        "Intermittent application errors",
+        "Liveness probe failing under load",
+        "Memory spikes"
+      ]
+    },
+    "ImagePullBackOff": {
+      "title": "ImagePullBackOff",
+      "simple": "Kubernetes cannot download the container image, so the container cannot start.",
+      "risk": "New copies of the application do not start. If it affects all replicas the application is down.",
+      "causes": [
+        "Wrong image name",
+        "Tag does not exist",
+        "Registry not reachable from the nodes",
+        "Missing or wrong credentials (imagePullSecrets)",
+        "Network or DNS problem"
+      ]
+    },
+    "OOMKilled": {
+      "title": "OOMKilled (out of memory)",
+      "simple": "The container used more memory than its limit and was killed by the system.",
+      "risk": "The container is restarted: in-flight requests are lost and it tends to repeat under load.",
+      "causes": [
+        "Memory limit too low for the real load",
+        "Memory leak in the application",
+        "Traffic spike or heavy processing",
+        "JVM/runtime settings not matching the limit"
+      ]
+    },
+    "Pending": {
+      "title": "Pending (waiting for a node)",
+      "simple": "The Pod has not been assigned to any node: Kubernetes cannot find a place to run it.",
+      "risk": "Missing replicas do not start: reduced capacity or application down.",
+      "causes": [
+        "Not enough resources (requested CPU or memory above what is free)",
+        "Node taints not tolerated by the Pod",
+        "nodeSelector/affinity matching no node",
+        "Volume (PVC) not available yet",
+        "Namespace quota exceeded"
+      ]
+    },
+    "CreateContainerConfigError": {
+      "title": "Container configuration error",
+      "simple": "The container cannot be created because a configuration item it references is missing.",
+      "risk": "The container does not start until the configuration is fixed.",
+      "causes": [
+        "ConfigMap does not exist",
+        "Secret does not exist",
+        "Missing key inside a ConfigMap or Secret"
+      ]
+    },
+    "CreateContainerError": {
+      "title": "Container creation error",
+      "simple": "The runtime cannot create the container.",
+      "risk": "The container does not start.",
+      "causes": [
+        "Volume cannot be mounted",
+        "Security settings not allowed",
+        "Runtime problem on the node"
+      ]
+    },
+    "RunContainerError": {
+      "title": "Container start error",
+      "simple": "The container was created but the runtime cannot start it.",
+      "risk": "The container does not start.",
+      "causes": [
+        "Command not present in the image",
+        "Insufficient permissions",
+        "Runtime problem on the node"
+      ]
+    },
+    "PodFailed": {
+      "title": "Pod failed",
+      "simple": "All containers of the Pod have terminated and at least one failed; the Pod will not be restarted.",
+      "risk": "The work of the Pod was not completed.",
+      "causes": [
+        "Application error",
+        "Pod evicted from the node for lack of resources",
+        "Deadline exceeded"
+      ]
+    },
+    "PodUnknown": {
+      "title": "Pod status unknown",
+      "simple": "Kubernetes no longer hears from the node running the Pod, so it does not know whether the Pod works.",
+      "risk": "The Pod may not serve requests; controllers will recreate it elsewhere after a timeout.",
+      "causes": [
+        "Node down or unreachable",
+        "Kubelet stopped",
+        "Network problem between node and control plane"
+      ]
+    },
+    "WorkloadUnavailable": {
+      "title": "Application unavailable",
+      "simple": "No replica of the application is ready ({{available}}/{{desired}}).",
+      "risk": "The service may be unavailable for users.",
+      "causes": [
+        "All Pods failing (see the related Pod problems)",
+        "Image cannot be pulled",
+        "Not enough resources in the cluster",
+        "Readiness probes not passing"
+      ]
+    },
+    "WorkloadDegraded": {
+      "title": "Application degraded",
+      "simple": "Only part of the replicas are ready ({{available}}/{{desired}}).",
+      "risk": "Reduced capacity: under load or if another replica fails the service can degrade further.",
+      "causes": [
+        "Some Pods failing",
+        "Update in progress",
+        "Node unavailable"
+      ]
+    },
+    "RolloutStuck": {
+      "title": "Rollout stuck",
+      "simple": "The progressive update could not complete within the expected time (progressDeadlineSeconds).",
+      "risk": "Different versions coexist; new replicas do not become ready.",
+      "causes": [
+        "New version does not start",
+        "Image cannot be pulled",
+        "Not enough resources"
+      ]
+    },
+    "DeploymentPaused": {
+      "title": "Rollout paused",
+      "simple": "Updates of this Deployment are paused: template changes are not applied.",
+      "risk": "No immediate risk, but changes are pending.",
+      "causes": [
+        "Manual pause to batch several changes"
+      ]
+    },
+    "JobFailed": {
+      "title": "Job failed",
+      "simple": "The Job exceeded its retry limit without completing.",
+      "risk": "The scheduled task (e.g. backup, processing) did not run.",
+      "causes": [
+        "Application error",
+        "Timeout (activeDeadlineSeconds)",
+        "Unreachable dependencies"
+      ]
+    },
+    "NodeNotReady": {
+      "title": "Node not ready (NotReady)",
+      "simple": "The node does not communicate properly with the cluster: Kubernetes does not use it for new Pods and, after a few minutes, moves its Pods elsewhere.",
+      "risk": "Pods on the node may not work; cluster capacity is reduced.",
+      "causes": [
+        "Node powered off or rebooting",
+        "Kubelet or container runtime stopped",
+        "Network problem",
+        "Full disk or exhausted memory on the node"
+      ]
+    },
+    "NodePressure": {
+      "title": "Node under pressure",
+      "simple": "The node reports a resource pressure condition ({{condition}}).",
+      "risk": "Kubernetes may evict Pods from the node to reclaim resources.",
+      "causes": [
+        "Disk almost full",
+        "Memory almost exhausted",
+        "Too many processes"
+      ]
+    },
+    "NodeCordoned": {
+      "title": "Node in maintenance (cordon)",
+      "simple": "The node is marked unschedulable: it receives no new Pods.",
+      "risk": "Reduced capacity until the node is put back in service (uncordon).",
+      "causes": [
+        "Maintenance in progress"
+      ]
+    },
+    "PVCPending": {
+      "title": "Volume pending (PVC Pending)",
+      "simple": "The disk space request has not been satisfied yet: no volume is attached.",
+      "risk": "Pods using this volume cannot start.",
+      "causes": [
+        "StorageClass does not exist",
+        "Storage provisioner not working",
+        "No compatible PersistentVolume (size, access mode)",
+        "Volume waiting for its first Pod (WaitForFirstConsumer)"
+      ]
+    },
+    "PVCLost": {
+      "title": "Volume lost",
+      "simple": "The bound PersistentVolume no longer exists.",
+      "risk": "Possible data loss.",
+      "causes": [
+        "Volume deleted manually"
+      ]
+    },
+    "KubernetesUnreachable": {
+      "title": "Kubernetes unreachable",
+      "simple": "PKM cannot talk to the Kubernetes API server.",
+      "risk": "Cluster monitoring and operations are unavailable.",
+      "causes": [
+        "API server down",
+        "Network or firewall",
+        "Expired credentials"
+      ]
+    },
+    "PodmanUnreachable": {
+      "title": "Podman unreachable",
+      "simple": "PKM cannot talk to the Podman API.",
+      "risk": "Podman container management is unavailable.",
+      "causes": [
+        "podman.socket not active",
+        "Socket permissions"
+      ]
+    }
+  },
+  "check": {
+    "image_format": {
+      "label": "Image name",
+      "ok": "The name {{image}} is syntactically valid.",
+      "fail": "The image name is not valid.",
+      "warn": "",
+      "unknown": ""
+    },
+    "image_tag": {
+      "label": "Tag",
+      "ok": "Fixed tag: {{tag}}.",
+      "warn": "The tag \"{{tag}}\" is mutable: different versions can end up on different nodes.",
+      "fail": "",
+      "unknown": ""
+    },
+    "tag_exists": {
+      "label": "Image/tag exists",
+      "ok": "No \"not found\" error in the events.",
+      "fail": "The registry says the image or tag {{tag}} does not exist.",
+      "warn": "",
+      "unknown": "No events available to verify it."
+    },
+    "registry_reachable": {
+      "label": "Registry",
+      "ok": "The registry {{registry}} answers.",
+      "fail": "The registry {{registry}} is not reachable (network, DNS, TLS or timeout).",
+      "warn": "",
+      "unknown": "No events available to verify it."
+    },
+    "registry_auth": {
+      "label": "Authentication",
+      "ok": "No authentication error.",
+      "fail": "The registry denies access: missing or wrong credentials.",
+      "warn": "Private registry ({{registry}}) without imagePullSecrets on the Pod.",
+      "unknown": "Cannot be verified from events."
+    },
+    "platform_amd64": {
+      "label": "linux/amd64 architecture",
+      "ok": "The image is available for linux/amd64.",
+      "fail": "The image is not available for linux/amd64 (available: {{platforms}}).",
+      "warn": "",
+      "unknown": ""
+    },
+    "manifest_readable": {
+      "label": "Image manifest",
+      "ok": "",
+      "fail": "Cannot read the manifest: {{error}}",
+      "warn": "",
+      "unknown": ""
+    },
+    "exit_code": {
+      "label": "Exit code",
+      "ok": "",
+      "fail": "The last run ended with code {{exitCode}}.",
+      "warn": "",
+      "unknown": "No previous termination recorded."
+    },
+    "liveness_probe": {
+      "label": "Liveness probe",
+      "ok": "No liveness probe failure in the events.",
+      "fail": "The liveness probe fails: Kubernetes kills the container because it considers it stuck.",
+      "warn": "",
+      "unknown": ""
+    },
+    "memory_limit": {
+      "label": "Memory",
+      "ok": "No out-of-memory termination.",
+      "fail": "The last termination was caused by memory exhaustion (OOMKilled).",
+      "warn": "",
+      "unknown": ""
+    },
+    "memory_limit_set": {
+      "label": "Memory limit",
+      "ok": "Limit set: {{limit}}.",
+      "warn": "No memory limit set: the container can be killed when the node runs out of memory.",
+      "fail": "",
+      "unknown": ""
+    },
+    "memory_usage": {
+      "label": "Current memory usage",
+      "ok": "Current usage well below the limit.",
+      "warn": "Current usage above 80% of the limit.",
+      "fail": "",
+      "unknown": "metrics-server not available: usage cannot be measured."
+    },
+    "schedulable_nodes": {
+      "label": "Available nodes",
+      "ok": "{{count}} ready and schedulable nodes.",
+      "fail": "No ready and schedulable node.",
+      "warn": "",
+      "unknown": ""
+    },
+    "cpu_capacity": {
+      "label": "CPU capacity",
+      "ok": "The requested CPU fits the nodes.",
+      "fail": "Not enough CPU: {{requested}} cores requested, the largest node offers {{maxNode}}, or nodes are already full.",
+      "warn": "",
+      "unknown": ""
+    },
+    "memory_capacity": {
+      "label": "Memory capacity",
+      "ok": "The requested memory fits the nodes.",
+      "fail": "Not enough memory: the Pod request exceeds the free memory or that of the largest node.",
+      "warn": "",
+      "unknown": ""
+    },
+    "taints": {
+      "label": "Node taints",
+      "ok": "No taint problem.",
+      "warn": "Some nodes have taints the Pod does not tolerate (e.g. control-plane or unreachable node).",
+      "fail": "",
+      "unknown": ""
+    },
+    "node_selector": {
+      "label": "Node selectors / affinity",
+      "ok": "No blocking placement constraint.",
+      "fail": "No node matches the Pod nodeSelector/affinity.",
+      "warn": "",
+      "unknown": ""
+    },
+    "volumes_bound": {
+      "label": "Volumes",
+      "ok": "Required volumes are available.",
+      "fail": "Volumes not bound yet: {{claims}}.",
+      "warn": "",
+      "unknown": ""
+    },
+    "quota": {
+      "label": "Namespace quota",
+      "fail": "The namespace quota was exceeded.",
+      "ok": "",
+      "warn": "",
+      "unknown": ""
+    },
+    "configmaps_exist": {
+      "label": "Referenced ConfigMaps",
+      "ok": "All ConfigMaps exist.",
+      "fail": "Missing ConfigMaps: {{missing}}.",
+      "warn": "",
+      "unknown": ""
+    },
+    "secrets_exist": {
+      "label": "Referenced Secrets",
+      "ok": "All Secrets exist.",
+      "fail": "Missing Secrets: {{missing}}.",
+      "warn": "",
+      "unknown": ""
+    },
+    "keys_exist": {
+      "label": "Keys",
+      "ok": "No missing key reported.",
+      "fail": "A required key does not exist in the ConfigMap/Secret.",
+      "warn": "",
+      "unknown": ""
+    },
+    "node_ready": {
+      "label": "Node status",
+      "ok": "Node {{node}} is ready.",
+      "fail": "Node {{node}} is not ready.",
+      "warn": "",
+      "unknown": ""
+    },
+    "kubelet_heartbeat": {
+      "label": "Kubelet heartbeat",
+      "ok": "The kubelet reports regularly.",
+      "fail": "No signal from the kubelet for {{ageSeconds}} seconds.",
+      "warn": "",
+      "unknown": ""
+    },
+    "node_pressure": {
+      "label": "Node conditions",
+      "ok": "No pressure condition.",
+      "fail": "Active conditions: {{conditions}}.",
+      "warn": "",
+      "unknown": ""
+    },
+    "storage_class_exists": {
+      "label": "StorageClass",
+      "ok": "StorageClass {{storageClass}} exists.",
+      "fail": "StorageClass \"{{storageClass}}\" does not exist in the cluster.",
+      "warn": "",
+      "unknown": ""
+    },
+    "waiting_first_consumer": {
+      "label": "Binding",
+      "warn": "The StorageClass creates the volume only when a Pod uses it (WaitForFirstConsumer): this is normal until a Pod mounts it.",
+      "ok": "",
+      "fail": "",
+      "unknown": ""
+    },
+    "provisioning": {
+      "label": "Provisioning",
+      "ok": "No provisioning error.",
+      "fail": "Volume provisioning failed (see events).",
+      "warn": "",
+      "unknown": "No events available."
+    },
+    "local_present": {
+      "label": "Image present locally",
+      "ok": "Image {{image}} is present in the Podman storage of this host.",
+      "fail": "",
+      "warn": "",
+      "unknown": ""
+    },
+    "archive_checksum": {
+      "label": "Archive checksum",
+      "ok": "The SHA-256 checksum matches the .sha256 file.",
+      "fail": "The checksum does NOT match: the archive was modified or is corrupted.",
+      "warn": "",
+      "unknown": ".sha256 file missing: cannot verify."
+    },
+    "manifest": {
+      "label": "Backup manifest",
+      "ok": "Manifest read (version {{version}}).",
+      "fail": "",
+      "warn": "",
+      "unknown": ""
+    },
+    "file_checksums": {
+      "label": "File checksums",
+      "ok": "All contained files are intact.",
+      "fail": "Altered or missing files: {{bad}}.",
+      "warn": "",
+      "unknown": ""
+    },
+    "database_integrity": {
+      "label": "Database integrity",
+      "ok": "Database intact ({{users}} users).",
+      "fail": "Corrupted database: {{result}}.",
+      "warn": "",
+      "unknown": ""
+    },
+    "archive_readable": {
+      "label": "Archive readability",
+      "ok": "",
+      "fail": "Archive not readable: {{error}}",
+      "warn": "",
+      "unknown": ""
+    }
+  },
+  "exitMeaning": {
+    "completed": "0: the process ended without errors (but a service should not end)",
+    "app_error": "1: generic application error: read the logs",
+    "misuse": "2: wrong command usage or arguments",
+    "not_executable": "126: the command is not executable (permissions)",
+    "command_not_found": "127: command not found in the image",
+    "invalid_exit": "128: invalid exit code",
+    "abort": "134: the process aborted",
+    "killed": "137: killed with SIGKILL (often out of memory)",
+    "segfault": "139: segmentation fault",
+    "terminated": "143: terminated with SIGTERM (stop requested)",
+    "other": "non-standard code: read the logs"
+  },
+  "action": {
+    "view_resource": "View problem",
+    "view_logs": "View logs",
+    "view_previous_logs": "Logs of the previous run",
+    "view_events": "View events",
+    "view_yaml": "View YAML",
+    "view_config": "View configuration",
+    "view_pods": "View Pods",
+    "view_metrics": "View metrics",
+    "check_registry": "Check registry",
+    "restart": "Restart",
+    "rollback": "Rollback",
+    "resume": "Resume rollout",
+    "cordon": "Put in maintenance",
+    "uncordon": "Put back in service",
+    "guide": "How to fix"
+  },
+  "centerTitle": "Operations Center",
+  "centerSubtitle": "Automatically detected problems, most severe first. Each card explains what is happening, the risk and what to do.",
+  "noIssues": "No problems detected. The cluster is healthy.",
+  "onlyActive": "Hide the ones already handled",
+  "partialData": "Partial data: some resources cannot be read with the permissions of the PKM Kubernetes account ({{kinds}}).",
+  "counts": "{{critical}} critical · {{error}} errors · {{warning}} warnings",
+  "replicasAvailable": "replicas available",
+  "markHandled": "Mark as handled"
+}

@@ -1,0 +1,25 @@
+{
+  "title": "Guida",
+  "subtitle": "Kubernetes e Podman spiegati in modo semplice, con dettagli tecnici, esempi, problemi tipici e procedure operative.",
+  "toc": "Indice della guida",
+  "searchPlaceholder": "Cerca nella guida…",
+  "results": "{{count}} risultati",
+  "noResults": "Nessun articolo trovato.",
+  "notFound": "Articolo non trovato.",
+  "related": "Articoli correlati",
+  "start": "Da dove iniziare",
+  "intro": "La guida accompagna l'uso della console: ogni pagina offre un collegamento all'articolo pertinente (ad esempio \"Cos'è un Deployment?\" oppure \"Come risolvere ImagePullBackOff\"). Il metodo consigliato è: Capire → Diagnosticare → Decidere → Agire → Verificare.",
+  "readIntro": "Leggi l'introduzione",
+  "category": {
+    "intro": "Introduzione",
+    "concepts": "Concetti fondamentali",
+    "workloads": "Applicazioni",
+    "networking": "Networking",
+    "storage": "Storage",
+    "config": "Configurazione",
+    "reliability": "Affidabilità",
+    "troubleshooting": "Troubleshooting",
+    "procedures": "Procedure operative",
+    "faq": "FAQ"
+  }
+}

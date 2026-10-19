@@ -1,0 +1,17 @@
+# End-to-end test configuration (Playwright): DEMO mode, isolated database, built UI.
+mode: demo
+environment: development
+server:
+  host: 127.0.0.1
+  port: 8081
+  static_dir: frontend/dist
+database:
+  path: var/e2e/pkm.db
+backup:
+  directory: var/e2e/backups
+logging:
+  level: WARNING
+  json_format: false
+rate_limit:
+  api_per_minute: 5000
+  login_per_minute: 100

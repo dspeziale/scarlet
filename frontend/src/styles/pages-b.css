@@ -1,0 +1,98 @@
+/* Operations pages (image onboarding, deploy wizard, rollout, backup, maintenance). */
+.wizard-panel h2 {
+  margin-top: 0;
+}
+.wizard-panel .explain {
+  color: var(--text-2);
+  margin-bottom: 14px;
+  max-width: 760px;
+}
+.choice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.choice {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  cursor: pointer;
+  background: var(--surface);
+}
+.choice:has(input:checked) {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+.choice input {
+  margin-top: 3px;
+}
+.choice .title {
+  font-weight: 600;
+}
+.choice .desc {
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+.preset-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: -6px 0 12px;
+}
+.risk-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.risk-list li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.summary-grid {
+  display: grid;
+  grid-template-columns: minmax(150px, max-content) 1fr;
+  gap: 6px 18px;
+  font-size: 13.5px;
+}
+.summary-grid dt {
+  color: var(--text-3);
+}
+.summary-grid dd {
+  margin: 0;
+}
+.cmd {
+  display: block;
+  background: var(--code-bg);
+  color: var(--code-text);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 4px 0 8px;
+}
+.step-log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 12.5px;
+  max-height: 260px;
+  overflow: auto;
+  font-family: var(--mono);
+}
+.step-log li {
+  padding: 2px 0;
+  border-bottom: 1px dashed var(--border);
+}
+.sel-row {
+  background: var(--primary-soft) !important;
+}

@@ -1,0 +1,11 @@
+[Unit]
+Description=Podman Kubernetes Manager - daily backup
+
+[Timer]
+OnCalendar=*-*-* 02:30:00
+RandomizedDelaySec=15min
+Persistent=true
+Unit=pkm-backup.service
+
+[Install]
+WantedBy=timers.target

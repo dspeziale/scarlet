@@ -1,0 +1,39 @@
+# Podman Quadlet unit: run PKM as a container managed by systemd (Podman >= 4.4, Oracle Linux 9).
+#
+#   install -m 0644 deploy/podman/pkm.container /etc/containers/systemd/pkm.container
+#   systemctl daemon-reload && systemctl start pkm-container.service
+#
+# Quadlet generates pkm-container.service (the name avoids clashing with the native pkm.service:
+# use ONE of the two installation modes, not both).
+# Prepare /etc/pkm/config.yaml (server.host: 0.0.0.0, port 8443, database.path /var/lib/pkm/pkm.db),
+# the TLS files in /etc/pkm/tls and, if needed, /etc/pkm/kubeconfig - all readable by uid 10001
+# (e.g. chgrp 10001 + mode 0640).
+
+[Unit]
+Description=Podman Kubernetes Manager (container)
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+ContainerName=pkm
+Image=localhost/pkm:1.0.0
+PublishPort=8443:8443
+Volume=pkm-data:/var/lib/pkm:Z
+Volume=/etc/pkm:/etc/pkm:ro,Z
+EnvironmentFile=/etc/pkm/pkm.env
+Environment=PKM_CONFIG=/etc/pkm/config.yaml
+# Optional: manage the host Podman (root-equivalent access, see SECURITY.md).
+# Volume=/run/podman/podman.sock:/run/podman/podman.sock
+# SecurityLabelDisable=true
+NoNewPrivileges=true
+DropCapability=ALL
+ReadOnly=true
+Tmpfs=/tmp
+Notify=false
+
+[Service]
+Restart=on-failure
+TimeoutStartSec=120
+
+[Install]
+WantedBy=multi-user.target default.target
